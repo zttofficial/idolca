@@ -26,6 +26,7 @@ src/
     card-art.ts         canvas 生成的佔位卡面
 docs/
   tech-stack.md         技術選型
+  naming.md             命名方案
 ```
 
-技術選型和後續規劃見 [docs/tech-stack.md](docs/tech-stack.md)。
+技術選型見 [docs/tech-stack.md](docs/tech-stack.md)，命名方案見 [docs/naming.md](docs/naming.md)。
