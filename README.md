@@ -1,36 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PocaVault
 
-## Getting Started
+K-pop 小卡倉儲交易平台：實物入庫、即時轉手、隨時提貨。
 
-First, run the development server:
+## 開發
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev     # http://localhost:3000
+npm run build   # 生產構建
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 目錄
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+src/
+  app/                  頁面、全域樣式
+  components/
+    hero/               首頁主視覺：3D 旋轉小卡（HoloCard3D）
+    market/             卡片列表、全息懸停卡（HoloTile）、成交跑馬燈
+    landing/            首頁說明區塊
+    layout/             導航列
+  lib/
+    mock-cards.ts       假資料（虛構團體和成員）
+    card-art.ts         canvas 生成的佔位卡面
+docs/
+  tech-stack.md         技術選型
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+技術選型和後續規劃見 [docs/tech-stack.md](docs/tech-stack.md)。

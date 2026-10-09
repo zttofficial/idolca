@@ -1,0 +1,95 @@
+"use client";
+
+import dynamic from "next/dynamic";
+import { useState } from "react";
+import { HERO_CARDS, RARITY_LABEL } from "@/lib/mock-cards";
+
+const HoloCard3D = dynamic(() => import("./HoloCard3D"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full items-center justify-center">
+      <div className="aspect-[55/85] h-2/3 animate-pulse rounded-2xl bg-white/5" />
+    </div>
+  ),
+});
+
+const STATS = [
+  { label: "入庫小卡", value: "128,406" },
+  { label: "24h 成交額", value: "$84.2K" },
+  { label: "平均轉手時間", value: "3 秒" },
+];
+
+export default function Hero() {
+  const [active, setActive] = useState(0);
+  const card = HERO_CARDS[active];
+
+  return (
+    <section className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 pt-10 pb-16 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:pt-16">
+      <div className="relative z-10">
+        <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-violet-200 backdrop-blur">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+          實物入庫 · 即時轉手 · 隨時提貨
+        </p>
+        <h1 className="mt-6 text-4xl leading-tight font-extrabold tracking-tight sm:text-6xl">
+          每一張小卡，
+          <br />
+          <span className="text-holo">都有自己的保險庫</span>
+        </h1>
+        <p className="mt-6 max-w-xl text-base leading-relaxed text-white/65 sm:text-lg">
+          把小卡寄進 PocaVault，鑑定後上架。成交時卡留在倉庫、所有權秒速轉移，不用再寄來寄去、怕收到假卡。想摸到實物時，一鍵合併寄到全球。
+        </p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <a href="#market" className="btn-holo rounded-full px-6 py-3 text-sm font-semibold text-white">
+            逛市場
+          </a>
+          <a
+            href="#how"
+            className="rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-semibold text-white/90 backdrop-blur transition hover:bg-white/10"
+          >
+            寄卡入庫
+          </a>
+        </div>
+        <dl className="mt-12 grid max-w-lg grid-cols-3 gap-4">
+          {STATS.map((s) => (
+            <div key={s.label}>
+              <dt className="text-xs text-white/45">{s.label}</dt>
+              <dd className="mt-1 font-mono text-xl font-semibold text-white sm:text-2xl">{s.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
+      <div className="relative">
+        <div
+          className="pointer-events-none absolute inset-0 -z-0 rounded-full opacity-60 blur-3xl transition-colors duration-700"
+          style={{
+            background: `radial-gradient(circle at 50% 45%, ${card.palette[1]}66, transparent 60%)`,
+          }}
+        />
+        <div className="relative h-[460px] sm:h-[560px]">
+          <HoloCard3D card={card} />
+        </div>
+        <div className="relative mt-2 flex flex-col items-center gap-3">
+          <div className="flex gap-2">
+            {HERO_CARDS.map((c, i) => (
+              <button
+                key={c.id}
+                onClick={() => setActive(i)}
+                className={`rounded-full border px-3 py-1 text-xs transition ${
+                  i === active
+                    ? "border-white/40 bg-white/15 text-white"
+                    : "border-white/10 bg-white/5 text-white/50 hover:text-white/80"
+                }`}
+              >
+                {c.member}
+              </button>
+            ))}
+          </div>
+          <p className="font-mono text-xs text-white/40">
+            {card.serial} · {RARITY_LABEL[card.rarity]} · 拖動旋轉，看看背面
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}

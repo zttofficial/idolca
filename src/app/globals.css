@@ -1,26 +1,197 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #07050f;
+  --foreground: #f4f1ff;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist-sans), "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: dark;
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* 背景：流動的極光光暈 + 淡出的網格 */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.aurora::before,
+.aurora::after {
+  content: "";
+  position: absolute;
+  width: 70vmax;
+  height: 70vmax;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.35;
+  animation: drift 24s ease-in-out infinite alternate;
+}
+.aurora::before {
+  background: radial-gradient(circle, #7c3aed, transparent 65%);
+  top: -30vmax;
+  left: -20vmax;
+}
+.aurora::after {
+  background: radial-gradient(circle, #ec4899, transparent 65%);
+  bottom: -35vmax;
+  right: -25vmax;
+  animation-delay: -12s;
+}
+.grid-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse at 50% 0%, #000 20%, transparent 70%);
+}
+@keyframes drift {
+  to {
+    transform: translate(18vmax, 12vmax) scale(1.15);
+  }
+}
+
+.text-holo {
+  background: linear-gradient(100deg, #ff7ad9, #a78bfa 30%, #67e8f9 55%, #fde68a 80%, #ff7ad9);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: holo-shift 6s linear infinite;
+}
+.btn-holo {
+  background: linear-gradient(100deg, #8b5cf6, #ec4899, #8b5cf6);
+  background-size: 200% auto;
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.45);
+  transition: background-position 0.5s, box-shadow 0.3s;
+}
+.btn-holo:hover {
+  background-position: right center;
+  box-shadow: 0 0 36px rgba(236, 72, 153, 0.6);
+}
+@keyframes holo-shift {
+  to {
+    background-position: 200% center;
+  }
+}
+
+/* 列表卡的 3D 傾斜和全息效果 */
+.holo-stage {
+  perspective: 900px;
+}
+.holo-tile {
+  --mx: 50%;
+  --my: 50%;
+  --rx: 0deg;
+  --ry: 0deg;
+  --pos: 50% 50%;
+  --foil: 0.25;
+  position: relative;
+  aspect-ratio: 55 / 85;
+  border-radius: 4.5% / 2.9%;
+  overflow: hidden;
+  transform: rotateX(var(--rx)) rotateY(var(--ry));
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.8);
+  will-change: transform;
+}
+.holo-tile[data-active="true"] {
+  transition: transform 0.08s linear, box-shadow 0.3s;
+  box-shadow:
+    0 20px 50px -15px rgba(0, 0, 0, 0.9),
+    0 0 40px -10px rgba(167, 139, 250, 0.6);
+}
+.holo-tile[data-holo="pob"] {
+  --foil: 0.35;
+}
+.holo-tile[data-holo="luckydraw"] {
+  --foil: 0.42;
+}
+.holo-tile[data-holo="fansign"] {
+  --foil: 0.5;
+}
+.holo-foil,
+.holo-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.holo-tile[data-active="true"] .holo-foil {
+  opacity: var(--foil);
+}
+.holo-tile[data-active="true"] .holo-glare {
+  opacity: 1;
+}
+.holo-foil {
+  background:
+    repeating-linear-gradient(
+      115deg,
+      #ff5fcf 0%,
+      #ffd86b 8%,
+      #6bffb8 16%,
+      #6bd8ff 24%,
+      #b46bff 32%,
+      #ff5fcf 40%
+    ),
+    repeating-linear-gradient(55deg, rgba(255, 255, 255, 0.15) 0 2px, transparent 2px 6px);
+  background-size: 300% 300%, 100% 100%;
+  background-position: var(--pos), center;
+  mix-blend-mode: color-dodge;
+  filter: saturate(1.2) contrast(1.1);
+}
+.holo-glare {
+  background: radial-gradient(
+    circle at var(--mx) var(--my),
+    rgba(255, 255, 255, 0.55),
+    rgba(255, 255, 255, 0.1) 25%,
+    transparent 55%
+  );
+  mix-blend-mode: overlay;
+}
+
+/* 成交跑馬燈 */
+.marquee {
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.marquee-track {
+  animation: marquee 40s linear infinite;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora::before,
+  .aurora::after,
+  .text-holo,
+  .marquee-track {
+    animation: none;
+  }
 }
