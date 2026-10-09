@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Anchor 工作區有自己的依賴和工具鏈
+    "onchain/**",
   ]),
 ]);
 

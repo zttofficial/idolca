@@ -124,7 +124,7 @@ export function drawCardBack(ctx: CanvasRenderingContext2D, card: Card) {
   ctx.fillStyle = "rgba(160,130,255,0.08)";
   for (let y = -h; y < h; y += 52) {
     for (let x = -w * 1.2; x < w * 1.2; x += 230) {
-      ctx.fillText("POCAVAULT", x + ((y / 52) % 2) * 115, y);
+      ctx.fillText("IDOLCA", x + ((y / 52) % 2) * 115, y);
     }
   }
   ctx.restore();
@@ -146,10 +146,10 @@ export function drawCardBack(ctx: CanvasRenderingContext2D, card: Card) {
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center";
   ctx.font = `800 64px ${FONT}`;
-  ctx.fillText("PV", w / 2, h * 0.42 + 22);
+  ctx.fillText("IC", w / 2, h * 0.42 + 22);
 
   ctx.font = `700 30px ${FONT}`;
-  ctx.fillText("POCAVAULT", w / 2, h * 0.62);
+  ctx.fillText("IDOLCA", w / 2, h * 0.62);
   ctx.font = `500 20px ${FONT}`;
   ctx.fillStyle = "rgba(255,255,255,0.6)";
   ctx.fillText("VAULTED · VERIFIED · REDEEMABLE", w / 2, h * 0.66);

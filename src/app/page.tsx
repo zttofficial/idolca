@@ -3,6 +3,7 @@ import Hero from "@/components/hero/Hero";
 import TradeTicker from "@/components/market/TradeTicker";
 import MarketGrid from "@/components/market/MarketGrid";
 import HowItWorks from "@/components/landing/HowItWorks";
+import Footer from "@/components/layout/Footer";
 
 export default function Home() {
   return (
@@ -16,9 +17,7 @@ export default function Home() {
         <MarketGrid />
         <HowItWorks />
       </main>
-      <footer className="border-t border-white/5 py-10 text-center text-xs text-white/35">
-        © 2026 PocaVault · 展示資料皆為虛構
-      </footer>
+      <Footer />
     </>
   );
 }

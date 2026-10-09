@@ -1,4 +1,6 @@
 import { RECENT_TRADES } from "@/lib/mock-cards";
+import { formatUsdt } from "@/lib/fx";
+import { shortAddress, solscanUrl } from "@/lib/solana/config";
 
 export default function TradeTicker() {
   const items = [...RECENT_TRADES, ...RECENT_TRADES];
@@ -12,8 +14,16 @@ export default function TradeTicker() {
               {t.card.group} {t.card.member}
             </span>
             <span>{t.card.version}</span>
-            <span className="text-emerald-400">${t.priceUsd}</span>
-            <span className="text-white/30">{t.minutesAgo} 分鐘前成交</span>
+            <span className="text-emerald-400">{formatUsdt(t.priceUsdt)}</span>
+            <span className="text-white/30">{t.minutesAgo} 分鐘前</span>
+            <a
+              href={solscanUrl("tx", t.signature)}
+              target="_blank"
+              rel="noreferrer"
+              className="text-violet-300/70 hover:text-violet-200"
+            >
+              tx {shortAddress(t.signature, 4, 4)}
+            </a>
           </li>
         ))}
       </ul>

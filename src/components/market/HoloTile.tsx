@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useRef } from "react";
 import CardArt from "./CardArt";
+import OnSolanaBadge from "@/components/web3/OnSolanaBadge";
+import UsdtPrice from "@/components/web3/UsdtPrice";
 import { RARITY_LABEL, type Card } from "@/lib/mock-cards";
 
-// 列表卡：滑鼠位置驅動 CSS 3D 傾斜、彩虹箔和高光（樣式見 globals.css 的 .holo-tile）
-export default function HoloTile({ card }: { card: Card }) {
+// 全息卡面：滑鼠位置驅動 CSS 3D 傾斜、彩虹箔和高光（樣式見 globals.css 的 .holo-tile）
+export function HoloCardFace({ card }: { card: Card }) {
   const ref = useRef<HTMLDivElement>(null);
 
   const onMove = (e: React.PointerEvent) => {
@@ -30,17 +33,25 @@ export default function HoloTile({ card }: { card: Card }) {
     el.dataset.active = "false";
   };
 
+  return (
+    <div ref={ref} className="holo-tile" data-holo={card.rarity} onPointerMove={onMove} onPointerLeave={onLeave}>
+      <CardArt card={card} className="block h-full w-full" />
+      <div className="holo-foil" />
+      <div className="holo-glare" />
+      <OnSolanaBadge className="absolute right-2 bottom-2 z-10" />
+    </div>
+  );
+}
+
+// 列表卡：卡面 + 名稱、價格、24h 漲跌
+export default function HoloTile({ card }: { card: Card }) {
   const up = card.change24h >= 0;
 
   return (
     <article className="group">
-      <div className="holo-stage">
-        <div ref={ref} className="holo-tile" data-holo={card.rarity} onPointerMove={onMove} onPointerLeave={onLeave}>
-          <CardArt card={card} className="block h-full w-full" />
-          <div className="holo-foil" />
-          <div className="holo-glare" />
-        </div>
-      </div>
+      <Link href={`/card/${card.id}`} className="holo-stage block" aria-label={`${card.group} ${card.member} ${card.version}`}>
+        <HoloCardFace card={card} />
+      </Link>
       <div className="mt-3 space-y-1 px-1">
         <div className="flex items-center justify-between text-xs text-white/45">
           <span>
@@ -52,7 +63,7 @@ export default function HoloTile({ card }: { card: Card }) {
           {card.member} <span className="font-normal text-white/50">{card.version}</span>
         </p>
         <div className="flex items-baseline justify-between">
-          <span className="font-mono text-lg font-semibold">${card.priceUsd.toLocaleString()}</span>
+          <UsdtPrice amount={card.priceUsdt} className="font-mono text-base font-semibold" />
           <span className={`font-mono text-xs ${up ? "text-emerald-400" : "text-rose-400"}`}>
             {up ? "▲" : "▼"} {Math.abs(card.change24h).toFixed(1)}%
           </span>

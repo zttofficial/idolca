@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Web3Providers from "@/components/web3/Providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PocaVault",
-  description: "K-pop 小卡倉儲交易平台：實物入庫、即時轉手、隨時提貨",
+  title: "Idolca",
+  description: "K-pop 小卡鏈上倉儲交易平台：實物入庫、Solana NFT 確權、USDT 結算、隨時提貨",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -23,7 +24,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="zh-Hant"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <Web3Providers>{children}</Web3Providers>
+      </body>
     </html>
   );
 }

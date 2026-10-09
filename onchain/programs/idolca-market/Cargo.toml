@@ -1,0 +1,22 @@
+[package]
+name = "idolca-market"
+version = "0.1.0"
+description = "Idolca 小卡 NFT 掛單託管：USDT/USDC 與 Metaplex Core 資產原子交換"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "idolca_market"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = { version = "1.2.1", features = ["init-if-needed"] }
+anchor-spl = "1.2.1"
+mpl-core = "0.12.1"

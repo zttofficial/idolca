@@ -1,0 +1,46 @@
+// 當地貨幣參考價。匯率是手填的近似值，只用於懸停提示；接入匯率 API 前不要用它結算。
+export const USDT_RATES = {
+  KRW: 1390,
+  JPY: 149,
+  CNY: 7.1,
+  TWD: 31.8,
+  HKD: 7.78,
+  THB: 33.6,
+  IDR: 16350,
+  VND: 26100,
+  USD: 1,
+} as const;
+
+export type FiatCode = keyof typeof USDT_RATES;
+
+// 按瀏覽器語言挑參考貨幣；沒有對應的一律顯示美元
+const LOCALE_CURRENCY: [RegExp, FiatCode][] = [
+  [/^ko/i, "KRW"],
+  [/^ja/i, "JPY"],
+  [/^zh-(tw|hant)/i, "TWD"],
+  [/^zh-(hk|mo)/i, "HKD"],
+  [/^zh/i, "CNY"],
+  [/^th/i, "THB"],
+  [/^id/i, "IDR"],
+  [/^vi/i, "VND"],
+];
+
+export function currencyForLocale(locale: string): FiatCode {
+  return LOCALE_CURRENCY.find(([re]) => re.test(locale))?.[1] ?? "USD";
+}
+
+export function formatFiat(usdt: number, locale: string) {
+  const code = currencyForLocale(locale);
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: code,
+    maximumFractionDigits: code === "USD" || code === "HKD" || code === "TWD" ? 2 : 0,
+  }).format(usdt * USDT_RATES[code]);
+}
+
+export function formatUsdt(amount: number, fractionDigits = 0) {
+  return `${amount.toLocaleString("en-US", {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  })} USDT`;
+}

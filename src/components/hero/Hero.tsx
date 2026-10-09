@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import { HERO_CARDS, RARITY_LABEL } from "@/lib/mock-cards";
+import { HERO_CARDS, RARITY_LABEL, VAULT_STATS } from "@/lib/mock-cards";
 
 const HoloCard3D = dynamic(() => import("./HoloCard3D"), {
   ssr: false,
@@ -13,10 +13,12 @@ const HoloCard3D = dynamic(() => import("./HoloCard3D"), {
   ),
 });
 
+const compact = (n: number) => new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
+
 const STATS = [
-  { label: "入庫小卡", value: "128,406" },
-  { label: "24h 成交額", value: "$84.2K" },
-  { label: "平均轉手時間", value: "3 秒" },
+  { label: "金庫總值（USDT）", value: compact(VAULT_STATS.totalValueUsdt) },
+  { label: "鏈上持有人數", value: VAULT_STATS.holders.toLocaleString("en-US") },
+  { label: "24h 鏈上成交（USDT）", value: compact(VAULT_STATS.volume24hUsdt) },
 ];
 
 export default function Hero() {
@@ -28,7 +30,7 @@ export default function Hero() {
       <div className="relative z-10">
         <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-violet-200 backdrop-blur">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-          實物入庫 · 即時轉手 · 隨時提貨
+          實物入庫 · 鏈上確權 · 隨時提貨
         </p>
         <h1 className="mt-6 text-4xl leading-tight font-extrabold tracking-tight sm:text-6xl">
           每一張小卡，
@@ -36,7 +38,7 @@ export default function Hero() {
           <span className="text-holo">都有自己的保險庫</span>
         </h1>
         <p className="mt-6 max-w-xl text-base leading-relaxed text-white/65 sm:text-lg">
-          把小卡寄進 PocaVault，鑑定後上架。成交時卡留在倉庫、所有權秒速轉移，不用再寄來寄去、怕收到假卡。想摸到實物時，一鍵合併寄到全球。
+          把小卡寄進 Idolca，鑑定後在 Solana 上生成專屬 NFT。成交時卡留在倉庫，NFT 和 USDT 在同一筆交易裡交換，不用再寄來寄去、怕收到假卡。想摸到實物時，銷毀 NFT 就能寄到全球。
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <a href="#market" className="btn-holo rounded-full px-6 py-3 text-sm font-semibold text-white">
@@ -86,7 +88,7 @@ export default function Hero() {
             ))}
           </div>
           <p className="font-mono text-xs text-white/40">
-            {card.serial} · {RARITY_LABEL[card.rarity]} · 拖動旋轉，看看背面
+            {card.serial} · {RARITY_LABEL[card.rarity]} · On Solana · 拖動旋轉，看看背面
           </p>
         </div>
       </div>

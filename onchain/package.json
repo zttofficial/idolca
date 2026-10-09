@@ -1,0 +1,22 @@
+{
+  "name": "idolca-onchain",
+  "private": true,
+  "scripts": {
+    "test": "anchor test"
+  },
+  "devDependencies": {
+    "@anchor-lang/core": "1.2.1",
+    "@metaplex-foundation/mpl-core": "1.10.0",
+    "@metaplex-foundation/umi": "1.6.0",
+    "@metaplex-foundation/umi-bundle-defaults": "1.6.0",
+    "@metaplex-foundation/umi-web3js-adapters": "1.6.0",
+    "@solana/spl-token": "0.4.15",
+    "@solana/web3.js": "1.99.0",
+    "@types/chai": "^5",
+    "@types/mocha": "^10",
+    "chai": "^5",
+    "mocha": "^11",
+    "ts-mocha": "^11",
+    "typescript": "^5"
+  }
+}

@@ -1,19 +1,31 @@
 {
-  "name": "pocavault",
+  "name": "idolca",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "chain:create-collection": "node --env-file-if-exists=.env.local scripts/create-collection.ts",
+    "chain:mint-card": "node --env-file-if-exists=.env.local scripts/mint-card.ts",
+    "chain:redeem": "node --env-file-if-exists=.env.local scripts/redeem.ts"
   },
   "dependencies": {
+    "@metaplex-foundation/mpl-core": "^1.10.0",
+    "@metaplex-foundation/umi": "^1.6.0",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.6.0",
+    "@privy-io/react-auth": "^3.48.0",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
+    "@solana-program/memo": "^0.15.0",
+    "@solana-program/system": "^0.15.0",
+    "@solana-program/token": "^0.17.0",
+    "@solana/kit": "^8.4.0",
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "server-only": "^0.0.1",
     "three": "^0.186.1"
   },
   "devDependencies": {
