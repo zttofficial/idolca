@@ -187,11 +187,152 @@ body {
   }
 }
 
+/* 盲盒卡包：鋁箔包裝。--c1、--c2 由卡包配色決定 */
+.pack-art {
+  position: relative;
+  aspect-ratio: 5 / 7;
+  border-radius: 14px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 80% at 20% 10%, rgba(255, 255, 255, 0.35), transparent 50%),
+    linear-gradient(150deg, var(--c1), var(--c2));
+  box-shadow:
+    0 30px 60px -20px color-mix(in srgb, var(--c2) 70%, transparent),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+.pack-art::before {
+  /* 鋁箔的斜向反光，緩慢掃過 */
+  content: "";
+  position: absolute;
+  inset: -50%;
+  background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.45) 50%, transparent 60%);
+  animation: foil-sweep 4.5s ease-in-out infinite;
+}
+.pack-art::after {
+  /* 上下封口的鋸齒壓紋 */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.18) 0 3px, transparent 3px 6px) top / 100% 7% no-repeat,
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.18) 0 3px, transparent 3px 6px) bottom / 100% 7% no-repeat;
+}
+@keyframes foil-sweep {
+  0%,
+  20% {
+    transform: translateX(-40%);
+  }
+  80%,
+  100% {
+    transform: translateX(40%);
+  }
+}
+
+/* 開包：抖動 → 封口撕開飛出 → 卡片翻面 */
+.pack-shake {
+  animation: pack-shake 1.2s ease-in-out infinite;
+}
+@keyframes pack-shake {
+  0%,
+  60%,
+  100% {
+    transform: rotate(0);
+  }
+  65% {
+    transform: rotate(-3deg);
+  }
+  75% {
+    transform: rotate(3deg);
+  }
+  85% {
+    transform: rotate(-2deg);
+  }
+}
+.pack-tear-top {
+  animation: pack-tear-top 0.7s cubic-bezier(0.5, 0, 0.75, 0) forwards;
+}
+@keyframes pack-tear-top {
+  to {
+    transform: translate(60px, -160px) rotate(25deg);
+    opacity: 0;
+  }
+}
+.pack-tear-body {
+  animation: pack-tear-body 0.7s 0.35s ease-in forwards;
+}
+@keyframes pack-tear-body {
+  to {
+    transform: translateY(120%) scale(0.9);
+    opacity: 0;
+  }
+}
+
+.flip-card {
+  perspective: 1200px;
+}
+.flip-card-inner {
+  position: relative;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.flip-card[data-flipped="true"] .flip-card-inner {
+  transform: rotateY(180deg);
+}
+.flip-card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+.flip-card-front {
+  transform: rotateY(180deg);
+}
+.flip-card-deal {
+  animation: card-deal 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+@keyframes card-deal {
+  from {
+    transform: translateY(40px) scale(0.9);
+    opacity: 0;
+  }
+}
+
+/* SSR 翻開時的金色光圈 */
+.ssr-burst {
+  position: absolute;
+  inset: -30%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245, 196, 81, 0.75), rgba(245, 196, 81, 0) 65%);
+  animation: ssr-burst 1.6s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes ssr-burst {
+  from {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .aurora::before,
   .aurora::after,
   .text-holo,
-  .marquee-track {
+  .marquee-track,
+  .pack-art::before,
+  .pack-shake,
+  .ssr-burst {
     animation: none;
+  }
+  .pack-tear-top,
+  .pack-tear-body,
+  .flip-card-deal {
+    animation-duration: 1ms;
+  }
+  .flip-card-inner {
+    transition: none;
   }
 }

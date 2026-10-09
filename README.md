@@ -69,11 +69,13 @@ src/
     page.tsx              首頁
     vault/                金庫頁：每張卡的 NFT 地址、持有人、狀態
     card/[id]/            卡片內頁：看卡、購買、鑑定報告、價格走勢、同款在售、鏈上紀錄、費用與保障
+    packs/                盲盒卡包列表和卡包頁（機率、卡池、開包）
   i18n/                   next-intl 路由、導航、請求配置
   proxy.ts                語言前綴路由
   components/
     hero/                 首頁主視覺：3D 旋轉小卡（HoloCard3D）
     card/                 卡片內頁的看卡切換、購買面板、價格走勢圖
+    packs/                卡包包裝、倒數、開包流程（撕包、翻卡、結果）
     market/               卡片列表、全息懸停卡（HoloTile）、鏈上成交跑馬燈
     landing/              首頁說明區塊
     layout/               導航列、語言選單、頁腳
@@ -82,6 +84,7 @@ src/
     solana/               網路與地址配置、USDT 餘額、Helius DAS、掛單 PDA
     vault.ts              金庫資料：有 Helius 配置時讀鏈上集合，否則用展示資料
     card-detail.ts        卡片內頁的樣本資料：鑑定、成交、鏈上紀錄、同款在售、賣家
+    packs.ts              盲盒卡包：卡池、按剩餘張數計算的機率、抽卡
     fx.ts                 當地貨幣參考價
     mock-cards.ts         樣本卡（真實藝人和專輯，示意價格，隨機生成的地址）
     card-art.ts           canvas 生成的佔位卡面
