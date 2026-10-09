@@ -1,16 +1,11 @@
-// 首頁展示用的假資料。團體和成員都是虛構的，不使用真實偶像的名字和照片；
-// NFT 地址、持有人和交易哈希是隨機生成的 base58 字串，鏈上不存在。
+// 首頁展示用的樣本卡。團體、成員、專輯對應 public/cards/samples/ 裡的照片；
+// 版本、價格、評級是示意值，NFT 地址、持有人和交易哈希是隨機生成的 base58 字串，鏈上不存在。
 
 export type Rarity = "album" | "pob" | "luckydraw" | "fansign";
 
 // vaulted：在庫；listed：在託管程序裡掛單；redeeming：已申請提貨，NFT 凍結中
 export type VaultStatus = "vaulted" | "listed" | "redeeming";
 
-export const STATUS_LABEL: Record<VaultStatus, string> = {
-  vaulted: "在庫",
-  listed: "掛單中",
-  redeeming: "提貨中",
-};
 
 export type Card = {
   id: string;
@@ -29,23 +24,20 @@ export type Card = {
   status: VaultStatus;
   intakeDate: string;
   location: string;
+  // 入庫時拍攝的正反面（public/ 下的路徑）。檔案不存在時退回 canvas 佔位圖；
+  // 展示資料指向 public/cards/samples/，那裡的卡樣只在本機，不提交
+  image?: { front: string; back?: string };
 };
 
-export const RARITY_LABEL: Record<Rarity, string> = {
-  album: "專輯卡",
-  pob: "預購特典",
-  luckydraw: "幸運抽",
-  fansign: "簽售限定",
-};
 
 export const CARDS: Card[] = [
   {
     id: "c1",
     serial: "IC-000128",
-    group: "NOVA//LINE",
-    member: "SEOA",
-    album: "Starfall",
-    version: "Ver. Midnight",
+    group: "IVE",
+    member: "Wonyoung",
+    album: "I've IVE",
+    version: "Fansign Event",
     rarity: "fansign",
     grade: 10,
     priceUsdt: 1280,
@@ -56,14 +48,15 @@ export const CARDS: Card[] = [
     status: "listed",
     intakeDate: "2026-07-14",
     location: "SEL-A03-12",
+    image: { front: "/cards/samples/c1.jpg" },
   },
   {
     id: "c2",
     serial: "IC-000342",
-    group: "AURORA",
-    member: "HAEUN",
-    album: "Polaris",
-    version: "Withmuu POB",
+    group: "aespa",
+    member: "Karina",
+    album: "Armageddon",
+    version: "Ktown4u POB",
     rarity: "pob",
     grade: 9,
     priceUsdt: 214,
@@ -74,14 +67,15 @@ export const CARDS: Card[] = [
     status: "listed",
     intakeDate: "2026-07-21",
     location: "SEL-A03-18",
+    image: { front: "/cards/samples/c2.jpg" },
   },
   {
     id: "c3",
     serial: "IC-000517",
-    group: "VANTA",
-    member: "JIWOO",
-    album: "Eclipse",
-    version: "Lucky Draw A",
+    group: "NewJeans",
+    member: "Hanni",
+    album: "Get Up",
+    version: "Lucky Draw Round 1",
     rarity: "luckydraw",
     priceUsdt: 96,
     change24h: 5.8,
@@ -91,14 +85,15 @@ export const CARDS: Card[] = [
     status: "vaulted",
     intakeDate: "2026-08-02",
     location: "SEL-B01-04",
+    image: { front: "/cards/samples/c3.jpg" },
   },
   {
     id: "c4",
     serial: "IC-000733",
-    group: "NOVA//LINE",
-    member: "RIN",
-    album: "Starfall",
-    version: "Ver. Dawn",
+    group: "LE SSERAFIM",
+    member: "Kazuha",
+    album: "EASY",
+    version: "Compact Ver.",
     rarity: "album",
     priceUsdt: 18,
     change24h: 1.2,
@@ -108,14 +103,15 @@ export const CARDS: Card[] = [
     status: "listed",
     intakeDate: "2026-08-02",
     location: "SEL-B01-05",
+    image: { front: "/cards/samples/c4.jpg" },
   },
   {
     id: "c5",
     serial: "IC-000901",
-    group: "AURORA",
-    member: "YUNA",
-    album: "Polaris",
-    version: "Ktown POB",
+    group: "TWICE",
+    member: "Nayeon",
+    album: "NA",
+    version: "Soundwave POB",
     rarity: "pob",
     grade: 10,
     priceUsdt: 342,
@@ -126,13 +122,14 @@ export const CARDS: Card[] = [
     status: "vaulted",
     intakeDate: "2026-08-19",
     location: "SEL-A07-22",
+    image: { front: "/cards/samples/c5.jpg" },
   },
   {
     id: "c6",
     serial: "IC-001044",
-    group: "VANTA",
-    member: "DOHA",
-    album: "Eclipse",
+    group: "BLACKPINK",
+    member: "Jisoo",
+    album: "ME",
     version: "Fansign Event",
     rarity: "fansign",
     priceUsdt: 760,
@@ -143,14 +140,15 @@ export const CARDS: Card[] = [
     status: "redeeming",
     intakeDate: "2026-09-03",
     location: "SEL-C02-09",
+    image: { front: "/cards/samples/c6.jpg" },
   },
   {
     id: "c7",
     serial: "IC-001187",
-    group: "LUMEN",
-    member: "SORA",
-    album: "Prism",
-    version: "Ver. Glass",
+    group: "Stray Kids",
+    member: "Felix",
+    album: "ATE",
+    version: "Photobook Ver.",
     rarity: "album",
     priceUsdt: 24,
     change24h: 0.4,
@@ -160,14 +158,15 @@ export const CARDS: Card[] = [
     status: "listed",
     intakeDate: "2026-09-11",
     location: "SEL-B04-31",
+    image: { front: "/cards/samples/c7.jpg" },
   },
   {
     id: "c8",
     serial: "IC-001305",
-    group: "LUMEN",
-    member: "NARI",
-    album: "Prism",
-    version: "Lucky Draw B",
+    group: "ITZY",
+    member: "Yuna",
+    album: "BORN TO BE",
+    version: "Lucky Draw Round 2",
     rarity: "luckydraw",
     grade: 9,
     priceUsdt: 138,
@@ -178,6 +177,7 @@ export const CARDS: Card[] = [
     status: "vaulted",
     intakeDate: "2026-09-26",
     location: "SEL-C05-02",
+    image: { front: "/cards/samples/c8.jpg" },
   },
 ];
 

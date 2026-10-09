@@ -104,10 +104,10 @@ function faceGeometry(shape: THREE.Shape) {
   return geo;
 }
 
-function useCardTexture(card: Card, side: "front" | "back", fontsReady: boolean) {
-  const texture = useMemo(() => {
+function useCardTexture(card: Card, side: "front" | "back", rarityLabel: string, fontsReady: boolean) {
+  const placeholder = useMemo(() => {
     const canvas = renderToCanvas((ctx) =>
-      side === "front" ? drawCardFront(ctx, card) : drawCardBack(ctx, card),
+      side === "front" ? drawCardFront(ctx, card, rarityLabel) : drawCardBack(ctx, card),
     );
     const t = new THREE.CanvasTexture(canvas);
     t.colorSpace = THREE.SRGBColorSpace;
@@ -115,14 +115,50 @@ function useCardTexture(card: Card, side: "front" | "back", fontsReady: boolean)
     return t;
     // fontsReady 變化時用載入後的字型重繪
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [card, side, fontsReady]);
-  useEffect(() => () => texture.dispose(), [texture]);
-  return texture;
+  }, [card, side, rarityLabel, fontsReady]);
+  useEffect(() => () => placeholder.dispose(), [placeholder]);
+
+  // 有實拍圖時載入成貼圖，載入完成前和失敗時用 canvas 佔位圖
+  const src = side === "front" ? card.image?.front : card.image?.back;
+  const [photo, setPhoto] = useState<{ src: string; texture: THREE.Texture }>();
+  useEffect(() => {
+    if (!src) return;
+    let texture: THREE.Texture | undefined;
+    let cancelled = false;
+    new THREE.TextureLoader().load(
+      src,
+      (t) => {
+        t.colorSpace = THREE.SRGBColorSpace;
+        t.anisotropy = 8;
+        texture = t;
+        if (cancelled) t.dispose();
+        else setPhoto({ src, texture: t });
+      },
+      undefined,
+      () => {},
+    );
+    return () => {
+      cancelled = true;
+      texture?.dispose();
+    };
+  }, [src]);
+
+  return photo && photo.src === src ? photo.texture : placeholder;
 }
 
 type Rotation = { x: number; y: number; dragging: boolean };
 
-function PhotocardMesh({ card, rotationRef, fontsReady }: { card: Card; rotationRef: React.RefObject<Rotation>; fontsReady: boolean }) {
+function PhotocardMesh({
+  card,
+  rarityLabel,
+  rotationRef,
+  fontsReady,
+}: {
+  card: Card;
+  rarityLabel: string;
+  rotationRef: React.RefObject<Rotation>;
+  fontsReady: boolean;
+}) {
   const group = useRef<THREE.Group>(null);
   const shape = useMemo(() => roundedRectShape(), []);
   const face = useMemo(() => faceGeometry(shape), [shape]);
@@ -130,8 +166,8 @@ function PhotocardMesh({ card, rotationRef, fontsReady }: { card: Card; rotation
     () => new THREE.ExtrudeGeometry(shape, { depth: THICKNESS, bevelEnabled: false, curveSegments: 16 }),
     [shape],
   );
-  const front = useCardTexture(card, "front", fontsReady);
-  const back = useCardTexture(card, "back", fontsReady);
+  const front = useCardTexture(card, "front", rarityLabel, fontsReady);
+  const back = useCardTexture(card, "back", rarityLabel, fontsReady);
 
   const material = useRef<THREE.ShaderMaterial>(null);
   const uniforms = useMemo(() => ({ uMap: { value: null as THREE.Texture | null }, uTime: { value: 0 }, uHolo: { value: 0 } }), []);
@@ -170,7 +206,7 @@ function PhotocardMesh({ card, rotationRef, fontsReady }: { card: Card; rotation
   );
 }
 
-export default function HoloCard3D({ card }: { card: Card }) {
+export default function HoloCard3D({ card, rarityLabel }: { card: Card; rarityLabel: string }) {
   const rotationRef = useRef<Rotation>({ x: -0.08, y: -0.4, dragging: false });
   const last = useRef<{ x: number; y: number } | null>(null);
   const [fontsReady, setFontsReady] = useState(false);
@@ -210,7 +246,7 @@ export default function HoloCard3D({ card }: { card: Card }) {
         <pointLight position={[-3, -1, 2]} intensity={6} color={card.palette[0]} />
         <pointLight position={[3, 1, -2]} intensity={6} color={card.palette[2]} />
         <Float speed={1.6} rotationIntensity={0.15} floatIntensity={0.5}>
-          <PhotocardMesh card={card} rotationRef={rotationRef} fontsReady={fontsReady} />
+          <PhotocardMesh card={card} rarityLabel={rarityLabel} rotationRef={rotationRef} fontsReady={fontsReady} />
         </Float>
         <Sparkles count={60} scale={[4, 3, 2]} size={2.2} speed={0.4} color={card.palette[1]} />
         <ContactShadows position={[0, -1.25, 0]} opacity={0.45} scale={4} blur={2.8} far={2} color="#000" />

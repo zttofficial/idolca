@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { usePrivy } from "@privy-io/react-auth";
 import { useWallets } from "@privy-io/react-auth/solana";
 import { PRIVY_APP_ID } from "./Providers";
@@ -12,10 +13,11 @@ const BUTTON =
   "rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-sm font-medium transition hover:bg-white/10";
 
 export default function WalletButton() {
+  const t = useTranslations("Wallet");
   if (!PRIVY_APP_ID) {
     return (
-      <button className={`${BUTTON} cursor-not-allowed opacity-50`} disabled title="未配置 NEXT_PUBLIC_PRIVY_APP_ID">
-        連接錢包
+      <button className={`${BUTTON} cursor-not-allowed opacity-50`} disabled title={t("notConfigured")}>
+        {t("connect")}
       </button>
     );
   }
@@ -23,6 +25,7 @@ export default function WalletButton() {
 }
 
 function PrivyWalletButton() {
+  const t = useTranslations("Wallet");
   const { ready, authenticated, login, logout, user } = usePrivy();
   const { wallets } = useWallets();
   const walletAddress = wallets[0]?.address ?? user?.wallet?.address;
@@ -41,13 +44,17 @@ function PrivyWalletButton() {
   }, [walletAddress]);
 
   if (!ready) {
-    return <button className={`${BUTTON} opacity-50`} disabled>連接錢包</button>;
+    return (
+      <button className={`${BUTTON} opacity-50`} disabled>
+        {t("connect")}
+      </button>
+    );
   }
 
   if (!authenticated || !walletAddress) {
     return (
       <button className="btn-holo rounded-full px-4 py-1.5 text-sm font-semibold text-white" onClick={login}>
-        連接錢包
+        {t("connect")}
       </button>
     );
   }
@@ -64,9 +71,9 @@ function PrivyWalletButton() {
       </button>
       {open && (
         <div className="absolute right-0 mt-2 w-64 rounded-xl border border-white/10 bg-black/90 p-3 text-sm shadow-xl backdrop-blur">
-          <p className="text-xs text-white/45">錢包地址</p>
+          <p className="text-xs text-white/45">{t("address")}</p>
           <p className="mt-1 break-all font-mono text-xs text-white/85">{walletAddress}</p>
-          <p className="mt-3 text-xs text-white/45">USDT 餘額</p>
+          <p className="mt-3 text-xs text-white/45">{t("balance")}</p>
           <p className="mt-1 font-mono">{balanceLabel}</p>
           <div className="mt-3 flex gap-2">
             <a
@@ -84,7 +91,7 @@ function PrivyWalletButton() {
                 logout();
               }}
             >
-              登出
+              {t("logout")}
             </button>
           </div>
         </div>

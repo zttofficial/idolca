@@ -1,15 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useRef } from "react";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import CardArt from "./CardArt";
 import OnSolanaBadge from "@/components/web3/OnSolanaBadge";
 import UsdtPrice from "@/components/web3/UsdtPrice";
-import { RARITY_LABEL, type Card } from "@/lib/mock-cards";
+import type { Card } from "@/lib/mock-cards";
 
 // 全息卡面：滑鼠位置驅動 CSS 3D 傾斜、彩虹箔和高光（樣式見 globals.css 的 .holo-tile）
 export function HoloCardFace({ card }: { card: Card }) {
   const ref = useRef<HTMLDivElement>(null);
+  const tRarity = useTranslations("Rarity");
 
   const onMove = (e: React.PointerEvent) => {
     const el = ref.current;
@@ -35,7 +37,7 @@ export function HoloCardFace({ card }: { card: Card }) {
 
   return (
     <div ref={ref} className="holo-tile" data-holo={card.rarity} onPointerMove={onMove} onPointerLeave={onLeave}>
-      <CardArt card={card} className="block h-full w-full" />
+      <CardArt card={card} rarityLabel={tRarity(card.rarity)} className="block h-full w-full" />
       <div className="holo-foil" />
       <div className="holo-glare" />
       <OnSolanaBadge className="absolute right-2 bottom-2 z-10" />
@@ -45,6 +47,7 @@ export function HoloCardFace({ card }: { card: Card }) {
 
 // 列表卡：卡面 + 名稱、價格、24h 漲跌
 export default function HoloTile({ card }: { card: Card }) {
+  const tRarity = useTranslations("Rarity");
   const up = card.change24h >= 0;
 
   return (
@@ -57,7 +60,7 @@ export default function HoloTile({ card }: { card: Card }) {
           <span>
             {card.group} · {card.album}
           </span>
-          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/70">{RARITY_LABEL[card.rarity]}</span>
+          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/70">{tRarity(card.rarity)}</span>
         </div>
         <p className="font-semibold text-white">
           {card.member} <span className="font-normal text-white/50">{card.version}</span>

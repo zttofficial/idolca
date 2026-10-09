@@ -1,25 +1,16 @@
-// 用 canvas 程序化生成小卡正反面的佔位圖。3D 卡（貼圖）和列表卡（<canvas>）共用。
+// 沒有實拍圖的卡，用 canvas 程序化生成正反面佔位圖。3D 卡（貼圖）和列表卡（<canvas>）共用。
 
-import { RARITY_LABEL, type Card } from "./mock-cards";
+import type { Card } from "./mock-cards";
+import { seeded } from "./seeded";
 
 // 小卡實物尺寸 55 × 85 mm
 export const CARD_ASPECT = 55 / 85;
 export const ART_W = 550;
 export const ART_H = 850;
 
-function seeded(seed: string) {
-  let h = 2166136261;
-  for (const ch of seed) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-  return () => {
-    h = Math.imul(h ^ (h >>> 15), 2246822507);
-    h = Math.imul(h ^ (h >>> 13), 3266489909);
-    return ((h ^= h >>> 16) >>> 0) / 4294967296;
-  };
-}
-
 const FONT = '"Geist", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif';
 
-export function drawCardFront(ctx: CanvasRenderingContext2D, card: Card) {
+export function drawCardFront(ctx: CanvasRenderingContext2D, card: Card, rarityLabel: string) {
   const w = ART_W;
   const h = ART_H;
   const rand = seeded(card.id);
@@ -77,7 +68,7 @@ export function drawCardFront(ctx: CanvasRenderingContext2D, card: Card) {
 
   // 頂部標籤
   ctx.font = `600 22px ${FONT}`;
-  const tag = RARITY_LABEL[card.rarity];
+  const tag = rarityLabel;
   const tagW = ctx.measureText(tag).width + 28;
   ctx.fillStyle = "rgba(255,255,255,0.22)";
   roundRect(ctx, 28, 28, tagW, 40, 20);

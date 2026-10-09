@@ -1,18 +1,23 @@
+import { useTranslations } from "next-intl";
 import HoloTile from "./HoloTile";
-import { CARDS } from "@/lib/mock-cards";
+import { CARDS, type Rarity } from "@/lib/mock-cards";
 
-const FILTERS = ["全部", "簽售限定", "預購特典", "幸運抽", "已評級"];
+const RARITY_FILTERS: Rarity[] = ["fansign", "pob", "luckydraw"];
 
 export default function MarketGrid() {
+  const t = useTranslations("Market");
+  const tRarity = useTranslations("Rarity");
+  const filters = [t("all"), ...RARITY_FILTERS.map((r) => tRarity(r)), t("graded")];
+
   return (
     <section id="market" className="mx-auto max-w-7xl scroll-mt-20 px-4 py-20 sm:px-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">熱門小卡</h2>
-          <p className="mt-2 text-sm text-white/50">全部已入庫鑑定，成交即轉移所有權</p>
+          <h2 className="text-3xl font-bold tracking-tight">{t("title")}</h2>
+          <p className="mt-2 text-sm text-white/50">{t("subtitle")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {FILTERS.map((f, i) => (
+          {filters.map((f, i) => (
             <button
               key={f}
               className={`rounded-full border px-3 py-1 text-xs transition ${

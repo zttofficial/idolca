@@ -13,12 +13,12 @@ export const USDT_RATES = {
 
 export type FiatCode = keyof typeof USDT_RATES;
 
-// 按瀏覽器語言挑參考貨幣；沒有對應的一律顯示美元
+// 按語言挑參考貨幣（站點語言或瀏覽器語言都可）；沒有對應的一律顯示美元
 const LOCALE_CURRENCY: [RegExp, FiatCode][] = [
   [/^ko/i, "KRW"],
   [/^ja/i, "JPY"],
-  [/^zh-(tw|hant)/i, "TWD"],
   [/^zh-(hk|mo)/i, "HKD"],
+  [/^zh-(tw|hant)/i, "TWD"],
   [/^zh/i, "CNY"],
   [/^th/i, "THB"],
   [/^id/i, "IDR"],

@@ -1,24 +1,13 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useLocale } from "next-intl";
 import { formatFiat, formatUsdt } from "@/lib/fx";
 
-const noopSubscribe = () => () => {};
-
-// 伺服器渲染時不知道訪客語言，先按繁中站的預設（新台幣）出提示，水合後換成瀏覽器語言
-function useLocale() {
-  return useSyncExternalStore(
-    noopSubscribe,
-    () => navigator.language,
-    () => "zh-TW",
-  );
-}
-
+// 懸停顯示站點當前語言對應的當地貨幣參考價
 export default function UsdtPrice({ amount, className = "" }: { amount: number; className?: string }) {
-  const locale = useLocale();
-  const fiat = formatFiat(amount, locale);
+  const fiat = formatFiat(amount, useLocale());
   return (
-    <span className={`group/price relative inline-flex cursor-help items-baseline ${className}`} aria-label={`${formatUsdt(amount)}，約 ${fiat}`}>
+    <span className={`group/price relative inline-flex cursor-help items-baseline ${className}`} aria-label={`${formatUsdt(amount)} ≈ ${fiat}`}>
       {formatUsdt(amount)}
       <span
         role="tooltip"

@@ -22,6 +22,14 @@ npm run lint
 | `HELIUS_API_KEY`、`NEXT_PUBLIC_CARD_COLLECTION` | 金庫頁顯示展示資料，不讀鏈上集合 |
 | `NEXT_PUBLIC_SOLANA_CLUSTER` | 默認 devnet |
 
+## 多語言
+
+英文是默認語言（`/`），其他語言帶前綴：`/zh-Hant`、`/zh-Hans`、`/ja`、`/ko`、`/th`、`/id`、`/vi`。介面文字在 [messages/](messages/)，每種語言一個 JSON，鍵必須一致；新增文字時八個文件都要補。
+
+## 卡樣圖片
+
+樣本卡的藝人資料寫在 `src/lib/mock-cards.ts`，照片對應 `public/cards/samples/c1.jpg` 到 `c8.jpg`。這些是本機預覽用的維基共享資源 CC BY 照片，不提交進倉庫；沒有這些檔案時，卡面自動退回 canvas 佔位圖。
+
 ## 平台端鏈上腳本
 
 需要在 `.env.local` 設定 `PLATFORM_KEYPAIR`（Solana CLI 格式的金鑰檔路徑，不要放進倉庫），錢包裡要有 SOL 付手續費。
@@ -57,22 +65,27 @@ anchor test        # 本地驗證節點會從主網複製 Metaplex Core 程序
 
 ```
 src/
-  app/
+  app/[locale]/           所有頁面都在語言段下
     page.tsx              首頁
     vault/                金庫頁：每張卡的 NFT 地址、持有人、狀態
-    card/[id]/            卡片詳情：鏈上資料、屬性、Solscan / Magic Eden / Tensor 連結
+    card/[id]/            卡片內頁：看卡、購買、鑑定報告、價格走勢、同款在售、鏈上紀錄、費用與保障
+  i18n/                   next-intl 路由、導航、請求配置
+  proxy.ts                語言前綴路由
   components/
     hero/                 首頁主視覺：3D 旋轉小卡（HoloCard3D）
+    card/                 卡片內頁的看卡切換、購買面板、價格走勢圖
     market/               卡片列表、全息懸停卡（HoloTile）、鏈上成交跑馬燈
     landing/              首頁說明區塊
-    layout/               導航列、頁腳
+    layout/               導航列、語言選單、頁腳
     web3/                 Privy 登入、錢包按鈕、USDT 價格、On Solana 徽章
   lib/
     solana/               網路與地址配置、USDT 餘額、Helius DAS、掛單 PDA
     vault.ts              金庫資料：有 Helius 配置時讀鏈上集合，否則用展示資料
+    card-detail.ts        卡片內頁的樣本資料：鑑定、成交、鏈上紀錄、同款在售、賣家
     fx.ts                 當地貨幣參考價
-    mock-cards.ts         展示資料（虛構團體和成員，隨機生成的地址）
+    mock-cards.ts         樣本卡（真實藝人和專輯，示意價格，隨機生成的地址）
     card-art.ts           canvas 生成的佔位卡面
+messages/                 八種語言的介面文字
 scripts/                  平台端 Metaplex Core 腳本：建集合、鑄造、提貨
 onchain/                  Anchor 工作區：idolca-market 掛單託管程序和測試
 docs/

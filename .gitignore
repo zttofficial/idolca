@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 本機預覽用的真卡卡樣（維基共享資源 CC BY 照片），不提交
+/public/cards/samples/

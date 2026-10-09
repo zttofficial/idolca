@@ -2,7 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import { HERO_CARDS, RARITY_LABEL, VAULT_STATS } from "@/lib/mock-cards";
+import { useTranslations } from "next-intl";
+import { HERO_CARDS, VAULT_STATS } from "@/lib/mock-cards";
 
 const HoloCard3D = dynamic(() => import("./HoloCard3D"), {
   ssr: false,
@@ -15,44 +16,47 @@ const HoloCard3D = dynamic(() => import("./HoloCard3D"), {
 
 const compact = (n: number) => new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
 
-const STATS = [
-  { label: "金庫總值（USDT）", value: compact(VAULT_STATS.totalValueUsdt) },
-  { label: "鏈上持有人數", value: VAULT_STATS.holders.toLocaleString("en-US") },
-  { label: "24h 鏈上成交（USDT）", value: compact(VAULT_STATS.volume24hUsdt) },
-];
-
 export default function Hero() {
+  const t = useTranslations("Hero");
+  const tRarity = useTranslations("Rarity");
   const [active, setActive] = useState(0);
   const card = HERO_CARDS[active];
+  const rarityLabel = tRarity(card.rarity);
+
+  const stats = [
+    { label: t("statVaultValue"), value: compact(VAULT_STATS.totalValueUsdt) },
+    { label: t("statHolders"), value: VAULT_STATS.holders.toLocaleString("en-US") },
+    { label: t("statVolume"), value: compact(VAULT_STATS.volume24hUsdt) },
+  ];
 
   return (
     <section className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 pt-10 pb-16 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:pt-16">
       <div className="relative z-10">
         <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-violet-200 backdrop-blur">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-          實物入庫 · 鏈上確權 · 隨時提貨
+          {t("badge")}
         </p>
         <h1 className="mt-6 text-4xl leading-tight font-extrabold tracking-tight sm:text-6xl">
-          每一張小卡，
+          {t("titleLine1")}
           <br />
-          <span className="text-holo">都有自己的保險庫</span>
+          <span className="text-holo">{t("titleLine2")}</span>
         </h1>
         <p className="mt-6 max-w-xl text-base leading-relaxed text-white/65 sm:text-lg">
-          把小卡寄進 Idolca，鑑定後在 Solana 上生成專屬 NFT。成交時卡留在倉庫，NFT 和 USDT 在同一筆交易裡交換，不用再寄來寄去、怕收到假卡。想摸到實物時，銷毀 NFT 就能寄到全球。
+          {t("body")}
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <a href="#market" className="btn-holo rounded-full px-6 py-3 text-sm font-semibold text-white">
-            逛市場
+            {t("browse")}
           </a>
           <a
             href="#how"
             className="rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-semibold text-white/90 backdrop-blur transition hover:bg-white/10"
           >
-            寄卡入庫
+            {t("consign")}
           </a>
         </div>
         <dl className="mt-12 grid max-w-lg grid-cols-3 gap-4">
-          {STATS.map((s) => (
+          {stats.map((s) => (
             <div key={s.label}>
               <dt className="text-xs text-white/45">{s.label}</dt>
               <dd className="mt-1 font-mono text-xl font-semibold text-white sm:text-2xl">{s.value}</dd>
@@ -69,7 +73,7 @@ export default function Hero() {
           }}
         />
         <div className="relative h-[460px] sm:h-[560px]">
-          <HoloCard3D card={card} />
+          <HoloCard3D card={card} rarityLabel={rarityLabel} />
         </div>
         <div className="relative mt-2 flex flex-col items-center gap-3">
           <div className="flex gap-2">
@@ -88,7 +92,7 @@ export default function Hero() {
             ))}
           </div>
           <p className="font-mono text-xs text-white/40">
-            {card.serial} · {RARITY_LABEL[card.rarity]} · On Solana · 拖動旋轉，看看背面
+            {card.serial} · {rarityLabel} · On Solana · {t("hint")}
           </p>
         </div>
       </div>
