@@ -7,13 +7,11 @@ export default function NotFound() {
   const t = useTranslations("NotFound");
   return (
     <>
-      <div className="aurora" />
-      <div className="grid-bg" />
       <Navbar />
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col items-center justify-center gap-6 px-4 py-24 text-center">
-        <p className="text-holo font-mono text-6xl font-bold">404</p>
+        <p className="text-accent-ink font-mono text-6xl font-bold">404</p>
         <h1 className="text-xl font-semibold">{t("title")}</h1>
-        <Link href="/" className="rounded-full border border-white/15 bg-white/5 px-5 py-2 text-sm hover:bg-white/10">
+        <Link href="/" className="rounded-full border border-line bg-surface px-5 py-2 text-sm hover:bg-surface-3">
           {t("back")}
         </Link>
       </main>

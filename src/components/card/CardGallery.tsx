@@ -9,7 +9,7 @@ import type { Card } from "@/lib/mock-cards";
 
 const HoloCard3D = dynamic(() => import("@/components/hero/HoloCard3D"), {
   ssr: false,
-  loading: () => <div className="h-full w-full animate-pulse rounded-2xl bg-white/5" />,
+  loading: () => <div className="h-full w-full animate-pulse rounded-2xl bg-surface-2" />,
 });
 
 type View = "front" | "back" | "3d";
@@ -47,14 +47,14 @@ export default function CardGallery({ card }: { card: Card }) {
             aria-selected={view === v.id}
             onClick={() => setView(v.id)}
             className={`rounded-full border px-4 py-1.5 text-xs transition ${
-              view === v.id ? "border-white/40 bg-white/15 text-white" : "border-white/10 bg-white/5 text-white/55 hover:text-white"
+              view === v.id ? "border-line-strong bg-surface-3 text-ink" : "border-line bg-surface-2 text-ink-2 hover:text-ink"
             }`}
           >
             {v.label}
           </button>
         ))}
       </div>
-      {view === "3d" && <p className="mt-2 text-center text-xs text-white/40">{t("dragHint")}</p>}
+      {view === "3d" && <p className="mt-2 text-center text-xs text-ink-3">{t("dragHint")}</p>}
     </div>
   );
 }

@@ -9,8 +9,6 @@ import PackPromo from "@/components/packs/PackPromo";
 export default function Home() {
   return (
     <>
-      <div className="aurora" />
-      <div className="grid-bg" />
       <Navbar />
       <main className="flex-1">
         <Hero />

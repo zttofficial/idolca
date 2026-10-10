@@ -10,7 +10,7 @@ import { shortAddress, solscanUrl } from "@/lib/solana/config";
 import { formatUsdt } from "@/lib/fx";
 
 const BUTTON =
-  "rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-sm font-medium transition hover:bg-white/10";
+  "rounded-full border border-line bg-surface px-4 py-1.5 text-sm font-medium transition hover:bg-surface-3";
 
 export default function WalletButton() {
   const t = useTranslations("Wallet");
@@ -53,7 +53,7 @@ function PrivyWalletButton() {
 
   if (!authenticated || !walletAddress) {
     return (
-      <button className="btn-holo rounded-full px-4 py-1.5 text-sm font-semibold text-white" onClick={login}>
+      <button className="btn-primary rounded-full px-4 py-1.5 text-sm font-semibold" onClick={login}>
         {t("connect")}
       </button>
     );
@@ -65,27 +65,27 @@ function PrivyWalletButton() {
   return (
     <div className="relative">
       <button className={`${BUTTON} flex items-center gap-2 font-mono`} onClick={() => setOpen((v) => !v)}>
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+        <span className="h-1.5 w-1.5 rounded-full bg-up" />
         <span>{shortAddress(walletAddress)}</span>
-        <span className="hidden text-white/50 sm:inline">{balanceLabel}</span>
+        <span className="hidden text-ink-3 sm:inline">{balanceLabel}</span>
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-64 rounded-xl border border-white/10 bg-black/90 p-3 text-sm shadow-xl backdrop-blur">
-          <p className="text-xs text-white/45">{t("address")}</p>
-          <p className="mt-1 break-all font-mono text-xs text-white/85">{walletAddress}</p>
-          <p className="mt-3 text-xs text-white/45">{t("balance")}</p>
+        <div className="absolute right-0 mt-2 w-64 rounded-xl border border-line bg-surface shadow-xl p-3 text-sm shadow-xl backdrop-blur">
+          <p className="text-xs text-ink-3">{t("address")}</p>
+          <p className="mt-1 break-all font-mono text-xs text-ink">{walletAddress}</p>
+          <p className="mt-3 text-xs text-ink-3">{t("balance")}</p>
           <p className="mt-1 font-mono">{balanceLabel}</p>
           <div className="mt-3 flex gap-2">
             <a
               href={solscanUrl("account", walletAddress)}
               target="_blank"
               rel="noreferrer"
-              className="flex-1 rounded-lg border border-white/10 py-1.5 text-center text-xs hover:bg-white/10"
+              className="flex-1 rounded-lg border border-line py-1.5 text-center text-xs hover:bg-surface-3"
             >
               Solscan
             </a>
             <button
-              className="flex-1 rounded-lg border border-white/10 py-1.5 text-xs hover:bg-white/10"
+              className="flex-1 rounded-lg border border-line py-1.5 text-xs hover:bg-surface-3"
               onClick={() => {
                 setOpen(false);
                 logout();

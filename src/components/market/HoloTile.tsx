@@ -56,18 +56,18 @@ export default function HoloTile({ card }: { card: Card }) {
         <HoloCardFace card={card} />
       </Link>
       <div className="mt-3 space-y-1 px-1">
-        <div className="flex items-center justify-between text-xs text-white/45">
+        <div className="flex items-center justify-between text-xs text-ink-3">
           <span>
             {card.group} · {card.album}
           </span>
-          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/70">{tRarity(card.rarity)}</span>
+          <span className="rounded bg-surface-3 px-1.5 py-0.5 text-[10px] text-ink-2">{tRarity(card.rarity)}</span>
         </div>
-        <p className="font-semibold text-white">
-          {card.member} <span className="font-normal text-white/50">{card.version}</span>
+        <p className="font-semibold text-ink">
+          {card.member} <span className="font-normal text-ink-3">{card.version}</span>
         </p>
         <div className="flex items-baseline justify-between">
-          <UsdtPrice amount={card.priceUsdt} className="font-mono text-base font-semibold" />
-          <span className={`font-mono text-xs ${up ? "text-emerald-400" : "text-rose-400"}`}>
+          <UsdtPrice amount={card.priceUsdt} className="text-base font-bold tabular-nums" />
+          <span className={`text-xs font-medium tabular-nums ${up ? "text-up" : "text-down"}`}>
             {up ? "▲" : "▼"} {Math.abs(card.change24h).toFixed(1)}%
           </span>
         </div>

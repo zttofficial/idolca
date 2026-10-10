@@ -13,9 +13,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const STATUS_STYLE: Record<VaultStatus, string> = {
-  vaulted: "bg-emerald-400/15 text-emerald-300",
-  listed: "bg-violet-400/15 text-violet-200",
-  redeeming: "bg-amber-400/15 text-amber-200",
+  vaulted: "bg-up/10 text-up",
+  listed: "bg-accent-soft text-accent-ink",
+  redeeming: "bg-notice-bg text-notice-ink",
 };
 
 export default async function VaultPage() {
@@ -35,41 +35,39 @@ export default async function VaultPage() {
 
   return (
     <>
-      <div className="aurora" />
-      <div className="grid-bg" />
       <Navbar />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-14 sm:px-6">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{tMeta("vaultTitle")}</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/55">
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-2">
           {t("intro")}
           {CARD_COLLECTION && (
             <>
               {" "}
               {t("collection")}:{" "}
-              <a href={solscanUrl("account", CARD_COLLECTION)} target="_blank" rel="noreferrer" className="font-mono text-violet-300 hover:text-violet-200">
+              <a href={solscanUrl("account", CARD_COLLECTION)} target="_blank" rel="noreferrer" className="font-mono text-accent-ink hover:text-accent-ink">
                 {shortAddress(CARD_COLLECTION, 6, 6)}
               </a>
             </>
           )}
         </p>
         {source === "demo" && (
-          <p className="mt-4 inline-block rounded-lg border border-amber-300/20 bg-amber-300/10 px-3 py-1.5 text-xs text-amber-100/80">
+          <p className="mt-4 inline-block rounded-lg border border-notice-line bg-notice-bg px-3 py-1.5 text-xs text-notice-ink">
             {t("demo")}
           </p>
         )}
 
         <dl className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
           {summary.map((s) => (
-            <div key={s.label} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <dt className="text-xs text-white/45">{s.label}</dt>
-              <dd className="mt-1 font-mono text-2xl font-semibold">{s.value}</dd>
+            <div key={s.label} className="rounded-2xl border border-line bg-surface p-5">
+              <dt className="text-xs text-ink-3">{s.label}</dt>
+              <dd className="mt-1 text-2xl font-semibold tabular-nums">{s.value}</dd>
             </div>
           ))}
         </dl>
 
-        <div className="mt-10 overflow-x-auto rounded-2xl border border-white/10">
+        <div className="mt-10 overflow-x-auto rounded-2xl border border-line">
           <table className="w-full min-w-[720px] text-left text-sm">
-            <thead className="bg-white/[0.04] text-xs text-white/45">
+            <thead className="bg-surface-2 text-xs text-ink-3">
               <tr>
                 <th className="px-4 py-3 font-medium">{t("colSerial")}</th>
                 <th className="px-4 py-3 font-medium">{t("colCard")}</th>
@@ -79,31 +77,31 @@ export default async function VaultPage() {
                 <th className="px-4 py-3 font-medium">{t("colIntake")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-line">
               {entries.map((e) => {
                 const cardId = cardIdBySerial.get(e.serial);
                 return (
-                  <tr key={e.asset} className="hover:bg-white/[0.02]">
+                  <tr key={e.asset} className="hover:bg-surface-2">
                     <td className="px-4 py-3 font-mono text-xs">
                       {cardId ? (
-                        <Link href={`/card/${cardId}`} className="text-violet-300 hover:text-violet-200">
+                        <Link href={`/card/${cardId}`} className="text-accent-ink hover:text-accent-ink">
                           {e.serial}
                         </Link>
                       ) : (
                         e.serial
                       )}
                     </td>
-                    <td className="px-4 py-3 text-white/85">{e.title}</td>
+                    <td className="px-4 py-3 text-ink">{e.title}</td>
                     <td className="px-4 py-3 font-mono text-xs">
-                      <a href={solscanUrl("account", e.asset)} target="_blank" rel="noreferrer" className="text-white/70 hover:text-white">
+                      <a href={solscanUrl("account", e.asset)} target="_blank" rel="noreferrer" className="text-ink-2 hover:text-ink">
                         {shortAddress(e.asset, 6, 6)}
                       </a>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-white/55">{shortAddress(e.owner)}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-ink-2">{shortAddress(e.owner)}</td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_STYLE[e.status]}`}>{tStatus(e.status)}</span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-white/55">{e.intakeDate}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-ink-2">{e.intakeDate}</td>
                   </tr>
                 );
               })}

@@ -11,7 +11,7 @@ export default function UsdtPrice({ amount, className = "" }: { amount: number; 
       {formatUsdt(amount)}
       <span
         role="tooltip"
-        className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 whitespace-nowrap rounded-md border border-white/10 bg-black/85 px-2 py-1 font-sans text-[11px] font-normal text-white/80 opacity-0 shadow-lg backdrop-blur transition group-hover/price:opacity-100"
+        className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 whitespace-nowrap rounded-md border border-line bg-surface shadow-xl px-2 py-1 font-sans text-[11px] font-normal text-ink opacity-0 shadow-lg backdrop-blur transition group-hover/price:opacity-100"
       >
         ≈ {fiat}
       </span>

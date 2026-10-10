@@ -71,7 +71,7 @@ export default function PackOpener({ pack }: { pack: Pack }) {
             aria-checked={qty === q}
             onClick={() => setQty(q)}
             className={`flex-1 rounded-xl border py-2.5 text-sm font-semibold transition ${
-              qty === q ? "border-white/50 bg-white/15" : "border-white/10 bg-white/5 text-white/60 hover:text-white"
+              qty === q ? "border-line-strong bg-surface-3" : "border-line bg-surface-2 text-ink-2 hover:text-ink"
             }`}
           >
             ×{q}
@@ -81,11 +81,11 @@ export default function PackOpener({ pack }: { pack: Pack }) {
       <button
         onClick={open}
         disabled={!canOpen}
-        className="btn-holo mt-3 w-full rounded-full px-6 py-3.5 text-base font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+        className="btn-primary mt-3 w-full rounded-full px-6 py-3.5 text-base font-bold disabled:cursor-not-allowed disabled:opacity-50"
       >
         {label}
       </button>
-      <p className="mt-3 rounded-lg border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-[11px] leading-relaxed text-amber-100/80">
+      <p className="mt-3 rounded-lg border border-notice-line bg-notice-bg px-3 py-2 text-[11px] leading-relaxed text-notice-ink">
         {t("demoNote")}
       </p>
 
@@ -160,7 +160,7 @@ function OpeningModal({
 
   return (
     <div role="dialog" aria-modal="true" aria-label={pack.name} className="fixed inset-0 z-[60] overflow-y-auto bg-[#07050f]/90 backdrop-blur-md">
-      <button onClick={onClose} className="absolute top-4 right-4 z-10 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-white/70 hover:bg-white/10">
+      <button onClick={onClose} className="absolute top-4 right-4 z-10 rounded-full border border-line bg-surface px-3 py-1 text-xs text-ink-2 hover:bg-surface-3">
         {t("close")}
       </button>
 
@@ -178,7 +178,7 @@ function OpeningModal({
             <div className={stage === "tearing" ? "pack-tear-body" : ""} style={{ clipPath: "inset(14% 0 0 0)" }}>
               <PackArt pack={pack} className="w-full" />
             </div>
-            {stage === "pack" && <p className="mt-6 animate-pulse text-sm text-white/70">{t("tapToOpen")}</p>}
+            {stage === "pack" && <p className="mt-6 animate-pulse text-sm text-ink-2">{t("tapToOpen")}</p>}
           </button>
         )}
 
@@ -199,14 +199,14 @@ function OpeningModal({
             </div>
             <div className="mt-8 flex gap-3">
               {allFlipped ? (
-                <button ref={primary} onClick={onResults} className="btn-holo rounded-full px-6 py-2.5 text-sm font-semibold text-white">
+                <button ref={primary} onClick={onResults} className="btn-primary rounded-full px-6 py-2.5 text-sm font-semibold">
                   {t("seeResults")}
                 </button>
               ) : (
                 <button
                   ref={primary}
                   onClick={onRevealAll}
-                  className="rounded-full border border-white/15 bg-white/5 px-6 py-2.5 text-sm font-semibold hover:bg-white/10"
+                  className="rounded-full border border-line bg-surface px-6 py-2.5 text-sm font-semibold hover:bg-surface-3"
                 >
                   {t("revealAll")}
                 </button>
@@ -219,16 +219,16 @@ function OpeningModal({
           <div className="w-full max-w-2xl">
             <h2 className="text-center text-2xl font-bold">{t("resultsTitle")}</h2>
             <dl className="mt-5 grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-white/5 px-4 py-3">
-                <dt className="text-[11px] text-white/45">{t("spent")}</dt>
-                <dd className="mt-1 font-mono text-lg font-semibold">{formatUsdt(spent, 2)}</dd>
+              <div className="rounded-xl bg-surface-2 px-4 py-3">
+                <dt className="text-[11px] text-ink-3">{t("spent")}</dt>
+                <dd className="mt-1 text-lg font-semibold tabular-nums">{formatUsdt(spent, 2)}</dd>
               </div>
-              <div className="rounded-xl bg-white/5 px-4 py-3">
-                <dt className="text-[11px] text-white/45">{t("pulledValue")}</dt>
-                <dd className="mt-1 font-mono text-lg font-semibold">{formatUsdt(pulledValue, 2)}</dd>
+              <div className="rounded-xl bg-surface-2 px-4 py-3">
+                <dt className="text-[11px] text-ink-3">{t("pulledValue")}</dt>
+                <dd className="mt-1 text-lg font-semibold tabular-nums">{formatUsdt(pulledValue, 2)}</dd>
               </div>
             </dl>
-            <ul className="mt-5 divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.03]">
+            <ul className="mt-5 divide-y divide-line rounded-2xl border border-line bg-surface">
               {pulls.map((entry, i) => {
                 const card = entryCard(entry);
                 const choice = choices[i];
@@ -240,23 +240,23 @@ function OpeningModal({
                       <p className="truncate text-sm font-semibold">
                         {card.group} {card.member}
                       </p>
-                      <p className="truncate text-xs text-white/50">
+                      <p className="truncate text-xs text-ink-3">
                         {card.album} · {card.version} · {formatUsdt(entry.valueUsdt, entry.valueUsdt < 10 ? 2 : 0)}
                       </p>
                     </div>
                     {choice ? (
-                      <span className="text-xs text-emerald-300">
+                      <span className="text-xs text-up">
                         {choice === "kept" ? t("kept") : choice === "listed" ? t("listed") : t("soldBack")}
                       </span>
                     ) : (
                       <div className="flex gap-1.5">
-                        <button onClick={() => onChoose(i, "kept")} className="rounded-full border border-white/15 px-3 py-1 text-[11px] hover:bg-white/10">
+                        <button onClick={() => onChoose(i, "kept")} className="rounded-full border border-line px-3 py-1 text-[11px] hover:bg-surface-3">
                           {t("keep")}
                         </button>
-                        <button onClick={() => onChoose(i, "listed")} className="rounded-full border border-white/15 px-3 py-1 text-[11px] hover:bg-white/10">
+                        <button onClick={() => onChoose(i, "listed")} className="rounded-full border border-line px-3 py-1 text-[11px] hover:bg-surface-3">
                           {t("list")}
                         </button>
-                        <button onClick={() => onChoose(i, "sold")} className="rounded-full border border-white/15 px-3 py-1 text-[11px] hover:bg-white/10">
+                        <button onClick={() => onChoose(i, "sold")} className="rounded-full border border-line px-3 py-1 text-[11px] hover:bg-surface-3">
                           {t("buyback", { value: buyback })}
                         </button>
                       </div>
@@ -267,11 +267,11 @@ function OpeningModal({
             </ul>
             <div className="mt-6 flex justify-center gap-3">
               {onAgain && (
-                <button ref={primary} onClick={onAgain} className="btn-holo rounded-full px-6 py-2.5 text-sm font-semibold text-white">
+                <button ref={primary} onClick={onAgain} className="btn-primary rounded-full px-6 py-2.5 text-sm font-semibold">
                   {t("again")}
                 </button>
               )}
-              <button onClick={onClose} className="rounded-full border border-white/15 bg-white/5 px-6 py-2.5 text-sm font-semibold hover:bg-white/10">
+              <button onClick={onClose} className="rounded-full border border-line bg-surface px-6 py-2.5 text-sm font-semibold hover:bg-surface-3">
                 {t("close")}
               </button>
             </div>
@@ -324,7 +324,7 @@ function RevealCard({
       </div>
       <div className={`mt-2 flex items-center justify-between gap-1 transition-opacity ${flipped ? "opacity-100" : "opacity-0"}`}>
         <TierPill tier={entry.tier} />
-        <span className="truncate text-[11px] text-white/70">{card.member}</span>
+        <span className="truncate text-[11px] text-ink-2">{card.member}</span>
       </div>
     </div>
   );
@@ -332,7 +332,7 @@ function RevealCard({
 
 export function TierPill({ tier }: { tier: PoolEntry["tier"] }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 font-mono text-[10px] font-bold text-white">
+    <span className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 font-mono text-[10px] font-bold text-ink">
       <span className="h-1.5 w-1.5 rounded-full" style={{ background: TIER_COLOR[tier] }} />
       {tier}
     </span>

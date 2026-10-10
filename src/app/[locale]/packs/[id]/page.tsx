@@ -22,21 +22,21 @@ export async function generateMetadata(props: PageProps<"/[locale]/packs/[id]">)
   return pack ? { title: `${pack.name} · Mystery Pack` } : {};
 }
 
-const SECTION = "rounded-2xl border border-white/10 bg-white/[0.03] p-5";
-const SUB = "mt-1 text-xs text-white/45";
+const SECTION = "rounded-2xl border border-line bg-surface p-5";
+const SUB = "mt-1 text-xs text-ink-3";
 
 // 外框靜態，讀取網址參數的內容放進 Suspense
 export default function PackPage(props: PageProps<"/[locale]/packs/[id]">) {
   return (
     <>
-      <div className="aurora" />
-      <div className="grid-bg" />
       <Navbar />
+      <div className="theme-dark flex flex-1 flex-col">
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
-        <Suspense fallback={<div className="mt-10 h-[520px] animate-pulse rounded-2xl bg-white/5" />}>
+        <Suspense fallback={<div className="mt-10 h-[520px] animate-pulse rounded-2xl bg-surface-2" />}>
           <PackContent params={props.params} />
         </Suspense>
       </main>
+      </div>
       <Footer />
     </>
   );
@@ -53,12 +53,12 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
 
   return (
     <>
-      <nav aria-label="breadcrumb" className="flex items-center gap-1.5 text-xs text-white/45">
-        <Link href="/packs" className="hover:text-white">
+      <nav aria-label="breadcrumb" className="flex items-center gap-1.5 text-xs text-ink-3">
+        <Link href="/packs" className="hover:text-ink">
           {t("title")}
         </Link>
         <span>/</span>
-        <span className="text-white/75">{pack.name}</span>
+        <span className="text-ink">{pack.name}</span>
       </nav>
 
       <div className="mt-6 grid items-start gap-10 md:grid-cols-[minmax(0,320px)_1fr]">
@@ -66,21 +66,21 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
 
         <div>
           <h1 className="text-4xl font-black tracking-tight">{pack.name}</h1>
-          <p className="mt-2 text-lg text-white/75">{t("chance", { price: pack.priceUsdt, top: usdt(s.topValue) })}</p>
-          <p className="mt-1 font-mono text-sm text-white/45">{t("perPack", { price: pack.priceUsdt })}</p>
+          <p className="mt-2 text-lg text-ink">{t("chance", { price: pack.priceUsdt, top: usdt(s.topValue) })}</p>
+          <p className="mt-1 text-sm text-ink-3">{t("perPack", { price: pack.priceUsdt })}</p>
 
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl bg-white/[0.04] px-4 py-3">
-              <div className="h-1.5 overflow-hidden rounded-full bg-violet-400/15">
-                <div className="h-full rounded-full bg-violet-400" style={{ width: `${(s.remaining / s.total) * 100}%` }} />
+            <div className="rounded-xl bg-surface-2 px-4 py-3">
+              <div className="h-1.5 overflow-hidden rounded-full bg-accent-soft">
+                <div className="h-full rounded-full bg-accent" style={{ width: `${(s.remaining / s.total) * 100}%` }} />
               </div>
-              <p className="mt-2 text-xs text-white/60">{t("left", { remaining: usdt(s.remaining), total: usdt(s.total) })}</p>
-              <Countdown startsAt={pack.startsAt} endsAt={pack.endsAt} className="mt-1 block text-xs text-white/80" />
+              <p className="mt-2 text-xs text-ink-2">{t("left", { remaining: usdt(s.remaining), total: usdt(s.total) })}</p>
+              <Countdown startsAt={pack.startsAt} endsAt={pack.endsAt} className="mt-1 block text-xs text-ink" />
             </div>
-            <div className="rounded-xl bg-white/[0.04] px-4 py-3">
-              <p className="text-[11px] text-white/45">{t("expectedTitle")}</p>
-              <p className="mt-1 font-mono text-lg font-semibold">{formatUsdt(s.expected, 2)}</p>
-              <p className="mt-0.5 text-[11px] leading-snug text-white/45">
+            <div className="rounded-xl bg-surface-2 px-4 py-3">
+              <p className="text-[11px] text-ink-3">{t("expectedTitle")}</p>
+              <p className="mt-1 text-lg font-semibold tabular-nums">{formatUsdt(s.expected, 2)}</p>
+              <p className="mt-0.5 text-[11px] leading-snug text-ink-3">
                 {t("expectedBody", { rtp: Math.round((s.expected / pack.priceUsdt) * 100) })}
               </p>
             </div>
@@ -98,7 +98,7 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
         <p className={SUB}>{t("oddsSubtitle")}</p>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[520px] text-left text-sm">
-            <thead className="text-[11px] text-white/45">
+            <thead className="text-[11px] text-ink-3">
               <tr>
                 <th className="pb-2 font-medium">{t("colTier")}</th>
                 <th className="pb-2 font-medium">{t("colOdds")}</th>
@@ -107,7 +107,7 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
                 <th className="pb-2 text-right font-medium">{t("colValue")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-line">
               {s.tiers.map((tier) => (
                 <tr key={tier.tier}>
                   <td className="py-2.5">
@@ -115,17 +115,17 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
                   </td>
                   <td className="py-2.5 font-mono text-xs tabular-nums">{pct(tier.odds)}</td>
                   <td className="py-2.5 pr-4">
-                    <div className="h-1.5 overflow-hidden rounded-full bg-white/5" aria-hidden>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden>
                       <div
                         className="h-full rounded-full"
                         style={{ width: `${Math.max(tier.odds * 100, tier.remaining ? 0.8 : 0)}%`, background: TIER_COLOR[tier.tier] }}
                       />
                     </div>
                   </td>
-                  <td className="py-2.5 text-right font-mono text-xs tabular-nums text-white/70">
+                  <td className="py-2.5 text-right font-mono text-xs tabular-nums text-ink-2">
                     {usdt(tier.remaining)} / {usdt(tier.total)}
                   </td>
-                  <td className="py-2.5 text-right font-mono text-xs tabular-nums text-white/70">
+                  <td className="py-2.5 text-right font-mono text-xs tabular-nums text-ink-2">
                     {tier.minValue === tier.maxValue ? usdt(tier.minValue) : `${usdt(tier.minValue)}–${usdt(tier.maxValue)}`}
                   </td>
                 </tr>
@@ -158,10 +158,10 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
                       <p className="mt-2 truncate text-xs font-semibold">
                         {card.group} {card.member}
                       </p>
-                      <p className="truncate text-[11px] text-white/50">{card.version}</p>
+                      <p className="truncate text-[11px] text-ink-3">{card.version}</p>
                       <p className="mt-0.5 flex justify-between text-[11px]">
-                        <span className="font-mono text-white/80">{formatUsdt(e.valueUsdt, e.valueUsdt < 10 ? 1 : 0)}</span>
-                        <span className="text-white/45">{gone ? t("allPulled") : `${e.remaining}/${e.total}`}</span>
+                        <span className="text-ink tabular-nums">{formatUsdt(e.valueUsdt, e.valueUsdt < 10 ? 1 : 0)}</span>
+                        <span className="text-ink-3">{gone ? t("allPulled") : `${e.remaining}/${e.total}`}</span>
                       </p>
                     </div>
                   );
@@ -169,7 +169,7 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
             </div>
           </div>
         ))}
-        <p className="mt-6 text-xs text-white/45">
+        <p className="mt-6 text-xs text-ink-3">
           <TierPill tier="N" /> <span className="ml-1">{t("nTier", { count: usdt(s.tiers[3].remaining) })}</span>
         </p>
       </section>
@@ -179,25 +179,25 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
         <section className={SECTION}>
           <h2 className="text-base font-semibold">{t("pullsTitle")}</h2>
           {pulls.length ? (
-            <ul className="mt-3 divide-y divide-white/5">
+            <ul className="mt-3 divide-y divide-line">
               {pulls.map((p, i) => {
                 const card = entryCard(p.entry);
                 return (
                   <li key={i} className="flex items-center gap-3 py-2 text-xs">
                     <TierPill tier={p.entry.tier} />
                     <span className="min-w-0 flex-1 truncate">
-                      <span className="font-mono text-white/45">{t("pulledBy", { wallet: shortAddress(p.wallet) })}</span>{" "}
-                      <span className="text-white/85">
+                      <span className="font-mono text-ink-3">{t("pulledBy", { wallet: shortAddress(p.wallet) })}</span>{" "}
+                      <span className="text-ink">
                         {card.group} {card.member} · {card.version}
                       </span>
                     </span>
-                    <span className="shrink-0 text-white/35">{t("minutesAgo", { minutes: p.minutesAgo })}</span>
+                    <span className="shrink-0 text-ink-3">{t("minutesAgo", { minutes: p.minutesAgo })}</span>
                   </li>
                 );
               })}
             </ul>
           ) : (
-            <p className="mt-3 text-xs text-white/45">{t("noPulls")}</p>
+            <p className="mt-3 text-xs text-ink-3">{t("noPulls")}</p>
           )}
         </section>
 
@@ -205,25 +205,25 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
           {/* 公平性 */}
           <section className={SECTION}>
             <h2 className="text-base font-semibold">{t("fairTitle")}</h2>
-            <ul className="mt-3 space-y-2 text-xs leading-relaxed text-white/60">
+            <ul className="mt-3 space-y-2 text-xs leading-relaxed text-ink-2">
               {[t("fairCommit"), t("fairVrf"), t("fairNft")].map((line) => (
                 <li key={line} className="flex gap-2">
-                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-300" />
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-accent" />
                   {line}
                 </li>
               ))}
             </ul>
-            <p className="mt-4 text-[11px] text-white/45">{t("commitment")}</p>
-            <p className="mt-1 font-mono text-[11px] break-all text-white/70">{pack.commitment}</p>
+            <p className="mt-4 text-[11px] text-ink-3">{t("commitment")}</p>
+            <p className="mt-1 font-mono text-[11px] break-all text-ink-2">{pack.commitment}</p>
           </section>
 
           {/* 規則 */}
           <section className={SECTION}>
             <h2 className="text-base font-semibold">{t("rulesTitle")}</h2>
-            <ul className="mt-3 space-y-2 text-xs leading-relaxed text-white/60">
+            <ul className="mt-3 space-y-2 text-xs leading-relaxed text-ink-2">
               {[t("rule18"), t("ruleRefund"), t("ruleBuyback", { pct: BUYBACK_RATE * 100 }), t("ruleShipping")].map((line) => (
                 <li key={line} className="flex gap-2">
-                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-white/40" />
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-ink-3" />
                   {line}
                 </li>
               ))}

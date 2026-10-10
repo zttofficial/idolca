@@ -1,97 +1,96 @@
 @import "tailwindcss";
 
+/*
+ * 配色只用語義變數：文字三級（ink）、底色三級（surface）、邊線、一個主色、漲跌、提示。
+ * 白底電商風格，介面退後，讓卡片照片成為畫面裡最鮮豔的東西；全息效果只留在卡片本身。
+ * 主色換品牌色只改 --accent 這一組。
+ */
 :root {
-  --background: #07050f;
-  --foreground: #f4f1ff;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f6f6f8;
+  --surface-3: #ebebef;
+  --line: #e6e6eb;
+  --line-strong: #111114;
+  --ink: #111114;
+  --ink-2: #555560;
+  --ink-3: #8a8a95;
+  --accent: #e8285a;
+  --accent-hover: #cc1c4c;
+  --accent-soft: #fff0f4;
+  --accent-ink: #d81f52;
+  --up: #0e9f6e;
+  --down: #e5484d;
+  --notice-bg: #fff8e6;
+  --notice-line: #f3dea3;
+  --notice-ink: #6f5300;
+}
+
+/* 盲盒是活動頁，沿用 Pocamarket 的做法單獨用深色舞台；只在這個範圍內換掉同一組變數 */
+.theme-dark {
+  --bg: #0b0816;
+  --surface: #151126;
+  --surface-2: rgb(255 255 255 / 0.05);
+  --surface-3: rgb(255 255 255 / 0.1);
+  --line: rgb(255 255 255 / 0.1);
+  --line-strong: rgb(255 255 255 / 0.55);
+  --ink: #ffffff;
+  --ink-2: rgb(255 255 255 / 0.68);
+  --ink-3: rgb(255 255 255 / 0.45);
+  --accent: #ff4d7a;
+  --accent-hover: #ff6a90;
+  --accent-soft: rgb(255 77 122 / 0.14);
+  --accent-ink: #ff7d9d;
+  --notice-bg: rgb(252 211 77 / 0.1);
+  --notice-line: rgb(252 211 77 / 0.25);
+  --notice-ink: rgb(254 243 199 / 0.85);
+  color-scheme: dark;
+  background: radial-gradient(90% 60% at 50% 0%, #2a1452, var(--bg) 70%);
+  color: var(--ink);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-up: var(--up);
+  --color-down: var(--down);
+  --color-notice-bg: var(--notice-bg);
+  --color-notice-line: var(--notice-line);
+  --color-notice-ink: var(--notice-ink);
   --font-sans: var(--font-geist-sans), "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
   scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--ink);
   font-family: var(--font-sans);
 }
 
-/* 背景：流動的極光光暈 + 淡出的網格 */
-.aurora {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
+/* 主按鈕：純色，不用漸變和光暈 */
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  transition: background-color 0.15s;
 }
-.aurora::before,
-.aurora::after {
-  content: "";
-  position: absolute;
-  width: 70vmax;
-  height: 70vmax;
-  border-radius: 50%;
-  filter: blur(90px);
-  opacity: 0.35;
-  animation: drift 24s ease-in-out infinite alternate;
-}
-.aurora::before {
-  background: radial-gradient(circle, #7c3aed, transparent 65%);
-  top: -30vmax;
-  left: -20vmax;
-}
-.aurora::after {
-  background: radial-gradient(circle, #ec4899, transparent 65%);
-  bottom: -35vmax;
-  right: -25vmax;
-  animation-delay: -12s;
-}
-.grid-bg {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: radial-gradient(ellipse at 50% 0%, #000 20%, transparent 70%);
-}
-@keyframes drift {
-  to {
-    transform: translate(18vmax, 12vmax) scale(1.15);
-  }
-}
-
-.text-holo {
-  background: linear-gradient(100deg, #ff7ad9, #a78bfa 30%, #67e8f9 55%, #fde68a 80%, #ff7ad9);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: holo-shift 6s linear infinite;
-}
-.btn-holo {
-  background: linear-gradient(100deg, #8b5cf6, #ec4899, #8b5cf6);
-  background-size: 200% auto;
-  box-shadow: 0 0 24px rgba(168, 85, 247, 0.45);
-  transition: background-position 0.5s, box-shadow 0.3s;
-}
-.btn-holo:hover {
-  background-position: right center;
-  box-shadow: 0 0 36px rgba(236, 72, 153, 0.6);
-}
-@keyframes holo-shift {
-  to {
-    background-position: 200% center;
-  }
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
 }
 
 /* 列表卡的 3D 傾斜和全息效果 */
@@ -318,9 +317,6 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .aurora::before,
-  .aurora::after,
-  .text-holo,
   .marquee-track,
   .pack-art::before,
   .pack-shake,

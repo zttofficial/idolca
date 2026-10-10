@@ -14,14 +14,14 @@ export default function MarketGrid() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">{t("title")}</h2>
-          <p className="mt-2 text-sm text-white/50">{t("subtitle")}</p>
+          <p className="mt-2 text-sm text-ink-3">{t("subtitle")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {filters.map((f, i) => (
             <button
               key={f}
               className={`rounded-full border px-3 py-1 text-xs transition ${
-                i === 0 ? "border-white/40 bg-white/15" : "border-white/10 bg-white/5 text-white/55 hover:text-white"
+                i === 0 ? "border-line-strong bg-surface-3" : "border-line bg-surface-2 text-ink-2 hover:text-ink"
               }`}
             >
               {f}

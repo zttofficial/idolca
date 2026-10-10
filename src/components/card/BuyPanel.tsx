@@ -8,37 +8,37 @@ import UsdtPrice from "@/components/web3/UsdtPrice";
 import { formatUsdt } from "@/lib/fx";
 import type { Card } from "@/lib/mock-cards";
 
-const PRIMARY = "btn-holo flex-1 rounded-full px-6 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50";
+const PRIMARY = "btn-primary flex-1 rounded-full px-6 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 const SECONDARY =
-  "flex-1 rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-semibold text-white/90 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50";
+  "flex-1 rounded-full border border-line bg-surface px-6 py-3 text-sm font-semibold text-ink transition hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-50";
 
 export default function BuyPanel({ card, lastSale, likes }: { card: Card; lastSale: number; likes: number }) {
   const t = useTranslations("Detail");
   const up = card.change24h >= 0;
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+    <div className="rounded-2xl border border-line bg-surface p-5">
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <UsdtPrice amount={card.priceUsdt} className="font-mono text-3xl font-semibold" />
-        <span className={`font-mono text-sm ${up ? "text-emerald-400" : "text-rose-400"}`}>
-          {up ? "▲" : "▼"} {Math.abs(card.change24h).toFixed(1)}% <span className="text-white/40">{t("change24h")}</span>
+        <UsdtPrice amount={card.priceUsdt} className="text-3xl font-bold tabular-nums" />
+        <span className={`font-mono text-sm ${up ? "text-up" : "text-down"}`}>
+          {up ? "▲" : "▼"} {Math.abs(card.change24h).toFixed(1)}% <span className="text-ink-3">{t("change24h")}</span>
         </span>
       </div>
-      <p className="mt-1 text-xs text-white/45">
-        {t("lastSale")} · <span className="font-mono">{formatUsdt(lastSale)}</span>
+      <p className="mt-1 text-xs text-ink-3">
+        {t("lastSale")} · <span className="tabular-nums">{formatUsdt(lastSale)}</span>
       </p>
 
       <div className="mt-5">
         {card.status === "listed" ? (
           PRIVY_APP_ID ? <PrivyBuyButtons /> : <BuyButtons disabledTitle={t("connectToBuy")} />
         ) : (
-          <p className="rounded-xl bg-white/5 px-4 py-3 text-center text-sm text-white/60">
+          <p className="rounded-xl bg-surface-2 px-4 py-3 text-center text-sm text-ink-2">
             {card.status === "redeeming" ? t("redeemingNote") : t("notListed")}
           </p>
         )}
       </div>
 
-      <p className="mt-4 text-xs leading-relaxed text-white/45">{t("settle")}</p>
+      <p className="mt-4 text-xs leading-relaxed text-ink-3">{t("settle")}</p>
       <ShareRow cardId={card.id} likes={likes} />
     </div>
   );
@@ -99,15 +99,15 @@ function ShareRow({ cardId, likes }: { cardId: string; likes: number }) {
   };
 
   return (
-    <div className="mt-4 flex items-center gap-4 border-t border-white/5 pt-4 text-xs text-white/60">
-      <button onClick={toggle} aria-pressed={saved} className="flex items-center gap-1.5 hover:text-white">
-        <svg viewBox="0 0 20 20" className={`h-4 w-4 ${saved ? "fill-rose-400 text-rose-400" : "fill-none"}`} stroke="currentColor" strokeWidth="1.6" aria-hidden>
+    <div className="mt-4 flex items-center gap-4 border-t border-line pt-4 text-xs text-ink-2">
+      <button onClick={toggle} aria-pressed={saved} className="flex items-center gap-1.5 hover:text-ink">
+        <svg viewBox="0 0 20 20" className={`h-4 w-4 ${saved ? "fill-accent text-accent" : "fill-none"}`} stroke="currentColor" strokeWidth="1.6" aria-hidden>
           <path d="M10 17s-6.5-3.9-6.5-8.4A3.6 3.6 0 0 1 10 6.3a3.6 3.6 0 0 1 6.5 2.3C16.5 13.1 10 17 10 17Z" />
         </svg>
         {saved ? t("saved") : t("wishlist")}
       </button>
-      <span className="text-white/35">{t("likes", { count: likes + (saved ? 1 : 0) })}</span>
-      <button onClick={copy} className="ml-auto hover:text-white">
+      <span className="text-ink-3">{t("likes", { count: likes + (saved ? 1 : 0) })}</span>
+      <button onClick={copy} className="ml-auto hover:text-ink">
         {copied ? t("copied") : t("share")}
       </button>
     </div>

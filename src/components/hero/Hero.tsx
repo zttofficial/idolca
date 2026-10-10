@@ -9,7 +9,7 @@ const HoloCard3D = dynamic(() => import("./HoloCard3D"), {
   ssr: false,
   loading: () => (
     <div className="flex h-full items-center justify-center">
-      <div className="aspect-[55/85] h-2/3 animate-pulse rounded-2xl bg-white/5" />
+      <div className="aspect-[55/85] h-2/3 animate-pulse rounded-2xl bg-surface-2" />
     </div>
   ),
 });
@@ -32,25 +32,25 @@ export default function Hero() {
   return (
     <section className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 pt-10 pb-16 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:pt-16">
       <div className="relative z-10">
-        <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-violet-200 backdrop-blur">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+        <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs text-accent-ink backdrop-blur">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-up" />
           {t("badge")}
         </p>
         <h1 className="mt-6 text-4xl leading-tight font-extrabold tracking-tight sm:text-6xl">
           {t("titleLine1")}
           <br />
-          <span className="text-holo">{t("titleLine2")}</span>
+          <span className="text-accent-ink">{t("titleLine2")}</span>
         </h1>
-        <p className="mt-6 max-w-xl text-base leading-relaxed text-white/65 sm:text-lg">
+        <p className="mt-6 max-w-xl text-base leading-relaxed text-ink-2 sm:text-lg">
           {t("body")}
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <a href="#market" className="btn-holo rounded-full px-6 py-3 text-sm font-semibold text-white">
+          <a href="#market" className="btn-primary rounded-full px-6 py-3 text-sm font-semibold">
             {t("browse")}
           </a>
           <a
             href="#how"
-            className="rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-semibold text-white/90 backdrop-blur transition hover:bg-white/10"
+            className="rounded-full border border-line bg-surface px-6 py-3 text-sm font-semibold text-ink backdrop-blur transition hover:bg-surface-3"
           >
             {t("consign")}
           </a>
@@ -58,8 +58,8 @@ export default function Hero() {
         <dl className="mt-12 grid max-w-lg grid-cols-3 gap-4">
           {stats.map((s) => (
             <div key={s.label}>
-              <dt className="text-xs text-white/45">{s.label}</dt>
-              <dd className="mt-1 font-mono text-xl font-semibold text-white sm:text-2xl">{s.value}</dd>
+              <dt className="text-xs text-ink-3">{s.label}</dt>
+              <dd className="mt-1 text-2xl font-bold text-ink tabular-nums sm:text-3xl">{s.value}</dd>
             </div>
           ))}
         </dl>
@@ -83,15 +83,15 @@ export default function Hero() {
                 onClick={() => setActive(i)}
                 className={`rounded-full border px-3 py-1 text-xs transition ${
                   i === active
-                    ? "border-white/40 bg-white/15 text-white"
-                    : "border-white/10 bg-white/5 text-white/50 hover:text-white/80"
+                    ? "border-line-strong bg-surface-3 text-ink"
+                    : "border-line bg-surface-2 text-ink-3 hover:text-ink"
                 }`}
               >
                 {c.member}
               </button>
             ))}
           </div>
-          <p className="font-mono text-xs text-white/40">
+          <p className="text-xs text-ink-3">
             {card.serial} · {rarityLabel} · On Solana · {t("hint")}
           </p>
         </div>

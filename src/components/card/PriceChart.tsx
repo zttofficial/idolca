@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { Sale } from "@/lib/card-detail";
 
-// 單一系列：線和面用同一個紫（深色底上驗證過亮度和對比度），文字一律用文字色
-const LINE = "#9b7bf7";
-const SURFACE = "#0c0918";
+// 單一系列：線和面用主色（白底上驗證過亮度和對比度），文字一律用文字色
+const LINE = "#e8285a";
+const SURFACE = "#ffffff";
 const H = 220;
 const PAD = { top: 16, right: 16, bottom: 28, left: 52 };
 
@@ -83,8 +83,8 @@ export default function PriceChart({ sales }: { sales: Sale[] }) {
         >
           {yTicks.map(({ v, y }) => (
             <g key={v}>
-              <line x1={PAD.left} x2={width - PAD.right} y1={y} y2={y} stroke="rgba(255,255,255,0.07)" />
-              <text x={PAD.left - 8} y={y} dy="0.32em" textAnchor="end" className="fill-white/40 font-mono text-[10px] tabular-nums">
+              <line x1={PAD.left} x2={width - PAD.right} y1={y} y2={y} style={{ stroke: "var(--line)" }} />
+              <text x={PAD.left - 8} y={y} dy="0.32em" textAnchor="end" className="fill-ink-3 text-[10px] tabular-nums">
                 {fmt(v)}
               </text>
             </g>
@@ -95,7 +95,7 @@ export default function PriceChart({ sales }: { sales: Sale[] }) {
               x={x}
               y={H - 8}
               textAnchor={i === 0 ? "start" : i === xTicks.length - 1 ? "end" : "middle"}
-              className="fill-white/40 font-mono text-[10px] tabular-nums"
+              className="fill-ink-3 text-[10px] tabular-nums"
             >
               {label}
             </text>
@@ -105,18 +105,18 @@ export default function PriceChart({ sales }: { sales: Sale[] }) {
           <circle cx={last.x} cy={last.y} r={4} fill={LINE} stroke={SURFACE} strokeWidth={2} />
           {active && (
             <g pointerEvents="none">
-              <line x1={active.x} x2={active.x} y1={PAD.top} y2={H - PAD.bottom} stroke="rgba(255,255,255,0.35)" />
+              <line x1={active.x} x2={active.x} y1={PAD.top} y2={H - PAD.bottom} style={{ stroke: "var(--ink-3)" }} />
               <circle cx={active.x} cy={active.y} r={5} fill={LINE} stroke={SURFACE} strokeWidth={2} />
             </g>
           )}
         </svg>
         {active && (
           <div
-            className="pointer-events-none absolute top-1 rounded-lg border border-white/10 bg-black/85 px-3 py-2 text-xs shadow-lg backdrop-blur"
+            className="pointer-events-none absolute top-1 rounded-lg border border-line bg-surface shadow-xl px-3 py-2 text-xs shadow-lg backdrop-blur"
             style={{ left: Math.min(Math.max(active.x - 60, 0), width - 130) }}
           >
-            <p className="font-mono text-sm font-semibold text-white">{fmt(active.sale.priceUsdt)} USDT</p>
-            <p className="mt-0.5 flex items-center gap-1.5 text-white/55">
+            <p className="text-sm font-semibold text-ink tabular-nums">{fmt(active.sale.priceUsdt)} USDT</p>
+            <p className="mt-0.5 flex items-center gap-1.5 text-ink-2">
               <span className="inline-block h-0.5 w-3 rounded" style={{ background: LINE }} />
               {active.sale.date}
             </p>
@@ -124,21 +124,21 @@ export default function PriceChart({ sales }: { sales: Sale[] }) {
         )}
       </div>
 
-      <details className="mt-3 text-xs text-white/55">
-        <summary className="cursor-pointer select-none hover:text-white">{t("showTable")}</summary>
-        <div className="mt-2 max-h-64 overflow-y-auto rounded-xl border border-white/10">
+      <details className="mt-3 text-xs text-ink-2">
+        <summary className="cursor-pointer select-none hover:text-ink">{t("showTable")}</summary>
+        <div className="mt-2 max-h-64 overflow-y-auto rounded-xl border border-line">
           <table className="w-full text-left">
-            <thead className="sticky top-0 bg-[#130f22] text-white/45">
+            <thead className="sticky top-0 bg-surface text-ink-3">
               <tr>
                 <th className="px-3 py-2 font-medium">{t("colDate")}</th>
                 <th className="px-3 py-2 text-right font-medium">{t("colPrice")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 font-mono tabular-nums">
+            <tbody className="divide-y divide-line tabular-nums">
               {[...sales].reverse().map((s, i) => (
                 <tr key={`${s.date}-${i}`}>
                   <td className="px-3 py-1.5">{s.date}</td>
-                  <td className="px-3 py-1.5 text-right text-white/80">{fmt(s.priceUsdt)}</td>
+                  <td className="px-3 py-1.5 text-right text-ink">{fmt(s.priceUsdt)}</td>
                 </tr>
               ))}
             </tbody>
