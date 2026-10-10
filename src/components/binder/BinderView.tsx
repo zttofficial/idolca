@@ -5,36 +5,48 @@ import { useTranslations } from "next-intl";
 import CardArt from "@/components/market/CardArt";
 import { AddCardButton, openAddCard } from "./AddCard";
 import VerificationBadge from "./VerificationBadge";
+import BinderBook from "./BinderBook";
 import { OnChainCards, Orders } from "./BinderChain";
+import { useChainState, useTemplateMarket } from "@/lib/chain-client";
 import { useAuth } from "@/components/auth/AuthContext";
 import { Thumbs } from "@/components/market/PhotoGallery";
 import { Link } from "@/i18n/navigation";
 import { binderActions, useBinder, type BinderEntry } from "@/lib/binder";
 import { GROUPS, TEMPLATES, templateCard, type Template } from "@/lib/catalog";
+import { CARDS, type Card } from "@/lib/mock-cards";
 import { formatUsdt } from "@/lib/fx";
+import { PACKS, entryCard } from "@/lib/packs";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 import { itemTitle } from "@/lib/item-title";
-import { setListing, useMyItems, type CollectorItem } from "@/lib/items";
+import { setDescription, setListing, useMyItems, type CollectorItem } from "@/lib/items";
 
-const POCKETS = 9;
 type Tab = "binder" | "onchain" | "orders" | "progress" | "wants";
 const TABS: Tab[] = ["binder", "onchain", "orders", "progress", "wants"];
 type Owned = { template: Template; entry: BinderEntry };
-// 卡冊裡的一格：自己上鏈的卡，或在圖鑑裡標記「有」的卡款
-type Slot = { kind: "item"; item: CollectorItem } | { kind: "card"; owned: Owned };
+type Pull = { entryId: string; cardId: string; asset: string; tx: string; packId: string };
+// 卡冊裡的一格：錢包裡的金庫卡、開卡包抽到的卡、自己上鏈的卡，或在圖鑑裡標記「有」的卡款
+type Slot = { kind: "vault"; card: Card } | { kind: "pull"; pull: Pull } | { kind: "item"; item: CollectorItem } | { kind: "card"; owned: Owned };
 
 export default function BinderView() {
   const t = useTranslations("Binder");
   const binder = useBinder();
   const [tab, setTab] = useState<Tab>("binder");
-  const { user } = useAuth();
+  const { user, ready, login } = useAuth();
   // 從其他頁連過來時用 ?tab= 指定頁籤（例如付款後看訂單）
   useEffect(() => {
     const wanted = new URLSearchParams(window.location.search).get("tab") as Tab | null;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 只在進入頁面時讀網址
     if (wanted && TABS.includes(wanted)) setTab(wanted);
   }, []);
-  const [spread, setSpread] = useState(0);
+  const chain = useChainState();
+  const [pulls, setPulls] = useState<Pull[]>([]);
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/packs/mine")
+      .then((r) => (r.ok ? r.json() : { pulls: [] }))
+      .then((d: { pulls: Pull[] }) => setPulls(d.pulls))
+      .catch(() => {});
+  }, [user]);
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const items = useMyItems();
@@ -43,7 +55,11 @@ export default function BinderView() {
   const owned: Owned[] = TEMPLATES.filter((x) => binder.have[x.id]).map((template) => ({ template, entry: binder.have[template.id] }));
   const wants = TEMPLATES.filter((x) => binder.want[x.id]);
 
-  if (!owned.length && !wants.length && !items.length && !user?.walletAddress) {
+  // 學 Pocamarket 和 KOCA：收藏冊要登入才用；未登入時介紹功能，不擺一堆空卡位
+  if (!ready) return <div className="mt-10 h-64 animate-pulse rounded-2xl bg-surface-2" />;
+  if (!user) return <LoggedOut localCount={owned.length + wants.length} onLogin={login} />;
+
+  if (!owned.length && !wants.length && !items.length && !user.walletAddress) {
     return (
       <div className="mt-10 rounded-2xl border border-dashed border-line px-6 py-16 text-center">
         <h2 className="text-lg font-semibold">{t("emptyTitle")}</h2>
@@ -54,28 +70,29 @@ export default function BinderView() {
             {t("browse")}
           </Link>
         </div>
-        <button onClick={binderActions.loadSample} className="mt-4 text-xs text-ink-3 underline-offset-2 hover:text-ink hover:underline">
-          {t("loadSample")}
-        </button>
       </div>
     );
   }
 
-  const copies = owned.reduce((n, o) => n + o.entry.count, 0) + items.length;
-  const value = owned.reduce((v, o) => v + o.entry.count * o.template.market.fromUsdt, 0);
+  const copies = owned.reduce((n, o) => n + o.entry.count, 0) + items.length + vaultCardsCount(chain, user?.walletAddress) + pulls.length;
   const groups = new Set([...owned.map((o) => o.template.group), ...items.map((i) => i.group.trim())].map((g) => g.toLowerCase())).size;
   const stats = [
     { label: t("statCards"), value: copies.toLocaleString("en-US") },
     { label: t("statGroups"), value: groups },
     { label: t("statMinted"), value: items.length },
-    { label: t("statValue"), value: formatUsdt(value) },
   ];
 
   // 自己上鏈的卡排在最前面，後面是圖鑑順序的卡款
-  const slots: Slot[] = [...items.map((item) => ({ kind: "item" as const, item })), ...owned.map((o) => ({ kind: "card" as const, owned: o }))];
-  const pages = Math.max(1, Math.ceil(slots.length / POCKETS));
-  const spreads = Math.ceil(pages / 2);
-  const current = Math.min(spread, spreads - 1);
+  // 真實的卡排前面：錢包裡的金庫卡、開卡包抽到的卡、自己上鏈的卡；圖鑑標記的卡款裡，有照片的排在沒照片的前面
+  const wallet = user?.walletAddress;
+  const vaultCards = wallet && chain?.ready ? CARDS.filter((c) => { const s = chain.cards[c.id]; return s && !s.burned && (s.owner === wallet || s.listing?.seller === wallet); }) : [];
+  const withPhoto = (o: Owned) => Boolean(ownedCard(o).image);
+  const slots: Slot[] = [
+    ...vaultCards.map((card) => ({ kind: "vault" as const, card })),
+    ...pulls.map((pull) => ({ kind: "pull" as const, pull })),
+    ...items.map((item) => ({ kind: "item" as const, item })),
+    ...[...owned.filter(withPhoto), ...owned.filter((o) => !withPhoto(o))].map((o) => ({ kind: "card" as const, owned: o })),
+  ];
   const selectedOwned = owned.find((o) => o.template.id === selected);
   const pickedItem = items.find((i) => i.id === selectedItem);
 
@@ -84,7 +101,7 @@ export default function BinderView() {
       <div className="mb-4 flex justify-end">
         <AddCardButton className="btn-primary rounded-full px-5 py-2.5 text-sm font-semibold" />
       </div>
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <dl className="grid grid-cols-3 gap-3">
         {stats.map((s) => (
           <div key={s.label} className="rounded-2xl border border-line bg-surface p-4">
             <dt className="text-xs text-ink-3">{s.label}</dt>
@@ -117,48 +134,21 @@ export default function BinderView() {
       </div>
 
       {tab === "binder" && (
-        <>
-          {/* 一次攤開兩頁，像翻開的實體卡冊 */}
-          <div className="mt-6 grid gap-4 rounded-3xl bg-surface-3 p-3 sm:p-4 lg:grid-cols-2">
-            {[current * 2, current * 2 + 1].map((page) =>
-              page < pages || page === 0 ? (
-                <div key={page} className="relative rounded-2xl bg-surface p-3 shadow-sm sm:p-4">
-                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                    {Array.from({ length: POCKETS }, (_, i) => {
-                      const slot = slots[page * POCKETS + i];
-                      if (slot?.kind === "item") return <ItemPocket key={i} item={slot.item} onSelect={() => setSelectedItem(slot.item.id)} />;
-                      return slot ? (
-                        <Pocket key={i} owned={slot.owned} onSelect={() => setSelected(slot.owned.template.id)} />
-                      ) : (
-                        <div key={i} className="aspect-[55/85] rounded-lg border border-dashed border-line bg-surface-2" />
-                      );
-                    })}
-                  </div>
-                  <p className="mt-3 text-center text-[11px] text-ink-3 tabular-nums">{page + 1}</p>
-                </div>
+        <div className="mt-6">
+          <BinderBook
+            slots={slots.map((slot, i) =>
+              slot.kind === "vault" ? (
+                <VaultSlot key={i} card={slot.card} />
+              ) : slot.kind === "pull" ? (
+                <PullSlot key={i} pull={slot.pull} />
+              ) : slot.kind === "item" ? (
+                <ItemPocket key={i} item={slot.item} onSelect={() => setSelectedItem(slot.item.id)} />
               ) : (
-                <div key={page} className="hidden rounded-2xl bg-surface/60 lg:block" />
+                <Pocket key={i} owned={slot.owned} onSelect={() => setSelected(slot.owned.template.id)} />
               ),
             )}
-          </div>
-          <div className="mt-4 flex items-center justify-center gap-3 text-sm">
-            <button
-              disabled={current === 0}
-              onClick={() => setSpread(current - 1)}
-              className="rounded-full border border-line px-4 py-1.5 hover:bg-surface-2 disabled:opacity-40"
-            >
-              {t("prev")}
-            </button>
-            <span className="text-ink-3 tabular-nums">{t("page", { page: current + 1, pages: spreads })}</span>
-            <button
-              disabled={current >= spreads - 1}
-              onClick={() => setSpread(current + 1)}
-              className="rounded-full border border-line px-4 py-1.5 hover:bg-surface-2 disabled:opacity-40"
-            >
-              {t("next")}
-            </button>
-          </div>
-        </>
+          />
+        </div>
       )}
 
       {tab === "onchain" && <OnChainCards />}
@@ -181,9 +171,7 @@ export default function BinderView() {
                     {w.album} · {w.version}
                   </p>
                 </div>
-                <span className="text-xs text-ink-2">
-                  {w.market.forSale ? t("forSaleNow", { count: w.market.forSale, price: formatUsdt(w.market.fromUsdt) }) : t("noneForSale")}
-                </span>
+                <WantMarket template={w} />
                 {w.listingId && (
                   <Link href={`/card/${w.listingId}`} className="text-xs font-semibold text-accent-ink hover:underline">
                     {t("view")}
@@ -212,11 +200,22 @@ function ownedCard({ template, entry }: Owned) {
 
 function Pocket({ owned, onSelect }: { owned: Owned; onSelect: () => void }) {
   const tRarity = useTranslations("Rarity");
+  const card = ownedCard(owned);
   return (
-    <button onClick={onSelect} className="group relative block aspect-[55/85] overflow-hidden rounded-lg text-left">
-      <CardArt card={ownedCard(owned)} rarityLabel={tRarity(owned.template.rarity)} className="block h-full w-full" />
-      {/* 卡套的反光 */}
-      <span className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-br from-white/25 via-transparent to-transparent ring-1 ring-black/5 ring-inset" />
+    <button onClick={onSelect} className="group relative block h-full w-full overflow-hidden text-left">
+      {card.image ? (
+        <CardArt card={card} rarityLabel={tRarity(owned.template.rarity)} className="block h-full w-full" />
+      ) : (
+        // 還沒有照片的卡款：簡潔的文字卡，不畫剪影佔位圖
+        <span className="flex h-full w-full flex-col justify-between bg-white p-2.5">
+          <span className="text-[10px] font-semibold tracking-wide text-ink-3 uppercase">{tRarity(owned.template.rarity)}</span>
+          <span>
+            <span className="block text-sm leading-tight font-bold">{owned.template.member}</span>
+            <span className="mt-0.5 block text-[10px] leading-snug text-ink-2">{owned.template.version}</span>
+            <span className="block truncate text-[10px] text-ink-3">{owned.template.album}</span>
+          </span>
+        </span>
+      )}
       {owned.entry.count > 1 && (
         <span className="absolute top-1 right-1 rounded-full bg-ink/80 px-1.5 text-[10px] font-bold text-white">×{owned.entry.count}</span>
       )}
@@ -280,10 +279,9 @@ function CardSheet({ owned, onClose }: { owned: Owned; onClose: () => void }) {
 function ItemPocket({ item, onSelect }: { item: CollectorItem; onSelect: () => void }) {
   const fake = item.verification === "fake";
   return (
-    <button onClick={onSelect} className={`group relative block aspect-[55/85] overflow-hidden rounded-lg text-left ${fake ? "ring-2 ring-down" : ""}`}>
+    <button onClick={onSelect} className={`group relative block h-full w-full overflow-hidden text-left ${fake ? "ring-2 ring-down ring-inset" : ""}`}>
       {/* eslint-disable-next-line @next/next/no-img-element -- 用戶上傳的照片 */}
       <img src={item.photo} alt={itemTitle(item)} className={`h-full w-full object-cover ${fake ? "grayscale" : ""}`} />
-      <span className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-br from-white/25 via-transparent to-transparent ring-1 ring-black/5 ring-inset" />
       {fake && (
         <span className="pointer-events-none absolute inset-0 grid place-items-center">
           <span className="-rotate-[30deg] rounded border-2 border-down bg-white/70 px-2 text-lg font-black tracking-widest text-down">FAKE</span>
@@ -325,6 +323,7 @@ function ItemSheet({ item, onClose }: { item: CollectorItem; onClose: () => void
           </div>
           <p className="mt-3 text-xs leading-relaxed text-ink-2">{tMint(`statusBody_${item.verification}`)}</p>
           {item.verificationNote && <p className="mt-2 text-xs text-ink-3">{item.verificationNote}</p>}
+          <DescriptionEditor item={item} />
           {item.verifiedAt && <p className="mt-1 text-[11px] text-ink-3">{tMint("verifiedOn", { date: item.verifiedAt.slice(0, 10) })}</p>}
           {item.mintTx ? (
             <a href={solscanUrl("account", item.asset)} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-ink-2 hover:text-ink">
@@ -472,3 +471,137 @@ function Progress() {
   );
 }
 
+
+// 想要清單裡一個卡款的真實在售情況
+function WantMarket({ template }: { template: Template }) {
+  const t = useTranslations("Binder");
+  const market = useTemplateMarket()(template);
+  return (
+    <span className="text-xs text-ink-2">
+      {!market ? "…" : market.forSale && market.fromUsdt !== null ? t("forSaleNow", { count: market.forSale, price: formatUsdt(market.fromUsdt) }) : t("noneForSale")}
+    </span>
+  );
+}
+
+// 持有人自己的描述：看、改、清空；元數據即時跟著變
+function DescriptionEditor({ item }: { item: CollectorItem }) {
+  const t = useTranslations("Mint");
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(item.description ?? "");
+  const [busy, setBusy] = useState(false);
+  if (!editing) {
+    return (
+      <div className="mt-3 text-xs">
+        {item.description ? <p className="whitespace-pre-line leading-relaxed text-ink-2">{item.description}</p> : null}
+        <button onClick={() => setEditing(true)} className="mt-1 font-semibold text-accent-ink hover:underline">
+          {t(item.description ? "editDescription" : "addDescription")}
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-3">
+      <textarea
+        autoFocus
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        maxLength={500}
+        rows={3}
+        placeholder={t("descriptionPlaceholder")}
+        className="w-full resize-y rounded-xl border border-line bg-surface px-3 py-2 text-xs leading-relaxed outline-none focus:border-ink"
+      />
+      <div className="mt-1 flex gap-3 text-xs">
+        <button
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await setDescription(item.id, text);
+              setEditing(false);
+            } finally {
+              setBusy(false);
+            }
+          }}
+          className="font-semibold text-accent-ink hover:underline disabled:opacity-50"
+        >
+          {t("saveDescription")}
+        </button>
+        <button onClick={() => setEditing(false)} className="text-ink-3 hover:text-ink">
+          {t("cancelEdit")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// 未登入：上面說明收藏冊能做什麼，下面是一本用金庫裡真實卡片填好的樣例卡冊，可以翻頁、點進卡片
+function LoggedOut({ localCount, onLogin }: { localCount: number; onLogin: () => void }) {
+  const t = useTranslations("Binder");
+  const tRarity = useTranslations("Rarity");
+  const points = ["loggedOutPoint1", "loggedOutPoint2", "loggedOutPoint3"] as const;
+  return (
+    <div className="mt-8 space-y-8">
+      <div className="grid gap-6 rounded-3xl border border-line bg-surface-2 p-6 sm:p-8 lg:grid-cols-[1fr_auto] lg:items-center">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">{t("loggedOutTitle")}</h2>
+          <ul className="mt-4 grid gap-3 sm:grid-cols-3">
+            {points.map((k, i) => (
+              <li key={k} className="flex gap-3 text-sm leading-relaxed text-ink-2">
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent-soft text-xs font-bold text-accent-ink">{i + 1}</span>
+                {t(k)}
+              </li>
+            ))}
+          </ul>
+          {localCount > 0 && <p className="mt-4 text-xs text-ink-3">{t("loggedOutLocal", { count: localCount })}</p>}
+        </div>
+        <div className="flex flex-wrap gap-3 lg:flex-col">
+          <button onClick={onLogin} className="btn-primary rounded-full px-6 py-2.5 text-sm font-semibold">
+            {t("loggedOutCta")}
+          </button>
+          <Link href="/catalog" className="rounded-full border border-line bg-surface px-6 py-2.5 text-center text-sm font-semibold hover:bg-surface-3">
+            {t("browse")}
+          </Link>
+        </div>
+      </div>
+      <BinderBook
+        title={t("sampleTitle")}
+        slots={CARDS.map((c) => (
+          <Link key={c.id} href={`/card/${c.id}`} className="group block h-full w-full">
+            <CardArt card={c} rarityLabel={tRarity(c.rarity)} className="block h-full w-full transition group-hover:scale-[1.03]" />
+          </Link>
+        ))}
+      />
+    </div>
+  );
+}
+
+function vaultCardsCount(chain: ReturnType<typeof useChainState>, wallet?: string | null) {
+  if (!wallet || !chain?.ready) return 0;
+  return CARDS.filter((c) => {
+    const s = chain.cards[c.id];
+    return s && !s.burned && (s.owner === wallet || s.listing?.seller === wallet);
+  }).length;
+}
+
+// 錢包裡的金庫卡：點進卡片頁
+function VaultSlot({ card }: { card: Card }) {
+  const tRarity = useTranslations("Rarity");
+  return (
+    <Link href={`/card/${card.id}`} className="group block h-full w-full">
+      <CardArt card={card} rarityLabel={tRarity(card.rarity)} className="block h-full w-full transition group-hover:scale-[1.03]" />
+    </Link>
+  );
+}
+
+// 開卡包抽到的卡：點開它在 Solscan 上的 NFT
+function PullSlot({ pull }: { pull: Pull }) {
+  const tRarity = useTranslations("Rarity");
+  const entry = PACKS.find((p) => p.id === pull.packId)?.pool.find((e) => e.id === pull.entryId);
+  if (!entry) return null;
+  const card = entryCard(entry);
+  return (
+    <a href={solscanUrl("account", pull.asset)} target="_blank" rel="noreferrer" className="group block h-full w-full">
+      <CardArt card={card} rarityLabel={tRarity(card.rarity)} className="block h-full w-full transition group-hover:scale-[1.03]" />
+    </a>
+  );
+}

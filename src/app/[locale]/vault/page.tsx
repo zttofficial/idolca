@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function VaultPage() {
   const t = await getTranslations("Vault");
   const tMeta = await getTranslations("Meta");
-  const { source, entries, lastAuditDate } = await getVaultSnapshot();
+  const { source, entries } = await getVaultSnapshot();
   const cardIdBySerial = new Map(CARDS.map((c) => [c.serial, c.id]));
   const rows = entries.map((e) => ({ ...e, cardId: cardIdBySerial.get(e.serial) }));
 
@@ -42,7 +42,7 @@ export default async function VaultPage() {
           </p>
         )}
 
-        <VaultSummary rows={rows} lastAuditDate={lastAuditDate} />
+        <VaultSummary rows={rows} />
 
         <div className="mt-10">
           <VaultTable rows={rows} />

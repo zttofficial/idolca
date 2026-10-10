@@ -20,8 +20,8 @@ export type Card = {
   rarity: Rarity;
   grade?: number;
   priceUsdt: number;
-  change24h: number;
   palette: [string, string, string];
+  // NFT 地址和持有人：來自 devnet 建置結果（src/lib/chain/devnet.json），持有人由鏈上即時狀態覆蓋
   asset: string;
   owner: string;
   status: VaultStatus;
@@ -32,7 +32,7 @@ export type Card = {
 };
 
 
-const SAMPLES: Card[] = [
+const SAMPLES: Omit<Card, "asset" | "owner">[] = [
   {
     id: "c1",
     serial: "IC-000128",
@@ -43,10 +43,7 @@ const SAMPLES: Card[] = [
     rarity: "fansign",
     grade: 10,
     priceUsdt: 1280,
-    change24h: 12.4,
     palette: ["#ff6ad5", "#8c5cff", "#2de2e6"],
-    asset: "3pL7ggYEBNqw1F6ujsoW9PLApCs8e7M9ij8hx1A7YSLP",
-    owner: "HModdA8ujqKpWxSysLM4CKzx9VieaGe57v9UzV6Kk5QX",
     status: "listed",
     intakeDate: "2026-07-14",
     location: "SEL-A03-12",
@@ -62,10 +59,7 @@ const SAMPLES: Card[] = [
     rarity: "pob",
     grade: 9,
     priceUsdt: 214,
-    change24h: -3.1,
     palette: ["#ffd36e", "#ff7a59", "#ff3d7f"],
-    asset: "Fpp7k9Laj6TmyrcADY7x6XpGwoXXtwLYpD42bYy1ZcxY",
-    owner: "GJ3mB7kXgNc6LTXEofg3ZK4EfTxDgj2ofDwBCFZhUTpL",
     status: "listed",
     intakeDate: "2026-07-21",
     location: "SEL-A03-18",
@@ -80,10 +74,7 @@ const SAMPLES: Card[] = [
     version: "Lucky Draw Round 1",
     rarity: "luckydraw",
     priceUsdt: 96,
-    change24h: 5.8,
     palette: ["#5ef2c2", "#2a9dff", "#6a4cff"],
-    asset: "7Zb5xaYFj9FjjnvdEwzyxcfpteenwRT1zVAEvgMSjMog",
-    owner: "AfBrf58D7BzVtny58DMK3Jc78ct6xUcEtBWeAxunrye",
     status: "vaulted",
     intakeDate: "2026-08-02",
     location: "SEL-B01-04",
@@ -98,10 +89,7 @@ const SAMPLES: Card[] = [
     version: "Compact Ver.",
     rarity: "album",
     priceUsdt: 18,
-    change24h: 1.2,
     palette: ["#ffb3e6", "#c9a7ff", "#8fd3ff"],
-    asset: "4xaLrfvbmreMKC5kt7gZiRUzwhZB5ojcbD5K9y198jxL",
-    owner: "565McieGmJ61JunKa1wQqwzUqgidb1fkKyMcKrSDiwwH",
     status: "listed",
     intakeDate: "2026-08-02",
     location: "SEL-B01-05",
@@ -117,10 +105,7 @@ const SAMPLES: Card[] = [
     rarity: "pob",
     grade: 10,
     priceUsdt: 342,
-    change24h: 8.9,
     palette: ["#a1ffce", "#faffd1", "#7ee8fa"],
-    asset: "9SLxgf6FFEk6Nd1U4FGXTGZuQBxSeaCiCkxEp2oPtECs",
-    owner: "7EobgkjCG8GdqoQbvKQZqx9ow1736eHS6HLBUVzHW8UG",
     status: "vaulted",
     intakeDate: "2026-08-19",
     location: "SEL-A07-22",
@@ -135,10 +120,7 @@ const SAMPLES: Card[] = [
     version: "Fansign Event",
     rarity: "fansign",
     priceUsdt: 760,
-    change24h: -6.4,
     palette: ["#ff9a8b", "#ff6a88", "#ff99ac"],
-    asset: "Gc34gdjPkAAPowP7wHLuWEZQL8gZdsvMxsrk1VdLCh5f",
-    owner: "HModdA8ujqKpWxSysLM4CKzx9VieaGe57v9UzV6Kk5QX",
     status: "redeeming",
     intakeDate: "2026-09-03",
     location: "SEL-C02-09",
@@ -153,10 +135,7 @@ const SAMPLES: Card[] = [
     version: "Photobook Ver.",
     rarity: "album",
     priceUsdt: 24,
-    change24h: 0.4,
     palette: ["#c2ffd8", "#465efb", "#9a4dff"],
-    asset: "EHgNUqCBoxxUc3ScTXff78yHAZGyFWDjPQHB1TFPwQCM",
-    owner: "2r24k55rVnHnoNKTQpLsDwtrP6MnKU5SoiP1966VzQyL",
     status: "listed",
     intakeDate: "2026-09-11",
     location: "SEL-B04-31",
@@ -172,10 +151,7 @@ const SAMPLES: Card[] = [
     rarity: "luckydraw",
     grade: 9,
     priceUsdt: 138,
-    change24h: 15.2,
     palette: ["#fddb92", "#d1fdff", "#f6a5ff"],
-    asset: "FQFEt1erUhSpv36FX5a8CjYodXbRs5uYSz4nk3UesPaA",
-    owner: "Dd7fchn9bsZYcKhHmGpWgNQ2gunN2x8JUhdftSWBk5R8",
     status: "vaulted",
     intakeDate: "2026-09-26",
     location: "SEL-C05-02",
@@ -190,10 +166,7 @@ const SAMPLES: Card[] = [
     version: "Lucky Draw Round 1",
     rarity: "luckydraw",
     priceUsdt: 72,
-    change24h: 4.1,
     palette: ["#ffd36e", "#ff7a59", "#ff3d7f"],
-    asset: "h82pJGF9p7kpzb6eU326EFZf2cDnimbTFVeJtx1qtBmU",
-    owner: "NJAEqN76R7PwPfHt3oWb8R6cKvhgyxQdDn53jFrK6wFx",
     status: "listed",
     intakeDate: "2026-09-14",
     location: "SEL-B02-11",
@@ -209,10 +182,7 @@ const SAMPLES: Card[] = [
     rarity: "fansign",
     grade: 10,
     priceUsdt: 940,
-    change24h: 9.6,
     palette: ["#ffd36e", "#ff7a59", "#ff3d7f"],
-    asset: "7RJWhvQBQPEjJmki5fhBboGBWRJhmcFkMvrr4Fu3tMSJ",
-    owner: "5EdynMEiYSyiWAH9GpcbHpeUzeSQF9ZY6q4x8AhBskUf",
     status: "listed",
     intakeDate: "2026-09-15",
     location: "SEL-A01-03",
@@ -228,10 +198,7 @@ const SAMPLES: Card[] = [
     rarity: "pob",
     grade: 9,
     priceUsdt: 46,
-    change24h: -2.4,
     palette: ["#fddb92", "#d1fdff", "#f6a5ff"],
-    asset: "5RRfWaHcx1ko8kybqJriN8KUBW1oyoHZqCZ7xhLvhZfD",
-    owner: "AQqBbra1fMY28QyvtLG4Gyd66oYu5qbr99jXcBHaxfUE",
     status: "listed",
     intakeDate: "2026-09-18",
     location: "SEL-C01-07",
@@ -246,10 +213,7 @@ const SAMPLES: Card[] = [
     version: "Album Ver.",
     rarity: "album",
     priceUsdt: 9,
-    change24h: 0.8,
     palette: ["#fddb92", "#d1fdff", "#f6a5ff"],
-    asset: "bqomDnLSjiQVzaV8GF5N2ecFeF15nh4F5z3xN5ZGJjYE",
-    owner: "b9oyddXGsXtTD77jUPUTWxo4kii74SoNtx7GDDbV9UCJ",
     status: "vaulted",
     intakeDate: "2026-09-20",
     location: "SEL-C01-12",
@@ -265,10 +229,7 @@ const SAMPLES: Card[] = [
     rarity: "pob",
     grade: 10,
     priceUsdt: 188,
-    change24h: 6.3,
     palette: ["#ff6ad5", "#8c5cff", "#2de2e6"],
-    asset: "WGx5Vtxwc74ibv16qwGBTYXExSz4BR1RHssWKUmoscjn",
-    owner: "YADKE4epb4pM44eXZwaB4Z6wC5f5kxGS8ydGef3g6Tje",
     status: "listed",
     intakeDate: "2026-09-22",
     location: "SEL-A04-02",
@@ -284,10 +245,7 @@ const SAMPLES: Card[] = [
     rarity: "luckydraw",
     grade: 9,
     priceUsdt: 126,
-    change24h: -4.7,
     palette: ["#ffb3e6", "#c9a7ff", "#8fd3ff"],
-    asset: "daMHEjnMGHS9jiLWMq51Wgd75bEZH9Py5yGQKBVvbnLg",
-    owner: "tia1jucLj7y9H8y7pcAJKfEnNEkhwHZYHzw46hUvJ31N",
     status: "listed",
     intakeDate: "2026-09-25",
     location: "SEL-B03-19",
@@ -302,10 +260,7 @@ const SAMPLES: Card[] = [
     version: "Jewel Case Ver.",
     rarity: "album",
     priceUsdt: 14,
-    change24h: 1.9,
     palette: ["#ffb3e6", "#c9a7ff", "#8fd3ff"],
-    asset: "r9hHBpVcnUc185ymzAb3vQecAU93LQzsx3zPEkGj7Prc",
-    owner: "yxTgpAGxBttCyT2CpNsTtjxptGJBsm7Rx3wXFDuWPLus",
     status: "listed",
     intakeDate: "2026-09-27",
     location: "SEL-B03-22",
@@ -321,10 +276,7 @@ const SAMPLES: Card[] = [
     rarity: "fansign",
     grade: 10,
     priceUsdt: 1120,
-    change24h: 3.2,
     palette: ["#5ef2c2", "#2a9dff", "#6a4cff"],
-    asset: "xFF2jDSNJx5rJPiZSkvbN28yHCeH37fUPosMUfZ8RzdD",
-    owner: "H3nU1atbkoppjDQU5jNgMjw8ozLZLjTMSmKc9DTjRkpz",
     status: "vaulted",
     intakeDate: "2026-09-29",
     location: "SEL-A02-08",
@@ -340,10 +292,7 @@ const SAMPLES: Card[] = [
     rarity: "album",
     grade: 9,
     priceUsdt: 22,
-    change24h: -1.1,
     palette: ["#5ef2c2", "#2a9dff", "#6a4cff"],
-    asset: "CgdLScv1LKEUsefiMWVVkEZXszspBj6KZjhgN6uqGkLF",
-    owner: "tDA23GXgwr5WTyhdDnmRYSGAim1zqxry7rUFCtmaW4cG",
     status: "listed",
     intakeDate: "2026-10-01",
     location: "SEL-A02-14",
@@ -358,10 +307,7 @@ const SAMPLES: Card[] = [
     version: "Soundwave POB",
     rarity: "pob",
     priceUsdt: 38,
-    change24h: 7.7,
     palette: ["#c2ffd8", "#465efb", "#9a4dff"],
-    asset: "w8W9tWjacfMqzVguozZUvcVzBpxXVHqGvhJrraYhGJV5",
-    owner: "nKGJNMzb69AFRmAnE5TTNbWT4EvTRzrem2wyqdRX1PLq",
     status: "redeeming",
     intakeDate: "2026-10-03",
     location: "SEL-C04-05",
@@ -377,10 +323,7 @@ const SAMPLES: Card[] = [
     rarity: "luckydraw",
     grade: 10,
     priceUsdt: 214,
-    change24h: 11.8,
     palette: ["#c2ffd8", "#465efb", "#9a4dff"],
-    asset: "RwzvTbppbtfzFYFJUY2RNjktSoBvW9gb2Sedj26iU9xW",
-    owner: "C4HRMEWMNqyRJqvTHv6X2pb4PFi5ri3q2GDv2gAG9Xj8",
     status: "listed",
     intakeDate: "2026-10-06",
     location: "SEL-C04-09",
@@ -390,7 +333,8 @@ const SAMPLES: Card[] = [
 
 // devnet 建置後，樣本卡換成鏈上的真實狀態：NFT 地址、持有人（平台錢包，或示範成交的買家），
 // 掛單狀態以託管程序裡實際的掛單為準
-function onChain(c: Card): Card {
+function onChain(sample: Omit<Card, "asset" | "owner">): Card {
+  const c: Card = { ...sample, asset: CHAIN.cards[sample.id] ?? "", owner: CHAIN.platform };
   const asset = CHAIN.cards[c.id];
   if (!asset) return c;
   const trade = CHAIN.market?.demoTrade;
@@ -403,7 +347,6 @@ export const CARDS: Card[] = SAMPLES.map(onChain);
 
 export const HERO_CARDS = [CARDS[0], CARDS[4], CARDS[5]];
 
-export const LAST_AUDIT_DATE = "2026-10-01";
 
 export function findCard(id: string) {
   return CARDS.find((c) => c.id === id);

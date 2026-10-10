@@ -6,21 +6,14 @@ import type { Db } from "./db";
 import { packOrders } from "./schema";
 import { buildBuybackTx, buildPayment, mintPackCard, verifyPayment } from "./funds";
 import { confirmSignature } from "./vault-chain";
-import { BUYBACK_RATE, PACKS, drawFromPool, entryCard, type Pack, type PoolEntry } from "@/lib/packs";
+import { livePool, type Pull } from "./pack-pool";
+import { BUYBACK_RATE, PACKS, drawFromPool, entryCard } from "@/lib/packs";
 
 // 開卡包：付款進平台錢包 → 對帳 → 從卡池抽卡 → 每張抽到的卡在金庫集合鑄成 NFT 給買家。
-// 卡池剩餘張數 = 展示資料的剩餘張數 − 已開出的張數（記在 pack_orders）
 const memoOf = (orderId: string) => `idolca:pack:${orderId}`;
 export const MAX_QTY = 10;
 
-type Pull = { entryId: string; cardId: string; asset: string; tx: string };
 
-export async function livePool(db: Db, pack: Pack): Promise<PoolEntry[]> {
-  const rows = await db.select({ pulls: packOrders.pulls }).from(packOrders).where(and(eq(packOrders.packId, pack.id), isNotNull(packOrders.pulls)));
-  const drawn = new Map<string, number>();
-  for (const r of rows) for (const p of JSON.parse(r.pulls!) as Pull[]) drawn.set(p.entryId, (drawn.get(p.entryId) ?? 0) + 1);
-  return pack.pool.map((e) => ({ ...e, remaining: Math.max(0, e.remaining - (drawn.get(e.id) ?? 0)) }));
-}
 
 export async function createPackOrder(db: Db, userId: string, wallet: string, packId: string, qty: number) {
   const pack = PACKS.find((p) => p.id === packId);
@@ -85,3 +78,5 @@ export async function confirmBuyback(db: Db, userId: string, asset: string, sign
   }
   return { error: "not_found" as const };
 }
+
+

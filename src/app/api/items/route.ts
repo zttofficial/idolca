@@ -1,7 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { requireUser } from "@/lib/server/require-user";
 import { collectorItems } from "@/lib/server/schema";
-import { MAX_PHOTOS, demoAssetId, matchTemplate, newItemId, priceToCents, publicItem } from "@/lib/server/items";
+import { MAX_DESCRIPTION, MAX_PHOTOS, demoAssetId, matchTemplate, newItemId, priceToCents, publicItem } from "@/lib/server/items";
 import { saveUploads } from "@/lib/server/media";
 import { chainEnabled, mintCollectorNft } from "@/lib/server/chain";
 import { isCardSource } from "@/lib/sources";
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
   const album = text(body.album, 80) || null;
   const version = text(body.version, 80) || null;
   const title = text(body.title, 80) || null;
+  const description = text(body.description, MAX_DESCRIPTION) || null;
   const quantity = Number.isInteger(body.quantity) && (body.quantity as number) >= 1 && (body.quantity as number) <= 99 ? (body.quantity as number) : 1;
   const source = isCardSource(body.source) ? body.source : "album";
   if (!group || !member) return Response.json({ error: "missing_name" }, { status: 400 });
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
       photoBack,
       extraPhotos: extra.length ? JSON.stringify(extra) : null,
       title,
+      description,
       quantity,
       source,
       groupName: group,

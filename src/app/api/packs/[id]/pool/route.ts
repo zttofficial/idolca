@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { getDb } from "@/lib/server/db";
-import { livePool } from "@/lib/server/packs";
+import { livePool } from "@/lib/server/pack-pool";
 import { PACKS } from "@/lib/packs";
 
 // 卡池即時剩餘張數（扣掉已開出的），卡包頁用它算機率

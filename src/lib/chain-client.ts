@@ -103,3 +103,42 @@ export function withLive<T extends CardLike>(cards: T[], chain: ChainState | nul
     return [{ ...c, owner: s.listing?.seller ?? s.owner, status, priceUsdt: s.listing?.priceUsdt ?? c.priceUsdt }];
   });
 }
+
+// 自由刊登清單（整站共用一份），給圖鑑算在售數量
+type ListingLite = { id: string; templateId: string | null; priceUsdt: number | null };
+let listings: ListingLite[] | null = null;
+let listingsLoading: Promise<void> | null = null;
+const listingListeners = new Set<() => void>();
+function subscribeListings(l: () => void) {
+  listingListeners.add(l);
+  listingsLoading ??= fetch("/api/listings")
+    .then((r) => (r.ok ? r.json() : { listings: [] }))
+    .then((d: { listings: ListingLite[] }) => {
+      listings = d.listings;
+      listingListeners.forEach((x) => x());
+    })
+    .catch(() => {});
+  return () => listingListeners.delete(l);
+}
+const useListings = () =>
+  useSyncExternalStore(
+    subscribeListings,
+    () => listings,
+    () => null,
+  );
+
+export type TemplateMarket = { forSale: number; fromUsdt: number | null };
+
+// 一個卡款的真實在售情況：金庫卡（鏈上掛單）加上對得上這個卡款的自由刊登
+export function useTemplateMarket() {
+  const chain = useChainState();
+  const free = useListings();
+  return (template: { id: string; listingId?: string }): TemplateMarket | null => {
+    if (!chain || !free) return null;
+    const prices: number[] = [];
+    const vault = template.listingId ? chain.cards[template.listingId]?.listing : null;
+    if (vault) prices.push(vault.priceUsdt);
+    for (const l of free) if (l.templateId === template.id && l.priceUsdt !== null) prices.push(l.priceUsdt);
+    return { forSale: prices.length, fromUsdt: prices.length ? Math.min(...prices) : null };
+  };
+}

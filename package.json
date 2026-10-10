@@ -10,7 +10,6 @@
     "chain:mint-card": "node --env-file-if-exists=.env.local scripts/mint-card.ts",
     "chain:redeem": "node --env-file-if-exists=.env.local scripts/redeem.ts",
     "chain:setup-devnet": "tsx --env-file-if-exists=.env.local scripts/setup-devnet.ts",
-    "chain:devnet-history": "tsx --env-file-if-exists=.env.local scripts/devnet-history.ts",
     "chain:devnet-market": "cd onchain && node ../node_modules/tsx/dist/cli.mjs scripts/devnet-market.mts"
   },
   "dependencies": {

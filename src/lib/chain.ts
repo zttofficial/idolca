@@ -20,8 +20,6 @@ export type ChainConfig = {
     listings: Record<string, string>;
     demoTrade?: { card: string; buyer: string; listTx: string; buyTx: string };
   };
-  // 每張樣本卡的鏈上紀錄（scripts/devnet-history.ts 從鏈上讀回）
-  events?: Record<string, { type: "mint" | "list" | "sale"; date: string; signature: string; priceUsdt?: number; from?: string; to?: string }[]>;
 };
 
 export const CHAIN: ChainConfig = devnet as ChainConfig;

@@ -103,6 +103,13 @@ async function ListingContent({ params }: { params: PageProps<"/[locale]/listing
             </ol>
           </div>
 
+          {listing.description && (
+            <div className={SECTION}>
+              <h2 className="text-base font-semibold">{t("sellerNotes")}</h2>
+              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink-2">{listing.description}</p>
+            </div>
+          )}
+
           <div className="rounded-2xl border border-notice-ink/20 bg-notice-bg p-5 text-notice-ink">
             <p className="text-sm font-semibold">{t("disclaimerTitle")}</p>
             <p className="mt-2 text-xs leading-relaxed">{t("disclaimerBody")}</p>

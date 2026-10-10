@@ -178,7 +178,7 @@ export default function MarketBrowser() {
         <label className="flex items-center gap-2 text-sm text-ink-2">
           <span className="hidden sm:inline">{t("sortLabel")}</span>
           <select value={q.sort} onChange={(e) => go({ sort: e.target.value as MarketQuery["sort"] })} className="rounded-full border border-line bg-surface px-3 py-2.5 text-sm text-ink outline-none">
-            {SORTS.filter((s) => !free || s !== "trending").map((s) => (
+            {SORTS.map((s) => (
               <option key={s} value={s}>
                 {t(`sort_${s}`)}
               </option>

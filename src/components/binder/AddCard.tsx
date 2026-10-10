@@ -85,6 +85,7 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
   const [back, setBack] = useState<string>();
   const [extras, setExtras] = useState<string[]>([]);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [sell, setSell] = useState(false);
   const [price, setPrice] = useState("");
@@ -117,7 +118,7 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
     setBusy(true);
     setError(false);
     try {
-      setDone(await mintItem({ photos: [front, back, ...extras], title, quantity, source, group, member, album, version, priceUsdt: sell ? priceValue : undefined }));
+      setDone(await mintItem({ photos: [front, back, ...extras], title, description, quantity, source, group, member, album, version, priceUsdt: sell ? priceValue : undefined }));
     } catch {
       setError(true);
     } finally {
@@ -222,6 +223,17 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
                 <label className="text-xs font-medium text-ink-2">
                   {t("detail")}
                   <input value={version} onChange={(e) => setVersion(e.target.value)} list="add-versions" maxLength={80} className={field} />
+                </label>
+                <label className="col-span-2 text-xs font-medium text-ink-2">
+                  {t("descriptionLabel")}
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    maxLength={500}
+                    rows={3}
+                    placeholder={t("descriptionPlaceholder")}
+                    className={`${field} resize-y leading-relaxed`}
+                  />
                 </label>
               </div>
               <datalist id="add-groups">{GROUPS.map((x) => <option key={x.id} value={x.name} />)}</datalist>

@@ -37,10 +37,9 @@ npm run lint
 需要在 `.env.local` 設定 `PLATFORM_KEYPAIR`（Solana CLI 格式的金鑰檔路徑，不要放進倉庫），錢包裡要有 SOL 付手續費。devnet 的地址和交易記在 `src/lib/chain/devnet.json`，說明見技術選型的「devnet 部署」。
 
 ```bash
-# devnet 建置，三步都可以重複執行
+# devnet 建置，兩步都可以重複執行
 npm run chain:setup-devnet     # 兩個集合 + 19 張樣本金庫卡
 npm run chain:devnet-market    # 初始化託管程序、掛單、示範成交（要先部署程序，見下節）
-npm run chain:devnet-history   # 從鏈上讀回每張卡的鑄造、掛單、成交紀錄
 
 # 入庫鑑定通過後鑄造 NFT；卡片資料格式見 scripts/cards/IC-000128.json，估值低於 10 USDT 的卡會被拒絕
 npm run chain:mint-card -- --card scripts/cards/IC-000128.json --owner <寄存人錢包> --uri https://.../IC-000128.json
@@ -74,21 +73,21 @@ src/
     page.tsx              首頁
     market/               市場頁：金庫卡和自由刊登兩個頁籤，搜尋、團體和成員、類型、價格、排序、分頁
     vault/                金庫頁：每張卡的 NFT 地址、持有人、狀態，可按狀態篩選和搜尋
-    card/[id]/            金庫卡內頁：看卡、用錢包購買／掛單／提貨、鑑定報告、價格走勢、同款在售、鏈上紀錄、費用與保障
+    card/[id]/            金庫卡內頁：看卡、用錢包購買／掛單／提貨、卡片資訊、即時鏈上紀錄
     listing/[id]/         自由刊登商品頁：賣家照片、價格、免責聲明、擔保交易購買
     admin/                後台：提貨出貨、標記假卡（ADMIN_TOKEN）
+    charts/               Circle Chart 週專輯榜前 10 名
     packs/                盲盒卡包列表和卡包頁（機率、卡池、開包）
     catalog/              圖鑑：團體列表、團體卡款（標記有 / 想要）
     binder/               收藏冊：卡冊、鏈上卡、擔保交易訂單、收集進度、想要清單、上鏈、刊登
-    charts/               專輯銷量榜看板（週榜、初動）
   app/api/                帳號（郵箱、錢包登入與綁定）、收藏冊同步、自由上鏈與刊登、擔保交易訂單、開卡包與回購、金庫卡交易、鏈上狀態與測試幣、卡片照片、NFT 元數據、後台
   i18n/                   next-intl 路由、導航、請求配置
   proxy.ts                語言前綴路由
   components/
     hero/                 首頁主視覺：3D 旋轉小卡（HoloCard3D）
-    card/                 卡片內頁的看卡切換、購買面板、價格走勢圖
+    card/                 卡片內頁的看卡切換、購買面板、鏈上紀錄
     packs/                卡包包裝、倒數、開包流程（撕包、翻卡、結果）
-    binder/               圖鑑卡款、卡冊、上鏈對話框
+    binder/               圖鑑卡款、可翻頁的活頁卡冊（BinderBook）、上鏈對話框
     market/               市場瀏覽、金庫卡全息懸停卡（HoloTile）、自由刊登卡、照片圖庫
     vault/                金庫清單
     landing/              首頁說明區塊
@@ -99,17 +98,15 @@ src/
     server/               資料庫連線（Neon / PGlite）、表結構、密碼與會話、錢包簽名驗證、照片處理與浮水印、鏈上鑄造與標假卡、金庫卡交易組裝、收付款對帳、擔保訂單、卡包
     solana/               網路與地址配置、瀏覽器錢包偵測、簽名登入、簽名送出交易、Helius DAS、掛單 PDA
     vault.ts              金庫資料：有 Helius 配置時讀鏈上集合，否則用展示資料
-    card-detail.ts        卡片內頁的樣本資料：鑑定、成交、鏈上紀錄、同款在售、賣家
     packs.ts              盲盒卡包：卡池、按剩餘張數計算的機率、抽卡
-    charts.ts             專輯銷量榜樣本數據
     market.ts             市場兩條線的篩選、排序、分頁和網址參數
     chain-client.ts       瀏覽器端的鏈上即時狀態、錢包餘額、交易流程
     chain/                devnet 上的地址和交易紀錄（devnet.json）、託管程序 IDL
     sources.ts            小卡來源分類
     catalog.ts            圖鑑：團體、成員、專輯、版本和卡款
     binder.ts             收藏冊資料（目前存在瀏覽器 localStorage）
-    fx.ts                 當地貨幣參考價
-    mock-cards.ts         19 張樣本卡（真實藝人和專輯，示意價格，隨機生成的地址）
+    fx.ts                 USDT 金額格式
+    mock-cards.ts         19 張樣本金庫卡的卡片資料（已在 devnet 鑄造，地址見 chain/devnet.json）
     card-art.ts           canvas 生成的佔位卡面
 messages/                 八種語言的介面文字
 scripts/                  平台端 Metaplex Core 腳本：建集合、鑄造、提貨

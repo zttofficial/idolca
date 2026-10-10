@@ -6,7 +6,7 @@ import type { Listing } from "./items";
 import type { Card, Rarity } from "./mock-cards";
 
 export const PAGE_SIZE = 12;
-export const SORTS = ["trending", "newest", "priceAsc", "priceDesc"] as const;
+export const SORTS = ["newest", "priceAsc", "priceDesc"] as const;
 export type Sort = (typeof SORTS)[number];
 export const RARITIES: Rarity[] = ["album", "pob", "luckydraw", "fansign"];
 export const LANES = ["vault", "free"] as const;
@@ -38,7 +38,7 @@ export function parseQuery(sp: URLSearchParams): MarketQuery {
     min: num(sp.get("min")),
     max: num(sp.get("max")),
     listedOnly: sp.get("listed") === "1",
-    sort: SORTS.includes(sort) ? sort : "trending",
+    sort: SORTS.includes(sort) ? sort : "newest",
     page: Math.max(1, Math.floor(num(sp.get("page")) ?? 1)),
   };
 }
@@ -54,7 +54,7 @@ export function toSearch(q: MarketQuery) {
   if (q.min !== null) sp.set("min", String(q.min));
   if (q.max !== null) sp.set("max", String(q.max));
   if (q.listedOnly) sp.set("listed", "1");
-  if (q.sort !== "trending") sp.set("sort", q.sort);
+  if (q.sort !== "newest") sp.set("sort", q.sort);
   if (q.page > 1) sp.set("page", String(q.page));
   return sp.toString();
 }
@@ -84,26 +84,25 @@ export function applyQuery(cards: Card[], q: MarketQuery) {
       (!q.group || c.group === q.group) &&
       (!q.member || c.member === q.member) &&
       (!q.types.length || q.types.includes(c.rarity)) &&
-      (q.min === null || c.priceUsdt >= q.min) &&
-      (q.max === null || c.priceUsdt <= q.max) &&
+      // 價格篩選只看在售的卡（價格是鏈上的掛單價）
+      ((q.min === null && q.max === null) || (c.status === "listed" && (q.min === null || c.priceUsdt >= q.min) && (q.max === null || c.priceUsdt <= q.max))) &&
       (!q.listedOnly || c.status === "listed"),
   );
   const sorted = [...filtered].sort((a, b) => {
     switch (q.sort) {
-      case "newest":
-        return b.intakeDate.localeCompare(a.intakeDate);
+      // 按價格排序時，沒在售的卡排在最後
       case "priceAsc":
-        return a.priceUsdt - b.priceUsdt;
+        return Number(b.status === "listed") - Number(a.status === "listed") || a.priceUsdt - b.priceUsdt;
       case "priceDesc":
-        return b.priceUsdt - a.priceUsdt;
+        return Number(b.status === "listed") - Number(a.status === "listed") || b.priceUsdt - a.priceUsdt;
       default:
-        return b.change24h - a.change24h;
+        return b.intakeDate.localeCompare(a.intakeDate);
     }
   });
   return paginate(sorted, q.page);
 }
 
-// 自由刊登：比對標題、團體、成員、專輯、版本；「熱門」暫時等同最新刊登
+// 自由刊登：比對標題、團體、成員、專輯、版本
 export function applyListingQuery(listings: Listing[], q: MarketQuery) {
   const filtered = listings.filter(
     (l) =>

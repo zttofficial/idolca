@@ -4,8 +4,6 @@
 // 所有頁面透過 useBinder 共用同一份快照，任何一處改動都會即時同步到其他元件和分頁。
 
 import { useSyncExternalStore } from "react";
-import { seeded } from "./seeded";
-import { TEMPLATES } from "./catalog";
 
 export type BinderEntry = {
   count: number;
@@ -136,19 +134,5 @@ export const binderActions = {
   },
   clear() {
     write(EMPTY);
-  },
-  // 示範收藏冊：讓第一次來的用戶看到收藏冊填滿的樣子
-  loadSample() {
-    const rand = seeded("sample-binder");
-    const have: Record<string, BinderEntry> = {};
-    const want: Record<string, true> = {};
-    for (const t of TEMPLATES) {
-      const r = rand();
-      if (t.listingId) have[t.id] = { count: 1 };
-      else if (t.member === "Wonyoung" && t.rarity !== "fansign" && r < 0.8) have[t.id] = { count: 1 + Math.floor(rand() * 2) };
-      else if (t.rarity === "album" && r < 0.12) have[t.id] = { count: 1 };
-      else if ((t.rarity === "pob" || t.rarity === "luckydraw") && r < 0.04) want[t.id] = true;
-    }
-    write({ have, want });
   },
 };

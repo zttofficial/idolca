@@ -4,16 +4,14 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import HoloTile from "@/components/market/HoloTile";
 import CardGallery from "@/components/card/CardGallery";
 import BuyPanel from "@/components/card/BuyPanel";
-import PriceChart from "@/components/card/PriceChart";
+import ChainActivity from "@/components/card/ChainActivity";
 import OnSolanaBadge from "@/components/web3/OnSolanaBadge";
 import { Link } from "@/i18n/navigation";
-import { FEES, getCardDetail, type ChainEvent } from "@/lib/card-detail";
-import { formatUsdt } from "@/lib/fx";
+import { CHAIN } from "@/lib/chain";
 import { CARDS, findCard } from "@/lib/mock-cards";
-import { CLUSTER, shortAddress, solscanUrl } from "@/lib/solana/config";
+import { shortAddress, solscanUrl } from "@/lib/solana/config";
 
 export function generateStaticParams() {
   return CARDS.map((c) => ({ id: c.id }));
@@ -25,41 +23,19 @@ export async function generateMetadata(props: PageProps<"/[locale]/card/[id]">):
 }
 
 const SECTION = "rounded-2xl border border-line bg-surface p-5";
-const H2 = "text-base font-semibold";
-const SUB = "mt-1 text-xs text-ink-3";
 
-const EVENT_DOT: Record<ChainEvent["type"], string> = {
-  mint: "bg-accent",
-  list: "bg-ink-3",
-  sale: "bg-up",
-  cancel: "bg-line",
-};
-
-// 外框（導航、頁腳）是靜態的；讀取網址參數的內容放進 Suspense，客戶端導航時先顯示骨架
+// 學 Courtyard：左邊看卡，右邊是名稱、購買、卡片資訊；下面是鏈上紀錄。價格、持有人、紀錄都是即時鏈上數據
 export default function CardPage(props: PageProps<"/[locale]/card/[id]">) {
   return (
     <>
       <Navbar />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
-        <Suspense fallback={<CardSkeleton />}>
+        <Suspense fallback={<div className="mt-10 h-[520px] animate-pulse rounded-2xl bg-surface-2" />}>
           <CardContent params={props.params} />
         </Suspense>
       </main>
       <Footer />
     </>
-  );
-}
-
-function CardSkeleton() {
-  return (
-    <div className="mt-10 grid animate-pulse gap-10 md:grid-cols-[minmax(0,380px)_1fr]">
-      <div className="mx-auto aspect-[55/85] w-full max-w-[380px] rounded-2xl bg-surface-2" />
-      <div className="space-y-5">
-        <div className="h-24 rounded-2xl bg-surface-2" />
-        <div className="h-44 rounded-2xl bg-surface-2" />
-        <div className="h-56 rounded-2xl bg-surface-2" />
-      </div>
-    </div>
   );
 }
 
@@ -69,26 +45,8 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
   const t = await getTranslations("Detail");
   const tCard = await getTranslations("Card");
   const tRarity = await getTranslations("Rarity");
-  const tStatus = await getTranslations("Status");
 
-  const detail = getCardDetail(card);
-  const { condition, sales, events, otherListings, seller } = detail;
-  const prices = sales.map((s) => s.priceUsdt);
-  const lastSale = prices[prices.length - 1];
-  const recent = sales.filter((s) => Date.parse(s.date) >= Date.parse(sales[sales.length - 1].date) - 30 * 86_400_000);
-  const avg30 = Math.round(recent.reduce((sum, s) => sum + s.priceUsdt, 0) / recent.length);
-  const stats = [
-    { label: t("statLast"), value: lastSale },
-    { label: t("statAvg"), value: avg30 },
-    { label: t("statLow"), value: Math.min(...prices) },
-    { label: t("statHigh"), value: Math.max(...prices) },
-  ];
-  const subgrades = [
-    { label: t("centering"), value: condition.subgrades.centering },
-    { label: t("corners"), value: condition.subgrades.corners },
-    { label: t("edges"), value: condition.subgrades.edges },
-    { label: t("surface"), value: condition.subgrades.surface },
-  ];
+  // 這些都是鑄造時寫進 NFT Attributes 的資料
   const attributes = [
     [tCard("serial"), card.serial],
     [tCard("group"), card.group],
@@ -96,18 +54,9 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
     [tCard("album"), card.album],
     [tCard("version"), card.version],
     [tCard("type"), tRarity(card.rarity)],
-    [tCard("grade"), card.grade ? `${card.grade}` : tCard("ungraded")],
+    ...(card.grade ? [[tCard("grade"), String(card.grade)]] : []),
     [tCard("intakeDate"), card.intakeDate],
-  ];
-  // Magic Eden 和 Tensor 只支援主網，devnet 上只連 Solscan
-  const explorers = [
-    { label: "Solscan", href: solscanUrl("account", card.asset) },
-    ...(CLUSTER === "mainnet-beta"
-      ? [
-          { label: "Magic Eden", href: `https://magiceden.io/item-details/${card.asset}` },
-          { label: "Tensor", href: `https://www.tensor.trade/item/${card.asset}` },
-        ]
-      : []),
+    [t("custodyLocation"), card.location],
   ];
 
   return (
@@ -122,8 +71,7 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
         <span className="text-ink">{card.member}</span>
       </nav>
 
-      {/* 首屏：左邊看卡，右邊買卡 */}
-      <div className="mt-6 grid gap-10 md:grid-cols-[minmax(0,380px)_1fr]">
+      <div className="mt-6 grid gap-10 md:grid-cols-[minmax(0,400px)_1fr]">
         <div className="md:sticky md:top-24 md:self-start">
           <CardGallery card={card} />
         </div>
@@ -133,7 +81,6 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
             <div className="flex flex-wrap items-center gap-2">
               <OnSolanaBadge />
               <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] text-ink">{tRarity(card.rarity)}</span>
-              <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] text-ink">{tStatus(card.status)}</span>
             </div>
             <h1 className="mt-3 text-3xl font-bold tracking-tight">
               {card.group} <span className="text-accent-ink">{card.member}</span>
@@ -141,280 +88,38 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
             <p className="mt-1 text-ink-2">
               {card.album} · {card.version}
             </p>
-            <p className="mt-1 font-mono text-xs text-ink-3">{card.serial}</p>
           </div>
 
-          <BuyPanel card={card} lastSale={lastSale} likes={detail.likes} />
+          <BuyPanel card={card} />
 
           <section className={SECTION}>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className={H2}>{t("authTitle")}</h2>
-                <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-up">
-                  <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="currentColor" aria-hidden>
-                    <path d="M10 1.5 3 4.5v5c0 4.1 3 7.6 7 9 4-1.4 7-4.9 7-9v-5l-7-3Zm-1 12.1-3.3-3.3 1.4-1.4L9 10.8l3.9-3.9 1.4 1.4L9 13.6Z" />
-                  </svg>
-                  {t("authBadge")}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-4xl font-bold leading-none tabular-nums">{condition.grade}</p>
-                <p className="mt-1 text-xs text-ink-2">{t(`condition_${condition.condition}`)}</p>
-              </div>
-            </div>
-            <p className="mt-3 text-xs leading-relaxed text-ink-3">
-              {t("authBody")}
-              {!card.grade && ` ${t("ungradedNote")}.`}
-            </p>
-            <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
-              {subgrades.map((s) => (
-                <div key={s.label}>
-                  <dt className="flex justify-between text-[11px] text-ink-3">
-                    {s.label}
-                    <span className="text-ink tabular-nums">{s.value}</span>
-                  </dt>
-                  <dd className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-accent-soft" aria-hidden>
-                    <div className="h-full rounded-full bg-accent" style={{ width: `${(s.value / 10) * 100}%` }} />
-                  </dd>
-                </div>
-              ))}
-            </dl>
-            <ul className="mt-4 flex flex-wrap gap-2">
-              {condition.notes.map((n) => (
-                <li key={n} className="rounded-full border border-line px-2.5 py-1 text-[11px] text-ink-2">
-                  {t(`note_${n}`)}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-3 text-[11px] text-ink-3">
-              {t("inspectedOn", { date: condition.inspectedOn, inspector: condition.inspector })}
-            </p>
-          </section>
-
-          <section className={SECTION}>
-            <h2 className={H2}>{t("custodyTitle")}</h2>
+            <h2 className="text-base font-semibold">{t("detailsTitle")}</h2>
             <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-              {[
-                [t("custodyLocation"), t("custodyLocationValue")],
-                [t("custodyIntake"), card.intakeDate],
-                [t("custodyStatus"), tStatus(card.status)],
-                [t("custodyInsured"), t("custodyInsuredValue")],
-              ].map(([k, v]) => (
+              {attributes.map(([k, v]) => (
                 <div key={k}>
                   <dt className="text-[11px] text-ink-3">{k}</dt>
-                  <dd className="mt-0.5 text-ink">{v}</dd>
+                  <dd className="mt-0.5 break-words">{v}</dd>
                 </div>
               ))}
             </dl>
-          </section>
-        </div>
-      </div>
-
-      {/* 價格走勢 */}
-      <section className={`${SECTION} mt-12`}>
-        <h2 className={H2}>{t("priceTitle")}</h2>
-        <p className={SUB}>{t("priceSubtitle")}</p>
-        <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {stats.map((s) => (
-            <div key={s.label} className="rounded-xl bg-surface-2 px-4 py-3">
-              <dt className="text-[11px] text-ink-3">{s.label}</dt>
-              <dd className="mt-1 text-lg font-semibold">{formatUsdt(s.value)}</dd>
-            </div>
-          ))}
-        </dl>
-        <div className="mt-5">
-          <PriceChart sales={sales} />
-        </div>
-      </section>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
-        {/* 同款其他在售 */}
-        <section className={SECTION}>
-          <h2 className={H2}>{t("othersTitle")}</h2>
-          <p className={SUB}>{t("othersSubtitle")}</p>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[420px] text-left text-sm">
-              <thead className="text-[11px] text-ink-3">
-                <tr>
-                  <th className="pb-2 font-medium">{t("colSerial")}</th>
-                  <th className="pb-2 font-medium">{t("colGrade")}</th>
-                  <th className="pb-2 font-medium">{t("colSeller")}</th>
-                  <th className="pb-2 text-right font-medium">{t("colPrice")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                <tr className="bg-accent-soft">
-                  <td className="py-2.5 font-mono text-xs text-accent-ink">{card.serial}</td>
-                  <td className="py-2.5 font-mono text-xs">{condition.grade}</td>
-                  <td className="py-2.5 font-mono text-xs text-ink-2">{shortAddress(card.owner)}</td>
-                  <td className="py-2.5 text-right text-xs font-semibold tabular-nums">{formatUsdt(card.priceUsdt)}</td>
-                </tr>
-                {otherListings.map((o) => (
-                  <tr key={o.serial}>
-                    <td className="py-2.5 font-mono text-xs text-ink">{o.serial}</td>
-                    <td className="py-2.5 font-mono text-xs">{o.grade}</td>
-                    <td className="py-2.5 font-mono text-xs text-ink-2">{shortAddress(o.seller)}</td>
-                    <td className="py-2.5 text-right text-xs tabular-nums">{formatUsdt(o.priceUsdt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* 賣家 */}
-        <section className={SECTION}>
-          <h2 className={H2}>{t("sellerTitle")}</h2>
-          <div className="mt-3 flex items-center gap-3">
-            <span
-              className="h-10 w-10 shrink-0 rounded-full"
-              style={{ background: `linear-gradient(135deg, ${card.palette[0]}, ${card.palette[2]})` }}
-              aria-hidden
-            />
-            <a
-              href={solscanUrl("account", seller.address)}
-              target="_blank"
-              rel="noreferrer"
-              className="truncate font-mono text-sm text-ink hover:text-ink"
-            >
-              {shortAddress(seller.address, 6, 6)}
-            </a>
-          </div>
-          <dl className="mt-4 grid grid-cols-2 gap-3">
-            {[
-              [t("sellerSales"), seller.sales.toLocaleString("en-US")],
-              [t("sellerListings"), seller.listings],
-              [t("sellerPositive"), `${seller.positivePct}%`],
-              [t("sellerJoined"), seller.joined],
-            ].map(([k, v]) => (
-              <div key={k} className="rounded-xl bg-surface-2 px-3 py-2">
-                <dt className="text-[11px] text-ink-3">{k}</dt>
-                <dd className="mt-0.5 font-mono text-sm">{v}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-      </div>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        {/* 鏈上紀錄 */}
-        <section className={SECTION}>
-          <h2 className={H2}>{t("historyTitle")}</h2>
-          <p className={SUB}>{t("historySubtitle")}</p>
-          <dl className="mt-4 divide-y divide-line rounded-xl bg-surface-2 text-xs">
-            {[
-              [tCard("asset"), card.asset],
-              [tCard("owner"), card.owner],
-            ].map(([k, v]) => (
-              <div key={k} className="flex justify-between gap-4 px-3 py-2">
-                <dt className="text-ink-3">{k}</dt>
-                <dd className="truncate font-mono text-ink" title={v}>
-                  {shortAddress(v, 8, 8)}
-                </dd>
-              </div>
-            ))}
-            <div className="flex justify-between gap-4 px-3 py-2">
-              <dt className="text-ink-3">{tCard("standard")}</dt>
-              <dd className="text-ink">Metaplex Core</dd>
-            </div>
-          </dl>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {explorers.map((l) => (
-              <a
-                key={l.label}
-                href={l.href}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-full border border-line bg-surface px-3 py-1 text-[11px] text-ink hover:bg-surface-3"
-              >
-                {l.label} ↗
+            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 border-t border-line pt-3 text-xs text-ink-3">
+              <a href={solscanUrl("account", card.asset)} target="_blank" rel="noreferrer" className="hover:text-ink">
+                NFT <span className="font-mono">{shortAddress(card.asset, 6, 6)}</span> ↗
               </a>
-            ))}
-          </div>
-          <ol className="mt-5 space-y-4 border-l border-line pl-5">
-            {events.map((e) => (
-              <li key={e.signature} className="relative">
-                <span className={`absolute top-1.5 -left-[25px] h-2.5 w-2.5 rounded-full ring-2 ring-surface ${EVENT_DOT[e.type]}`} />
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                  <p className="text-sm font-medium">
-                    {t(`event_${e.type}`)}
-                    {e.priceUsdt !== undefined && <span className="ml-2 text-ink-2 tabular-nums">{formatUsdt(e.priceUsdt)}</span>}
-                  </p>
-                  <span className="font-mono text-[11px] text-ink-3">{e.date}</span>
-                </div>
-                <p className="mt-0.5 font-mono text-[11px] text-ink-3">
-                  {e.from && (
-                    <>
-                      {t("from")} {shortAddress(e.from)}{" "}
-                    </>
-                  )}
-                  {e.to && (
-                    <>
-                      {t("to")} {shortAddress(e.to)}{" "}
-                    </>
-                  )}
-                  ·{" "}
-                  <a href={solscanUrl("tx", e.signature)} target="_blank" rel="noreferrer" className="text-accent-ink hover:text-accent-ink">
-                    tx {shortAddress(e.signature)}
-                  </a>
-                </p>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        <div className="space-y-6">
-          {/* 屬性 */}
-          <section className={SECTION}>
-            <h2 className={H2}>{tCard("attributes")}</h2>
-            <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {attributes.map(([k, v]) => (
-                <div key={k} className="rounded-xl bg-surface-2 px-3 py-2">
-                  <dt className="text-[11px] text-ink-3">{k}</dt>
-                  <dd className="mt-0.5 truncate text-sm">{v}</dd>
-                </div>
-              ))}
-            </dl>
+              {CHAIN.vaultCollection && (
+                <a href={solscanUrl("account", CHAIN.vaultCollection)} target="_blank" rel="noreferrer" className="hover:text-ink">
+                  {t("collection")} ↗
+                </a>
+              )}
+            </div>
           </section>
 
-          {/* 費用與保障 */}
           <section className={SECTION}>
-            <h2 className={H2}>{t("feesTitle")}</h2>
-            <dl className="mt-3 divide-y divide-line text-sm">
-              {[
-                [t("feePlatform"), t("feePlatformValue", { pct: FEES.platformBps / 100 })],
-                [t("feeNetwork"), t("feeNetworkValue", { usd: FEES.networkUsd })],
-                [t("feeShipping"), t("feeShippingValue")],
-                [t("feeRedeem"), t("feeRedeemValue", { usdt: FEES.redemptionFromUsdt })],
-              ].map(([k, v]) => (
-                <div key={k} className="flex justify-between gap-4 py-2">
-                  <dt className="shrink-0 text-ink-3">{k}</dt>
-                  <dd className="text-right text-ink">{v}</dd>
-                </div>
-              ))}
-            </dl>
-            <h3 className="mt-5 text-sm font-semibold">{t("policyTitle")}</h3>
-            <ul className="mt-2 space-y-2 text-xs leading-relaxed text-ink-2">
-              {[t("policyEscrow"), t("policyAuth"), t("policyCountries")].map((p) => (
-                <li key={p} className="flex gap-2">
-                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-accent" />
-                  {p}
-                </li>
-              ))}
-            </ul>
+            <h2 className="text-base font-semibold">{t("activityTitle")}</h2>
+            <ChainActivity cardId={card.id} />
           </section>
         </div>
       </div>
-
-      {/* 推薦 */}
-      <section className="mt-14">
-        <h2 className="text-xl font-bold tracking-tight">{t("relatedTitle")}</h2>
-        <div className="mt-6 grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-4">
-          {detail.related.map((c) => (
-            <HoloTile key={c.id} card={c} />
-          ))}
-        </div>
-      </section>
     </>
   );
 }

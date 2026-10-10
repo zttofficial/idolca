@@ -14,6 +14,8 @@ export type CollectorItem = {
   photoBack: string | null;
   photos: string[];
   title: string | null;
+  // 持有人寫的描述，選填
+  description: string | null;
   quantity: number;
   source: CardSource;
   group: string;
@@ -72,6 +74,7 @@ export function clearItems() {
 export type MintInput = {
   photos: string[];
   title?: string;
+  description?: string;
   quantity: number;
   source: CardSource;
   group: string;
@@ -95,6 +98,16 @@ export async function setListing(id: string, priceUsdt: number | null) {
   const res = await fetch(`/api/items/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ priceUsdt }) });
   const data = (await res.json()) as { item?: CollectorItem; error?: string };
   if (!data.item) throw new Error(data.error ?? "listing_failed");
+  items = items.map((i) => (i.id === id ? data.item! : i));
+  emit();
+  return data.item;
+}
+
+// 改描述（空字串清除）
+export async function setDescription(id: string, description: string) {
+  const res = await fetch(`/api/items/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ description }) });
+  const data = (await res.json()) as { item?: CollectorItem; error?: string };
+  if (!data.item) throw new Error(data.error ?? "update_failed");
   items = items.map((i) => (i.id === id ? data.item! : i));
   emit();
   return data.item;

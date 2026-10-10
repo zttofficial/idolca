@@ -331,3 +331,37 @@ body {
     transition: none;
   }
 }
+
+/* 卡冊翻頁：翻下一頁以左緣為軸轉到 -180°，翻上一頁以右緣為軸轉到 180°；轉到一半時頁面背光變暗 */
+@keyframes binder-flip-next {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(-180deg);
+  }
+}
+@keyframes binder-flip-prev {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(180deg);
+  }
+}
+@keyframes binder-shade {
+  from {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [style*="binder-flip"] {
+    animation-duration: 1ms !important;
+  }
+}

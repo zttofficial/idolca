@@ -7,6 +7,7 @@ import CardArt from "./CardArt";
 import OnSolanaBadge from "@/components/web3/OnSolanaBadge";
 import UsdtPrice from "@/components/web3/UsdtPrice";
 import type { Card } from "@/lib/mock-cards";
+import { useChainState } from "@/lib/chain-client";
 
 // 全息卡面：滑鼠位置驅動 CSS 3D 傾斜、彩虹箔和高光（樣式見 globals.css 的 .holo-tile）
 export function HoloCardFace({ card }: { card: Card }) {
@@ -45,9 +46,12 @@ export function HoloCardFace({ card }: { card: Card }) {
   );
 }
 
-// 列表卡：卡面 + 名稱、價格
+// 列表卡：卡面 + 名稱；價格只在鏈上真的掛單時顯示，否則顯示目前狀態
 export default function HoloTile({ card }: { card: Card }) {
   const tRarity = useTranslations("Rarity");
+  const tStatus = useTranslations("Status");
+  const chain = useChainState();
+  const live = chain?.ready ? chain.cards[card.id] : undefined;
 
   return (
     <article className="group">
@@ -64,7 +68,13 @@ export default function HoloTile({ card }: { card: Card }) {
         <p className="font-semibold text-ink">
           {card.member} <span className="font-normal text-ink-3">{card.version}</span>
         </p>
-        <UsdtPrice amount={card.priceUsdt} className="text-base font-bold tabular-nums" />
+        {!chain ? (
+          <span className="block h-5 w-20 animate-pulse rounded bg-surface-2" />
+        ) : live?.listing ? (
+          <UsdtPrice amount={live.listing.priceUsdt} className="text-base font-bold tabular-nums" />
+        ) : (
+          <span className="text-sm text-ink-3">{tStatus(live?.burned ? "redeemed" : live?.redeeming ? "redeeming" : "vaulted")}</span>
+        )}
       </div>
     </article>
   );

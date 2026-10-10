@@ -13,29 +13,26 @@ const PRIMARY = "btn-primary flex-1 rounded-full px-6 py-3 text-sm font-semibold
 const SECONDARY =
   "flex-1 rounded-full border border-line bg-surface px-6 py-3 text-sm font-semibold text-ink transition hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-50";
 
-export default function BuyPanel({ card, lastSale, likes }: { card: Card; lastSale: number; likes: number }) {
+// 價格只在鏈上真的有掛單時顯示，是託管程序裡的掛單價
+export default function BuyPanel({ card }: { card: Card }) {
   const t = useTranslations("Detail");
   const chain = useChainState();
   const live = chain?.ready ? chain.cards[card.id] : undefined;
-  const price = live ? (live.listing?.priceUsdt ?? card.priceUsdt) : card.priceUsdt;
-  const up = card.change24h >= 0;
 
   return (
     <div className="rounded-2xl border border-line bg-surface p-5">
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <UsdtPrice amount={price} className="text-3xl font-bold tabular-nums" />
-        <span className={`font-mono text-sm ${up ? "text-up" : "text-down"}`}>
-          {up ? "▲" : "▼"} {Math.abs(card.change24h).toFixed(1)}% <span className="text-ink-3">{t("change24h")}</span>
-        </span>
-      </div>
-      <p className="mt-1 text-xs text-ink-3">
-        {t("lastSale")} · <span className="tabular-nums">{formatUsdt(lastSale)}</span>
-      </p>
+      {!chain ? (
+        <div className="h-9 w-40 animate-pulse rounded-lg bg-surface-2" />
+      ) : live?.listing ? (
+        <UsdtPrice amount={live.listing.priceUsdt} className="text-3xl font-bold tabular-nums" />
+      ) : (
+        <p className="text-xl font-semibold text-ink-2">{t("notForSale")}</p>
+      )}
 
       <div className="mt-5">{chain?.ready && live ? <ChainActions card={card} live={live} /> : <StaticActions card={card} />}</div>
 
       <p className="mt-4 text-xs leading-relaxed text-ink-3">{t("settle")}</p>
-      <ShareRow cardId={card.id} likes={likes} />
+      <ShareRow cardId={card.id} />
     </div>
   );
 }
@@ -43,7 +40,11 @@ export default function BuyPanel({ card, lastSale, likes }: { card: Card; lastSa
 // 鏈上未配置時：只顯示狀態
 function StaticActions({ card }: { card: Card }) {
   const t = useTranslations("Detail");
-  return <p className="rounded-xl bg-surface-2 px-4 py-3 text-center text-sm text-ink-2">{t(card.status === "redeeming" ? "redeemingNote" : card.status === "listed" ? "comingSoon" : "notListed")}</p>;
+  return (
+    <p className="rounded-xl bg-surface-2 px-4 py-3 text-center text-sm text-ink-2">
+      {t(card.status === "redeeming" ? "redeemingNote" : card.status === "listed" ? "comingSoon" : "notListed")}
+    </p>
+  );
 }
 
 type Busy = null | VaultAction;
@@ -104,7 +105,13 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
         <p className="text-sm text-ink-2">{t("youOwn")}</p>
         <div className="flex gap-2">
           <label className="flex flex-1 items-center gap-2 rounded-full border border-line px-4 text-sm">
-            <input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} aria-label={t("listPrice")} className="w-full bg-transparent py-2.5 tabular-nums outline-none" />
+            <input
+              inputMode="decimal"
+              value={price}
+              onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))}
+              aria-label={t("listPrice")}
+              className="w-full bg-transparent py-2.5 tabular-nums outline-none"
+            />
             USDT
           </label>
           <button className={PRIMARY} disabled={busy !== null || !(value > 0)} onClick={() => run("list", value)}>
@@ -121,15 +128,27 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
   return (
     <div>
       {body}
-      <p className="mt-3 text-xs text-ink-3">
-        {t("holder")}{" "}
-        <a href={solscanUrl("account", live.listing ? live.listing.seller : live.owner)} target="_blank" rel="noreferrer" className="font-mono hover:text-ink">
-          {live.owner === me || live.listing?.seller === me ? t("you") : shortAddress(live.listing ? live.listing.seller : live.owner)}
-        </a>
-        {live.listing && <span> · {t("inEscrow")}</span>}
-      </p>
+      {!live.burned && (
+        <p className="mt-3 text-xs text-ink-3">
+          {t("holder")}{" "}
+          <a
+            href={solscanUrl("account", live.listing ? live.listing.seller : live.owner)}
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono hover:text-ink"
+          >
+            {live.owner === me || live.listing?.seller === me ? t("you") : shortAddress(live.listing ? live.listing.seller : live.owner)}
+          </a>
+          {live.listing && <span> · {t("inEscrow")}</span>}
+        </p>
+      )}
       {done && (
-        <a href={solscanUrl("tx", done.signature)} target="_blank" rel="noreferrer" className="mt-2 block rounded-xl bg-up/10 px-4 py-2.5 text-sm font-medium text-up">
+        <a
+          href={solscanUrl("tx", done.signature)}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 block rounded-xl bg-up/10 px-4 py-2.5 text-sm font-medium text-up"
+        >
           {t(`done_${done.action}`)} ↗
         </a>
       )}
@@ -138,7 +157,7 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
   );
 }
 
-function ShareRow({ cardId, likes }: { cardId: string; likes: number }) {
+function ShareRow({ cardId }: { cardId: string }) {
   const t = useTranslations("Detail");
   const key = `idolca:saved:${cardId}`;
   const [saved, setSaved] = useState(false);
@@ -177,7 +196,6 @@ function ShareRow({ cardId, likes }: { cardId: string; likes: number }) {
         </svg>
         {saved ? t("saved") : t("wishlist")}
       </button>
-      <span className="text-ink-3">{t("likes", { count: likes + (saved ? 1 : 0) })}</span>
       <button onClick={copy} className="ml-auto hover:text-ink">
         {copied ? t("copied") : t("share")}
       </button>

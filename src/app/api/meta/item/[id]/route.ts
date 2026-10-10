@@ -18,9 +18,13 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/meta/item/[
   return Response.json({
     name: fake ? `[FAKE] ${title}` : title,
     symbol: "IDOLCA",
-    description: fake
-      ? "Idolca found this card is not genuine. This label is permanent and the NFT is frozen."
-      : "Minted by its owner on Idolca. Idolca has not checked whether this card is genuine.",
+    // 持有人的描述在前，平台的說明在後
+    description: [
+      r.description,
+      fake ? "Idolca found this card is not genuine. This label is permanent and the NFT is frozen." : "Minted by its owner on Idolca. Idolca has not checked whether this card is genuine.",
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
     image: photos[0],
     external_url: `${SITE_URL}/listing/${r.id}`,
     attributes: [

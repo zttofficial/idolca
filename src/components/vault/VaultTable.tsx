@@ -29,17 +29,16 @@ export function useLiveRows(rows: VaultRow[]) {
   });
 }
 
-export function VaultSummary({ rows, lastAuditDate }: { rows: VaultRow[]; lastAuditDate: string }) {
+export function VaultSummary({ rows }: { rows: VaultRow[] }) {
   const t = useTranslations("Vault");
   const live = useLiveRows(rows);
   const summary = [
     { label: t("nftCount"), value: live.length },
     { label: t("redeeming"), value: live.filter((e) => e.status === "redeeming").length },
     { label: t("physical"), value: live.length },
-    { label: t("lastAudit"), value: lastAuditDate },
   ];
   return (
-    <dl className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <dl className="mt-10 grid grid-cols-3 gap-4">
       {summary.map((s) => (
         <div key={s.label} className="rounded-2xl border border-line bg-surface p-5">
           <dt className="text-xs text-ink-3">{s.label}</dt>

@@ -71,6 +71,8 @@ export const collectorItems = pgTable("collector_items", {
   extraPhotos: text("extra_photos"),
   // 賣家自己取的標題，例如「IVE 幸運抽一組 6 張」；留空時用團體和成員組成
   title: text("title"),
+  // 持有人自己寫的描述（品相、來源故事、交換條件等），選填，之後可以改
+  description: text("description"),
   quantity: integer("quantity").notNull().default(1),
   groupName: text("group_name").notNull(),
   // 來源：專輯、預購特典、幸運抽、簽售、演唱會周邊…（見 src/lib/sources.ts）
@@ -208,6 +210,7 @@ export const BOOTSTRAP_SQL = [
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'album'`,
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS extra_photos text`,
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS title text`,
+  `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS description text`,
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS quantity integer NOT NULL DEFAULT 1`,
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS price_cents integer`,
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS listed_at timestamptz`,

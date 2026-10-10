@@ -10,8 +10,11 @@ import Countdown from "@/components/packs/Countdown";
 import PackOpener, { TierPill } from "@/components/packs/PackOpener";
 import { Link } from "@/i18n/navigation";
 import { formatUsdt } from "@/lib/fx";
-import { BUYBACK_RATE, PACKS, TIERS, TIER_COLOR, entryCard, findPack, packStats, recentPulls } from "@/lib/packs";
-import { shortAddress } from "@/lib/solana/config";
+import { connection } from "next/server";
+import { BUYBACK_RATE, PACKS, TIERS, TIER_COLOR, entryCard, findPack, packStats } from "@/lib/packs";
+import { getDb } from "@/lib/server/db";
+import { livePool, poolCommitment, recentPackPulls } from "@/lib/server/pack-pool";
+import { shortAddress, solscanUrl } from "@/lib/solana/config";
 
 export function generateStaticParams() {
   return PACKS.map((p) => ({ id: p.id }));
@@ -41,11 +44,15 @@ export default function PackPage(props: PageProps<"/[locale]/packs/[id]">) {
 }
 
 async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]">["params"] }) {
-  const pack = findPack((await params).id);
-  if (!pack) notFound();
+  const found = findPack((await params).id);
+  if (!found) notFound();
+  // 卡池剩餘張數和最近開卡都是真實紀錄，每次請求讀資料庫
+  await connection();
+  const db = await getDb();
+  const pack = db ? { ...found, pool: await livePool(db, found) } : found;
+  const pulls = db ? await recentPackPulls(db, pack) : [];
   const t = await getTranslations("Packs");
   const s = packStats(pack);
-  const pulls = recentPulls(pack);
   const pct = (n: number) => `${(n * 100).toFixed(n < 0.01 ? 2 : 1)}%`;
   const usdt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 
@@ -189,7 +196,9 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
                         {card.group} {card.member} · {card.version}
                       </span>
                     </span>
-                    <span className="shrink-0 text-ink-3">{t("minutesAgo", { minutes: p.minutesAgo })}</span>
+                    <a href={solscanUrl("account", p.asset)} target="_blank" rel="noreferrer" className="shrink-0 text-ink-3 hover:text-ink">
+                      {t("minutesAgo", { minutes: p.minutesAgo })} ↗
+                    </a>
                   </li>
                 );
               })}
@@ -212,7 +221,7 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
               ))}
             </ul>
             <p className="mt-4 text-[11px] text-ink-3">{t("commitment")}</p>
-            <p className="mt-1 font-mono text-[11px] break-all text-ink-2">{pack.commitment}</p>
+            <p className="mt-1 font-mono text-[11px] break-all text-ink-2">{poolCommitment(found)}</p>
           </section>
 
           {/* 規則 */}

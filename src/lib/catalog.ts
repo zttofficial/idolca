@@ -2,7 +2,6 @@
 // 團體、成員、專輯是真實資料；版本清單是示意的通用版本，正式版從官方資料和用戶投稿建立。
 
 import { CARDS, type Card, type Rarity } from "./mock-cards";
-import { seeded } from "./seeded";
 
 export type Version = { label: string; rarity: Rarity };
 
@@ -51,19 +50,11 @@ export type Template = {
   album: string;
   version: string;
   rarity: Rarity;
-  // 有對應的在售樣本卡時，連到它的內頁
+  // 有對應的金庫卡時，連到它的內頁；在售數量和價格由瀏覽器讀鏈上和刊登資料算（useTemplateMarket）
   listingId?: string;
-  market: { forSale: number; fromUsdt: number };
 };
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-
-const PRICE_RANGE: Record<Rarity, [number, number]> = {
-  album: [2, 25],
-  pob: [20, 60],
-  luckydraw: [30, 150],
-  fansign: [300, 1500],
-};
 
 function buildTemplates(): Template[] {
   const out: Template[] = [];
@@ -73,8 +64,6 @@ function buildTemplates(): Template[] {
         for (const v of VERSIONS) {
           const id = `${g.id}--${slug(member)}--${a.id}--${slug(v.label)}`;
           const listing = CARDS.find((c) => c.group === g.name && c.member === member && c.album === a.title && c.version === v.label);
-          const rand = seeded(id);
-          const [lo, hi] = PRICE_RANGE[v.rarity];
           out.push({
             id,
             groupId: g.id,
@@ -85,9 +74,6 @@ function buildTemplates(): Template[] {
             version: v.label,
             rarity: v.rarity,
             listingId: listing?.id,
-            market: listing
-              ? { forSale: 1 + Math.floor(rand() * 5), fromUsdt: listing.priceUsdt }
-              : { forSale: rand() < 0.25 ? 0 : 1 + Math.floor(rand() * 12), fromUsdt: Math.round(lo + rand() * (hi - lo)) },
           });
         }
       }
@@ -118,8 +104,7 @@ export function templateCard(t: Template): Card {
     album: t.album,
     version: t.version,
     rarity: t.rarity,
-    priceUsdt: t.market.fromUsdt,
-    change24h: 0,
+    priceUsdt: 0,
     palette: PLACEHOLDER,
     asset: "",
     owner: "",

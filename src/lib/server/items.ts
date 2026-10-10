@@ -17,6 +17,7 @@ export function publicItem(r: ItemRow) {
     photoBack: r.photoBack,
     photos: photosOf(r),
     title: r.title,
+    description: r.description,
     quantity: r.quantity,
     source: r.source,
     group: r.groupName,
@@ -41,6 +42,7 @@ export function publicItem(r: ItemRow) {
 export const publicListing = (r: ItemRow, seller: string) => ({ ...publicItem(r), seller });
 
 export const MAX_PHOTOS = 8;
+export const MAX_DESCRIPTION = 500;
 export const MAX_PRICE = 100_000;
 // 價格轉成分；不合法時回傳 undefined，null 表示下架
 export function priceToCents(v: unknown): number | null | undefined {

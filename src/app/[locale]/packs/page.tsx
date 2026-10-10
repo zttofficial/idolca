@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -6,6 +8,8 @@ import PackArt from "@/components/packs/PackArt";
 import Countdown from "@/components/packs/Countdown";
 import { Link } from "@/i18n/navigation";
 import { PACKS, packStats } from "@/lib/packs";
+import { getDb } from "@/lib/server/db";
+import { livePool } from "@/lib/server/pack-pool";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Meta");
@@ -25,34 +29,9 @@ export default async function PacksPage() {
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-2">{t("subtitle")}</p>
 
-        <div className="mt-10 grid gap-6 md:grid-cols-2">
-          {PACKS.map((pack) => {
-            const s = packStats(pack);
-            return (
-              <Link
-                key={pack.id}
-                href={`/packs/${pack.id}`}
-                className="group flex gap-5 rounded-2xl border border-line bg-surface p-5 transition hover:border-accent"
-              >
-                <PackArt pack={pack} className="w-32 shrink-0 transition group-hover:-rotate-2 sm:w-40" />
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <h2 className="text-xl font-bold">{pack.name}</h2>
-                  <p className="mt-1 text-sm text-ink-2">{t("chance", { price: pack.priceUsdt, top: s.topValue.toLocaleString("en-US") })}</p>
-                  <div className="mt-4">
-                    <div className="h-1.5 overflow-hidden rounded-full bg-accent-soft">
-                      <div className="h-full rounded-full bg-accent" style={{ width: `${(s.remaining / s.total) * 100}%` }} />
-                    </div>
-                    <p className="mt-1.5 text-[11px] text-ink-3">
-                      {t("left", { remaining: s.remaining.toLocaleString("en-US"), total: s.total.toLocaleString("en-US") })}
-                    </p>
-                  </div>
-                  <Countdown startsAt={pack.startsAt} endsAt={pack.endsAt} className="mt-3 text-xs text-ink-2" />
-                  <span className="mt-auto pt-4 text-sm font-semibold text-accent-ink group-hover:text-accent-ink">{t("viewPack")} →</span>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+        <Suspense fallback={<div className="mt-10 h-64 animate-pulse rounded-2xl bg-surface-2" />}>
+          <PackList />
+        </Suspense>
 
         <section className="mt-16">
           <h2 className="text-xl font-bold tracking-tight">{t("howTitle")}</h2>
@@ -69,5 +48,43 @@ export default async function PacksPage() {
       </main>
       <Footer />
     </>
+  );
+}
+
+// 剩餘張數扣掉真實開出的卡，每次請求讀資料庫
+async function PackList() {
+  await connection();
+  const t = await getTranslations("Packs");
+  const db = await getDb();
+  const packs = db ? await Promise.all(PACKS.map(async (p) => ({ ...p, pool: await livePool(db, p) }))) : PACKS;
+  return (
+    <div className="mt-10 grid gap-6 md:grid-cols-2">
+      {packs.map((pack) => {
+        const s = packStats(pack);
+        return (
+          <Link
+            key={pack.id}
+            href={`/packs/${pack.id}`}
+            className="group flex gap-5 rounded-2xl border border-line bg-surface p-5 transition hover:border-accent"
+          >
+            <PackArt pack={pack} className="w-32 shrink-0 transition group-hover:-rotate-2 sm:w-40" />
+            <div className="flex min-w-0 flex-1 flex-col">
+              <h2 className="text-xl font-bold">{pack.name}</h2>
+              <p className="mt-1 text-sm text-ink-2">{t("chance", { price: pack.priceUsdt, top: s.topValue.toLocaleString("en-US") })}</p>
+              <div className="mt-4">
+                <div className="h-1.5 overflow-hidden rounded-full bg-accent-soft">
+                  <div className="h-full rounded-full bg-accent" style={{ width: `${(s.remaining / s.total) * 100}%` }} />
+                </div>
+                <p className="mt-1.5 text-[11px] text-ink-3">
+                  {t("left", { remaining: s.remaining.toLocaleString("en-US"), total: s.total.toLocaleString("en-US") })}
+                </p>
+              </div>
+              <Countdown startsAt={pack.startsAt} endsAt={pack.endsAt} className="mt-3 text-xs text-ink-2" />
+              <span className="mt-auto pt-4 text-sm font-semibold text-accent-ink group-hover:text-accent-ink">{t("viewPack")} →</span>
+            </div>
+          </Link>
+        );
+      })}
+    </div>
   );
 }
