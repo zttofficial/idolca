@@ -18,7 +18,7 @@ npm run lint
 
 | 變數 | 留空時 |
 |---|---|
-| `DATABASE_URL` | 本機開發自動用 PGlite，資料存在 `.data/`；線上環境沒配置時帳號功能顯示「未開通」 |
+| `DATABASE_URL` | Vercel 接 Neon 時自動填入，帶前綴的 `xxx_DATABASE_URL` 也認得。本機開發自動用 PGlite，資料存在 `.data/`；線上環境沒配置時帳號功能顯示「未開通」 |
 | `ADMIN_TOKEN` | 管理接口（寫入鑑定結果）關閉 |
 | `NEXT_PUBLIC_PRIVY_APP_ID` | 不載入 Privy；收藏錢包功能要等配置後才有 |
 | `HELIUS_API_KEY`、`NEXT_PUBLIC_CARD_COLLECTION` | 金庫頁顯示展示資料，不讀鏈上集合 |

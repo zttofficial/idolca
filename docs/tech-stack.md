@@ -60,7 +60,7 @@ K-pop 小卡的鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Sola
 
 | 層 | 選擇 | 理由 |
 |---|---|---|
-| 資料庫 | PostgreSQL + Drizzle ORM | 線上用 Neon（在 Vercel Marketplace 一鍵接入，連線字串自動填入 `DATABASE_URL`）；本機開發沒有 `DATABASE_URL` 時用 PGlite（嵌入式 Postgres，資料在 `.data/`）。目前存帳號、會話、收藏冊和卡片照片；之後放卡片資料、倉庫庫存、訂單、物流，鏈上狀態經 Webhook 同步進來 |
+| 資料庫 | PostgreSQL + Drizzle ORM | 線上用 Neon（在 Vercel Marketplace 一鍵接入，連線字串自動填入 `DATABASE_URL`；接入時設了變數前綴也認得，會找以 `_DATABASE_URL` 結尾的變數）；本機開發沒有 `DATABASE_URL` 時用 PGlite（嵌入式 Postgres，資料在 `.data/`）。目前存帳號、會話、收藏冊和卡片照片；之後放卡片資料、倉庫庫存、訂單、物流，鏈上狀態經 Webhook 同步進來 |
 | 圖片存儲 | PostgreSQL `media` 表 | 卡片正反面照片和資料一起存進資料庫，不另接存儲服務，也不放進代碼倉庫。經 `/api/media/{id}` 提供並長期快取，Vercel 的 CDN 擋掉重複請求。照片量大到撐不住資料庫容量時，只換 `src/lib/server/media.ts` 的實現，遷到 Cloudflare R2 這類對象存儲，網址格式不變 |
 | 法幣入金（第二階段） | Privy 內建入金或 MoonPay | 用信用卡買 USDT 直接到內嵌錢包 |
 | 部署 | Vercel（前端）、Anchor 程序部署到 Solana 主網 | — |

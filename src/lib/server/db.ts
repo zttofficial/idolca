@@ -11,8 +11,15 @@ export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 // PGlite 若被開兩次，兩個實例互相看不到對方的寫入，還可能弄壞資料目錄
 const shared = globalThis as typeof globalThis & { __idolcaDb?: Promise<Db | null> };
 
+// Vercel 接 Neon 時可以給變數加前綴（如 myapp_DATABASE_URL），沒有 DATABASE_URL 就找以 _DATABASE_URL 結尾的那個
+function databaseUrl() {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  const key = Object.keys(process.env).find((k) => k.endsWith("_DATABASE_URL") && process.env[k]);
+  return key ? process.env[key] : undefined;
+}
+
 async function connect(): Promise<Db | null> {
-  const url = process.env.DATABASE_URL;
+  const url = databaseUrl();
   let db: Db;
   if (url) {
     const { neon } = await import("@neondatabase/serverless");
