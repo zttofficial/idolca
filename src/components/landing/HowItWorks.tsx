@@ -14,7 +14,7 @@ export default function HowItWorks() {
             key={s}
             className="relative overflow-hidden rounded-2xl border border-line bg-surface p-6 backdrop-blur transition hover:border-accent"
           >
-            <span className="text-accent-ink font-mono text-sm font-bold">{String(i + 1).padStart(2, "0")}</span>
+            <span className="text-accent-ink text-sm font-bold tabular-nums">{String(i + 1).padStart(2, "0")}</span>
             <h3 className="mt-3 text-lg font-semibold">{t(`${s}Title`)}</h3>
             <p className="mt-2 text-sm leading-relaxed text-ink-2">{t(`${s}Body`)}</p>
           </li>

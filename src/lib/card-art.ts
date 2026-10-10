@@ -97,57 +97,55 @@ export function drawCardFront(ctx: CanvasRenderingContext2D, card: Card, rarityL
   ctx.fillText(card.version, 34, h - 32);
 }
 
+// 平台統一卡背：近黑底、淡字紋、中央是文字標誌（i 的點是一張主色小卡）
 export function drawCardBack(ctx: CanvasRenderingContext2D, card: Card) {
   const w = ART_W;
   const h = ART_H;
 
-  const bg = ctx.createLinearGradient(0, 0, w, h);
-  bg.addColorStop(0, "#120b2e");
-  bg.addColorStop(1, "#05030f");
-  ctx.fillStyle = bg;
+  ctx.fillStyle = "#111114";
   ctx.fillRect(0, 0, w, h);
 
   // 斜向重複的字紋
   ctx.save();
   ctx.translate(w / 2, h / 2);
   ctx.rotate(-Math.PI / 6);
-  ctx.font = `700 26px ${FONT}`;
-  ctx.fillStyle = "rgba(160,130,255,0.08)";
+  ctx.font = `800 26px ${FONT}`;
+  ctx.fillStyle = "rgba(255,255,255,0.05)";
   for (let y = -h; y < h; y += 52) {
-    for (let x = -w * 1.2; x < w * 1.2; x += 230) {
-      ctx.fillText("IDOLCA", x + ((y / 52) % 2) * 115, y);
+    for (let x = -w * 1.2; x < w * 1.2; x += 200) {
+      ctx.fillText("idolca", x + ((y / 52) % 2) * 100, y);
     }
   }
   ctx.restore();
 
-  // 中央標誌
-  const ring = ctx.createLinearGradient(w / 2 - 110, 0, w / 2 + 110, 0);
-  ring.addColorStop(0, card.palette[0]);
-  ring.addColorStop(1, card.palette[2]);
-  ctx.strokeStyle = ring;
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.arc(w / 2, h * 0.42, 110, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(w / 2, h * 0.42, 92, 0, Math.PI * 2);
-  ctx.stroke();
-
+  // 文字標誌：「ıdolca」加一張斜放的主色小卡當 i 的點
   ctx.fillStyle = "#fff";
+  ctx.font = `800 88px ${FONT}`;
+  ctx.textBaseline = "alphabetic";
+  const word = "ıdolca";
+  const width = ctx.measureText(word).width;
+  const x0 = (w - width) / 2;
+  const y0 = h * 0.5;
+  ctx.fillText(word, x0, y0);
+  const iWidth = ctx.measureText("ı").width;
+  ctx.save();
+  ctx.translate(x0 + iWidth / 2, y0 - 82);
+  ctx.rotate((14 * Math.PI) / 180);
+  ctx.fillStyle = "#e8285a";
+  roundRect(ctx, -9, -13, 18, 26, 4);
+  ctx.fill();
+  ctx.restore();
+
   ctx.textAlign = "center";
-  ctx.font = `800 64px ${FONT}`;
-  ctx.fillText("IC", w / 2, h * 0.42 + 22);
+  ctx.font = `600 18px ${FONT}`;
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  ctx.fillText("VAULTED · VERIFIED · REDEEMABLE", w / 2, h * 0.58);
 
-  ctx.font = `700 30px ${FONT}`;
-  ctx.fillText("IDOLCA", w / 2, h * 0.62);
-  ctx.font = `500 20px ${FONT}`;
-  ctx.fillStyle = "rgba(255,255,255,0.6)";
-  ctx.fillText("VAULTED · VERIFIED · REDEEMABLE", w / 2, h * 0.66);
-
-  ctx.font = `600 22px "Geist Mono", ui-monospace, monospace`;
-  ctx.fillStyle = "rgba(255,255,255,0.85)";
-  ctx.fillText(card.serial, w / 2, h - 60);
+  if (card.serial) {
+    ctx.font = `600 22px "Geist Mono", ui-monospace, monospace`;
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    ctx.fillText(card.serial, w / 2, h - 60);
+  }
   ctx.textAlign = "left";
 }
 

@@ -41,3 +41,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+
+# 本機開發的 PGlite 資料庫
+/.data/

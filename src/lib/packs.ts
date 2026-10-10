@@ -10,10 +10,10 @@ export const TIERS: Tier[] = ["SSR", "SR", "R", "N"];
 
 // 等級的識別色只用在卡框光暈和色條上，文字一律用文字色
 export const TIER_COLOR: Record<Tier, string> = {
-  SSR: "#f5c451",
-  SR: "#c084fc",
-  R: "#60a5fa",
-  N: "#9ca3af",
+  SSR: "#d9a21b",
+  SR: "#e8285a",
+  R: "#3b6fd8",
+  N: "#9a9aa3",
 };
 
 export type PoolEntry = {
@@ -64,7 +64,7 @@ export const PACKS: Pack[] = [
     priceUsdt: 3.3,
     startsAt: "2026-10-01T00:00:00Z",
     endsAt: "2026-10-31T15:00:00Z",
-    palette: ["#ff7ad9", "#7c3aed"],
+    palette: ["#ff6f93", "#e8285a"],
     commitment: "9f3c2a71e4b85d06c1a7f2e9b3d48c5a6e0f17b2d9c4a83e5f6b1027d8c3e94a",
     pool: entries("daily", [
       { cardId: "c1", version: "Fansign Event", rarity: "fansign", tier: "SSR", valueUsdt: 1280, total: 1, sold: 0 },
@@ -86,7 +86,7 @@ export const PACKS: Pack[] = [
     priceUsdt: 9.9,
     startsAt: "2026-10-12T12:00:00Z",
     endsAt: "2026-10-26T12:00:00Z",
-    palette: ["#fde68a", "#f97316"],
+    palette: ["#3a3a42", "#111114"],
     commitment: "4b7e19d2a6c03f58e1b9d74a2c6f8e05b3a17d9c4e2f6a81b0d5c3e79f2a6d14",
     pool: entries("fansign-hunt", [
       { cardId: "c1", version: "Fansign Event", rarity: "fansign", tier: "SSR", valueUsdt: 1280, total: 1, sold: 0 },

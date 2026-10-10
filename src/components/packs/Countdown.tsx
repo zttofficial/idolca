@@ -42,5 +42,5 @@ export default function Countdown({ startsAt, endsAt, className = "" }: { starts
         : phase === "live"
           ? t("endsIn", { time: format(Date.parse(endsAt) - now) })
           : t("ended");
-  return <span className={`font-mono tabular-nums ${className}`}>{text}</span>;
+  return <span className={`tabular-nums ${className}`}>{text}</span>;
 }

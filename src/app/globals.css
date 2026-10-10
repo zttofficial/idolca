@@ -26,10 +26,10 @@
   --notice-ink: #6f5300;
 }
 
-/* 盲盒是活動頁，沿用 Pocamarket 的做法單獨用深色舞台；只在這個範圍內換掉同一組變數 */
+/* 深色舞台：只用在開盲盒的全屏動畫，換掉同一組變數；中性黑，不另加品牌以外的顏色 */
 .theme-dark {
-  --bg: #0b0816;
-  --surface: #151126;
+  --bg: #0c0c0f;
+  --surface: #17171b;
   --surface-2: rgb(255 255 255 / 0.05);
   --surface-3: rgb(255 255 255 / 0.1);
   --line: rgb(255 255 255 / 0.1);
@@ -45,7 +45,6 @@
   --notice-line: rgb(252 211 77 / 0.25);
   --notice-ink: rgb(254 243 199 / 0.85);
   color-scheme: dark;
-  background: radial-gradient(90% 60% at 50% 0%, #2a1452, var(--bg) 70%);
   color: var(--ink);
 }
 

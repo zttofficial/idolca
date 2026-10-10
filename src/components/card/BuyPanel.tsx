@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { usePrivy } from "@privy-io/react-auth";
-import { PRIVY_APP_ID } from "@/components/web3/Providers";
+import { useAuth } from "@/components/auth/AuthContext";
 import UsdtPrice from "@/components/web3/UsdtPrice";
 import { formatUsdt } from "@/lib/fx";
 import type { Card } from "@/lib/mock-cards";
@@ -30,7 +29,7 @@ export default function BuyPanel({ card, lastSale, likes }: { card: Card; lastSa
 
       <div className="mt-5">
         {card.status === "listed" ? (
-          PRIVY_APP_ID ? <PrivyBuyButtons /> : <BuyButtons disabledTitle={t("connectToBuy")} />
+          <AuthBuyButtons />
         ) : (
           <p className="rounded-xl bg-surface-2 px-4 py-3 text-center text-sm text-ink-2">
             {card.status === "redeeming" ? t("redeemingNote") : t("notListed")}
@@ -59,11 +58,11 @@ function BuyButtons({ disabledTitle, onBuy }: { disabledTitle?: string; onBuy?: 
 }
 
 // 未登入時按鈕喚起登入；登入後託管合約尚未部署，按鈕停用並說明原因
-function PrivyBuyButtons() {
+function AuthBuyButtons() {
   const t = useTranslations("Detail");
-  const { ready, authenticated, login } = usePrivy();
+  const { ready, user, login } = useAuth();
   if (!ready) return <BuyButtons disabledTitle={t("connectToBuy")} />;
-  if (!authenticated) return <BuyButtons onBuy={login} />;
+  if (!user) return <BuyButtons onBuy={login} />;
   return <BuyButtons disabledTitle={t("comingSoon")} />;
 }
 

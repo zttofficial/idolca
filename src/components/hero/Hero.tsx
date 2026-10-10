@@ -69,7 +69,7 @@ export default function Hero() {
         <div
           className="pointer-events-none absolute inset-0 -z-0 rounded-full opacity-60 blur-3xl transition-colors duration-700"
           style={{
-            background: `radial-gradient(circle at 50% 45%, ${card.palette[1]}66, transparent 60%)`,
+            background: "radial-gradient(circle at 50% 45%, rgba(232, 40, 90, 0.10), transparent 60%)",
           }}
         />
         <div className="relative h-[460px] sm:h-[560px]">

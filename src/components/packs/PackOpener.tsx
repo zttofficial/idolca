@@ -159,7 +159,7 @@ function OpeningModal({
   const cardWidth = pulls.length === 1 ? "w-56 sm:w-64" : "w-28 sm:w-36";
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={pack.name} className="fixed inset-0 z-[60] overflow-y-auto bg-[#07050f]/90 backdrop-blur-md">
+    <div role="dialog" aria-modal="true" aria-label={pack.name} className="theme-dark fixed inset-0 z-[60] overflow-y-auto bg-[#0c0c0f]/95 backdrop-blur-md">
       <button onClick={onClose} className="absolute top-4 right-4 z-10 rounded-full border border-line bg-surface px-3 py-1 text-xs text-ink-2 hover:bg-surface-3">
         {t("close")}
       </button>

@@ -3,16 +3,20 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import CardArt from "@/components/market/CardArt";
-import MintDialog from "./MintDialog";
+import { AddCardButton, openAddCard } from "./AddCard";
+import VerificationBadge from "./VerificationBadge";
 import { Link } from "@/i18n/navigation";
 import { binderActions, useBinder, type BinderEntry } from "@/lib/binder";
 import { GROUPS, TEMPLATES, templateCard, type Template } from "@/lib/catalog";
 import { formatUsdt } from "@/lib/fx";
 import { shortAddress } from "@/lib/solana/config";
+import { useMyItems, type CollectorItem } from "@/lib/items";
 
 const POCKETS = 9;
 type Tab = "binder" | "progress" | "wants";
 type Owned = { template: Template; entry: BinderEntry };
+// 卡冊裡的一格：自己上鏈的卡，或在圖鑑裡標記「有」的卡款
+type Slot = { kind: "item"; item: CollectorItem } | { kind: "card"; owned: Owned };
 
 export default function BinderView() {
   const t = useTranslations("Binder");
@@ -20,47 +24,54 @@ export default function BinderView() {
   const [tab, setTab] = useState<Tab>("binder");
   const [spread, setSpread] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
-  const [minting, setMinting] = useState<Template | null>(null);
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const items = useMyItems();
 
   // 按圖鑑順序排列，和實體卡冊一樣同一團體、同一成員的卡放在一起
   const owned: Owned[] = TEMPLATES.filter((x) => binder.have[x.id]).map((template) => ({ template, entry: binder.have[template.id] }));
   const wants = TEMPLATES.filter((x) => binder.want[x.id]);
 
-  if (!owned.length && !wants.length) {
+  if (!owned.length && !wants.length && !items.length) {
     return (
       <div className="mt-10 rounded-2xl border border-dashed border-line px-6 py-16 text-center">
         <h2 className="text-lg font-semibold">{t("emptyTitle")}</h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-ink-2">{t("emptyBody")}</p>
-        <div className="mt-6 flex justify-center gap-3">
-          <Link href="/catalog" className="btn-primary rounded-full px-5 py-2.5 text-sm font-semibold">
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <AddCardButton className="btn-primary rounded-full px-5 py-2.5 text-sm font-semibold" />
+          <Link href="/catalog" className="rounded-full border border-line px-5 py-2.5 text-sm font-semibold hover:bg-surface-2">
             {t("browse")}
           </Link>
-          <button onClick={binderActions.loadSample} className="rounded-full border border-line px-5 py-2.5 text-sm font-semibold hover:bg-surface-2">
-            {t("loadSample")}
-          </button>
         </div>
+        <button onClick={binderActions.loadSample} className="mt-4 text-xs text-ink-3 underline-offset-2 hover:text-ink hover:underline">
+          {t("loadSample")}
+        </button>
       </div>
     );
   }
 
-  const copies = owned.reduce((n, o) => n + o.entry.count, 0);
-  const minted = owned.filter((o) => o.entry.mint).length;
+  const copies = owned.reduce((n, o) => n + o.entry.count, 0) + items.length;
   const value = owned.reduce((v, o) => v + o.entry.count * o.template.market.fromUsdt, 0);
-  const groups = new Set(owned.map((o) => o.template.groupId)).size;
+  const groups = new Set([...owned.map((o) => o.template.group), ...items.map((i) => i.group.trim())].map((g) => g.toLowerCase())).size;
   const stats = [
     { label: t("statCards"), value: copies.toLocaleString("en-US") },
     { label: t("statGroups"), value: groups },
-    { label: t("statMinted"), value: `${minted} / ${owned.length}` },
+    { label: t("statMinted"), value: items.length },
     { label: t("statValue"), value: formatUsdt(value) },
   ];
 
-  const pages = Math.max(1, Math.ceil(owned.length / POCKETS));
+  // 自己上鏈的卡排在最前面，後面是圖鑑順序的卡款
+  const slots: Slot[] = [...items.map((item) => ({ kind: "item" as const, item })), ...owned.map((o) => ({ kind: "card" as const, owned: o }))];
+  const pages = Math.max(1, Math.ceil(slots.length / POCKETS));
   const spreads = Math.ceil(pages / 2);
   const current = Math.min(spread, spreads - 1);
   const selectedOwned = owned.find((o) => o.template.id === selected);
+  const pickedItem = items.find((i) => i.id === selectedItem);
 
   return (
     <div className="mt-8">
+      <div className="mb-4 flex justify-end">
+        <AddCardButton className="btn-primary rounded-full px-5 py-2.5 text-sm font-semibold" />
+      </div>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="rounded-2xl border border-line bg-surface p-4">
@@ -102,9 +113,10 @@ export default function BinderView() {
                 <div key={page} className="relative rounded-2xl bg-surface p-3 shadow-sm sm:p-4">
                   <div className="grid grid-cols-3 gap-2 sm:gap-3">
                     {Array.from({ length: POCKETS }, (_, i) => {
-                      const o = owned[page * POCKETS + i];
-                      return o ? (
-                        <Pocket key={i} owned={o} onSelect={() => setSelected(o.template.id)} />
+                      const slot = slots[page * POCKETS + i];
+                      if (slot?.kind === "item") return <ItemPocket key={i} item={slot.item} onSelect={() => setSelectedItem(slot.item.id)} />;
+                      return slot ? (
+                        <Pocket key={i} owned={slot.owned} onSelect={() => setSelected(slot.owned.template.id)} />
                       ) : (
                         <div key={i} className="aspect-[55/85] rounded-lg border border-dashed border-line bg-surface-2" />
                       );
@@ -173,17 +185,8 @@ export default function BinderView() {
           <p className="mt-6 text-sm text-ink-3">{t("wantsEmpty")}</p>
         ))}
 
-      {selectedOwned && (
-        <CardSheet
-          owned={selectedOwned}
-          onClose={() => setSelected(null)}
-          onMint={() => {
-            setMinting(selectedOwned.template);
-            setSelected(null);
-          }}
-        />
-      )}
-      {minting && <MintDialog template={minting} onClose={() => setMinting(null)} />}
+      {selectedOwned && <CardSheet owned={selectedOwned} onClose={() => setSelected(null)} />}
+      {pickedItem && <ItemSheet item={pickedItem} onClose={() => setSelectedItem(null)} />}
     </div>
   );
 }
@@ -194,7 +197,6 @@ function ownedCard({ template, entry }: Owned) {
 }
 
 function Pocket({ owned, onSelect }: { owned: Owned; onSelect: () => void }) {
-  const t = useTranslations("Binder");
   const tRarity = useTranslations("Rarity");
   return (
     <button onClick={onSelect} className="group relative block aspect-[55/85] overflow-hidden rounded-lg text-left">
@@ -204,15 +206,12 @@ function Pocket({ owned, onSelect }: { owned: Owned; onSelect: () => void }) {
       {owned.entry.count > 1 && (
         <span className="absolute top-1 right-1 rounded-full bg-ink/80 px-1.5 text-[10px] font-bold text-white">×{owned.entry.count}</span>
       )}
-      {owned.entry.mint && (
-        <span className="absolute bottom-1 left-1 rounded-full bg-ink/80 px-1.5 py-0.5 text-[9px] font-semibold text-white">{t("mintedBadge")}</span>
-      )}
       <span className="absolute inset-0 bg-ink/0 transition group-hover:bg-ink/10" />
     </button>
   );
 }
 
-function CardSheet({ owned, onClose, onMint }: { owned: Owned; onClose: () => void; onMint: () => void }) {
+function CardSheet({ owned, onClose }: { owned: Owned; onClose: () => void }) {
   const t = useTranslations("Binder");
   const tRarity = useTranslations("Rarity");
   const { template, entry } = owned;
@@ -241,27 +240,93 @@ function CardSheet({ owned, onClose, onMint }: { owned: Owned; onClose: () => vo
               </button>
             </div>
           </div>
-
-          <div className="mt-4 rounded-xl bg-surface-2 p-3 text-xs">
-            {entry.mint ? (
-              <>
-                <p className="font-semibold">{t("selfReported")}</p>
-                <p className="mt-1 font-mono text-ink-2">{shortAddress(entry.mint, 6, 6)}</p>
-              </>
-            ) : (
-              <p className="text-ink-2">{t("notMinted")}</p>
-            )}
-          </div>
+          <p className="mt-4 text-xs leading-relaxed text-ink-3">{t("notMinted")}</p>
 
           <div className="mt-auto flex flex-col gap-2 pt-5">
-            {!entry.mint && (
-              <button onClick={onMint} className="btn-primary rounded-full py-2.5 text-sm font-semibold">
-                {t("mint")}
-              </button>
+            <button
+              onClick={() => {
+                onClose();
+                openAddCard({ group: template.group, member: template.member, album: template.album, version: template.version });
+              }}
+              className="btn-primary rounded-full py-2.5 text-sm font-semibold"
+            >
+              {t("mint")}
+            </button>
+            <button onClick={onClose} className="py-1 text-xs text-ink-3 hover:text-ink">
+              {t("close")}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 自己上鏈的卡：照片 + 鑑定狀態；假卡打紅框、轉灰階並蓋上斜向 FAKE 字樣
+function ItemPocket({ item, onSelect }: { item: CollectorItem; onSelect: () => void }) {
+  const fake = item.verification === "fake";
+  return (
+    <button onClick={onSelect} className={`group relative block aspect-[55/85] overflow-hidden rounded-lg text-left ${fake ? "ring-2 ring-down" : ""}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- 用戶上傳的 data URL */}
+      <img src={item.photo} alt={`${item.group} ${item.member}`} className={`h-full w-full object-cover ${fake ? "grayscale" : ""}`} />
+      <span className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-br from-white/25 via-transparent to-transparent ring-1 ring-black/5 ring-inset" />
+      {fake && (
+        <span className="pointer-events-none absolute inset-0 grid place-items-center">
+          <span className="-rotate-[30deg] rounded border-2 border-down bg-white/70 px-2 text-lg font-black tracking-widest text-down">FAKE</span>
+        </span>
+      )}
+      <VerificationBadge status={item.verification} className="absolute bottom-1 left-1" />
+      <span className="absolute inset-0 bg-ink/0 transition group-hover:bg-ink/10" />
+    </button>
+  );
+}
+
+function ItemSheet({ item, onClose }: { item: CollectorItem; onClose: () => void }) {
+  const t = useTranslations("Binder");
+  const tMint = useTranslations("Mint");
+  const tSource = useTranslations("Source");
+  const [side, setSide] = useState<"front" | "back">("front");
+  const fake = item.verification === "fake";
+  return (
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="grid w-full max-w-xl gap-6 rounded-2xl border border-line bg-surface p-6 shadow-2xl sm:grid-cols-[180px_1fr]" onClick={(e) => e.stopPropagation()}>
+        <div>
+          <div className={`aspect-[55/85] overflow-hidden rounded-xl ${fake ? "ring-2 ring-down" : ""}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- 用戶上傳的 data URL */}
+            <img src={side === "back" && item.photoBack ? item.photoBack : item.photo} alt="" className={`h-full w-full object-cover ${fake ? "grayscale" : ""}`} />
+          </div>
+          {item.photoBack && (
+            <div className="mt-2 flex justify-center gap-1.5">
+              {(["front", "back"] as const).map((x) => (
+                <button
+                  key={x}
+                  onClick={() => setSide(x)}
+                  className={`rounded-full border px-3 py-1 text-[11px] ${side === x ? "border-line-strong bg-ink text-bg" : "border-line text-ink-2"}`}
+                >
+                  {tMint(x)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col">
+          <p className="text-xs text-ink-3">{[item.group, tSource(item.source), item.album].filter(Boolean).join(" · ")}</p>
+          <h3 className="mt-1 text-xl font-bold">{item.member}</h3>
+          {item.version && <p className="text-sm text-ink-2">{item.version}</p>}
+          <div className="mt-3">
+            <VerificationBadge status={item.verification} className="text-[10px]" />
+          </div>
+          <p className="mt-3 text-xs leading-relaxed text-ink-2">{tMint(`statusBody_${item.verification}`)}</p>
+          {item.verificationNote && <p className="mt-2 text-xs text-ink-3">{item.verificationNote}</p>}
+          {item.verifiedAt && <p className="mt-1 text-[11px] text-ink-3">{tMint("verifiedOn", { date: item.verifiedAt.slice(0, 10) })}</p>}
+          <p className="mt-3 font-mono text-[11px] text-ink-3">{shortAddress(item.asset, 6, 6)}</p>
+
+          <div className="mt-auto flex flex-col gap-2 pt-5">
+            {item.verification === "self_reported" && (
+              <Link href="/#how" className="btn-primary rounded-full py-2.5 text-center text-sm font-semibold">
+                {t("sendToVault")}
+              </Link>
             )}
-            <Link href="/#how" className="rounded-full border border-line py-2.5 text-center text-sm font-semibold hover:bg-surface-2">
-              {t("sendToVault")}
-            </Link>
             <button onClick={onClose} className="py-1 text-xs text-ink-3 hover:text-ink">
               {t("close")}
             </button>

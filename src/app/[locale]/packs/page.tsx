@@ -19,7 +19,6 @@ export default async function PacksPage() {
   return (
     <>
       <Navbar />
-      <div className="theme-dark flex flex-1 flex-col">
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-14 sm:px-6">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           <span className="text-accent-ink">{t("title")}</span>
@@ -60,7 +59,7 @@ export default async function PacksPage() {
           <ol className="mt-6 grid gap-4 sm:grid-cols-3">
             {STEPS.map((s, i) => (
               <li key={s} className="rounded-2xl border border-line bg-surface p-5">
-                <span className="text-accent-ink font-mono text-sm font-bold">{String(i + 1).padStart(2, "0")}</span>
+                <span className="text-accent-ink text-sm font-bold tabular-nums">{String(i + 1).padStart(2, "0")}</span>
                 <h3 className="mt-2 font-semibold">{t(`${s}Title`)}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{t(`${s}Body`)}</p>
               </li>
@@ -68,7 +67,6 @@ export default async function PacksPage() {
           </ol>
         </section>
       </main>
-      </div>
       <Footer />
     </>
   );

@@ -248,7 +248,7 @@ export default function HoloCard3D({ card, rarityLabel }: { card: Card; rarityLa
         <Float speed={1.6} rotationIntensity={0.15} floatIntensity={0.5}>
           <PhotocardMesh card={card} rarityLabel={rarityLabel} rotationRef={rotationRef} fontsReady={fontsReady} />
         </Float>
-        <Sparkles count={60} scale={[4, 3, 2]} size={2.2} speed={0.4} color={card.palette[1]} />
+        <Sparkles count={40} scale={[4, 3, 2]} size={2} speed={0.4} color="#e8285a" opacity={0.5} />
         <ContactShadows position={[0, -1.25, 0]} opacity={0.45} scale={4} blur={2.8} far={2} color="#000" />
       </Canvas>
     </div>

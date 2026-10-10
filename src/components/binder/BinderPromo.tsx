@@ -1,6 +1,7 @@
 import { useTranslations } from "next-intl";
 import CardArt from "@/components/market/CardArt";
 import { Link } from "@/i18n/navigation";
+import { AddCardButton } from "./AddCard";
 import { CARDS } from "@/lib/mock-cards";
 
 // 首頁的收藏冊入口：不交易的粉絲也有理由來
@@ -16,11 +17,9 @@ export default function BinderPromo() {
           <h2 className="mt-3 text-3xl font-bold tracking-tight">{t("promoTitle")}</h2>
           <p className="mt-3 max-w-lg text-sm leading-relaxed text-ink-2">{t("promoBody")}</p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/binder" className="btn-primary rounded-full px-5 py-2.5 text-sm font-semibold">
+            <AddCardButton className="btn-primary rounded-full px-5 py-2.5 text-sm font-semibold" />
+            <Link href="/binder" className="rounded-full border border-line bg-surface px-5 py-2.5 text-sm font-semibold hover:bg-surface-3">
               {t("promoCta")}
-            </Link>
-            <Link href="/catalog" className="rounded-full border border-line bg-surface px-5 py-2.5 text-sm font-semibold hover:bg-surface-3">
-              {t("browse")}
             </Link>
           </div>
         </div>

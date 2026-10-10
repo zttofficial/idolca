@@ -37,10 +37,14 @@ const umi = platformUmi();
 const collection = await fetchCollection(umi, publicKey(requireEnv("NEXT_PUBLIC_CARD_COLLECTION")));
 const asset = generateSigner(umi);
 
-// 估值只用於上鏈門檻，不寫進屬性
-const attributeList = Object.entries(card)
-  .filter(([key]) => key !== "valuation_usdt")
-  .map(([key, value]) => ({ key, value: String(value) }));
+// 估值只用於上鏈門檻，不寫進屬性；金庫卡一律是鑑定過的真品
+const attributeList = [
+  ...Object.entries(card)
+    .filter(([key]) => key !== "valuation_usdt")
+    .map(([key, value]) => ({ key, value: String(value) })),
+  { key: "custody", value: "vault" },
+  { key: "verification", value: "authentic" },
+];
 
 const { signature } = await create(umi, {
   asset,

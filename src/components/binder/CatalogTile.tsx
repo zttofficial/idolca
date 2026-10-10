@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { openAddCard } from "./AddCard";
 import CardArt from "@/components/market/CardArt";
 import { Link } from "@/i18n/navigation";
 import { binderActions, useBinder } from "@/lib/binder";
@@ -40,6 +41,14 @@ export default function CatalogTile({ template }: { template: Template }) {
           <span className="text-ink-3">{t("noneForSale")}</span>
         )}
       </p>
+      {entry && (
+        <button
+          onClick={() => openAddCard({ group: template.group, member: template.member, album: template.album, version: template.version })}
+          className="mt-1.5 text-[11px] font-semibold text-accent-ink hover:underline"
+        >
+          {t("mint")}
+        </button>
+      )}
       <div className="mt-2 flex gap-1.5">
         {entry ? (
           <div className="flex flex-1 items-center justify-between rounded-full border border-accent px-1 text-xs">

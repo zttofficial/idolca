@@ -30,13 +30,11 @@ export default function PackPage(props: PageProps<"/[locale]/packs/[id]">) {
   return (
     <>
       <Navbar />
-      <div className="theme-dark flex flex-1 flex-col">
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
         <Suspense fallback={<div className="mt-10 h-[520px] animate-pulse rounded-2xl bg-surface-2" />}>
           <PackContent params={props.params} />
         </Suspense>
       </main>
-      </div>
       <Footer />
     </>
   );
@@ -113,7 +111,7 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
                   <td className="py-2.5">
                     <TierPill tier={tier.tier} />
                   </td>
-                  <td className="py-2.5 font-mono text-xs tabular-nums">{pct(tier.odds)}</td>
+                  <td className="py-2.5 text-xs tabular-nums">{pct(tier.odds)}</td>
                   <td className="py-2.5 pr-4">
                     <div className="h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden>
                       <div
@@ -122,10 +120,10 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
                       />
                     </div>
                   </td>
-                  <td className="py-2.5 text-right font-mono text-xs tabular-nums text-ink-2">
+                  <td className="py-2.5 text-right text-xs tabular-nums text-ink-2">
                     {usdt(tier.remaining)} / {usdt(tier.total)}
                   </td>
-                  <td className="py-2.5 text-right font-mono text-xs tabular-nums text-ink-2">
+                  <td className="py-2.5 text-right text-xs tabular-nums text-ink-2">
                     {tier.minValue === tier.maxValue ? usdt(tier.minValue) : `${usdt(tier.minValue)}–${usdt(tier.maxValue)}`}
                   </td>
                 </tr>

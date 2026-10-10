@@ -1,10 +1,10 @@
 "use client";
 
-// 收藏冊資料：目前存在瀏覽器 localStorage（帳號體系接上後改存伺服器，結構不變）。
+// 收藏冊資料：未登入時存在瀏覽器 localStorage；登入後同步到帳號（/api/binder），換裝置也在。
 // 所有頁面透過 useBinder 共用同一份快照，任何一處改動都會即時同步到其他元件和分頁。
 
 import { useSyncExternalStore } from "react";
-import { fakeBase58, seeded } from "./seeded";
+import { seeded } from "./seeded";
 import { TEMPLATES } from "./catalog";
 
 export type BinderEntry = {
@@ -33,7 +33,19 @@ function read(): Binder {
   return cache;
 }
 
-function write(next: Binder) {
+// 登入後的同步：本機每次改動在 0.6 秒內合併成一次整本上傳
+let syncing = false;
+let pushTimer: ReturnType<typeof setTimeout> | undefined;
+
+function pushSoon() {
+  if (!syncing) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => {
+    fetch("/api/binder", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(read()) }).catch(() => {});
+  }, 600);
+}
+
+function write(next: Binder, push = true) {
   cache = next;
   try {
     localStorage.setItem(KEY, JSON.stringify(next));
@@ -41,6 +53,37 @@ function write(next: Binder) {
     // 配額滿或隱私模式：本次瀏覽仍保留在記憶體裡
   }
   listeners.forEach((l) => l());
+  if (push) pushSoon();
+}
+
+// 兩本收藏冊合併：張數取大，照片和鏈上地址保留有的那份，想要清單取聯集
+function merge(a: Binder, b: Binder): Binder {
+  const have: Record<string, BinderEntry> = { ...a.have };
+  for (const [id, e] of Object.entries(b.have)) {
+    const mine = have[id];
+    have[id] = mine ? { count: Math.max(mine.count, e.count), photo: mine.photo ?? e.photo, mint: mine.mint ?? e.mint } : e;
+  }
+  const want: Record<string, true> = { ...a.want, ...b.want };
+  for (const id of Object.keys(have)) delete want[id];
+  return { have, want };
+}
+
+// 登入時呼叫：把帳號裡的收藏冊和本機的合併，之後的改動自動同步
+export async function attachAccount() {
+  const res = await fetch("/api/binder");
+  if (!res.ok) return;
+  const remote = (await res.json()) as Binder;
+  const merged = merge(remote, read());
+  syncing = true;
+  write(merged, false);
+  if (JSON.stringify(merged) !== JSON.stringify(remote)) pushSoon();
+}
+
+// 登出時呼叫：停止同步並清空本機副本，下一個用這台裝置的人看不到
+export function detachAccount() {
+  syncing = false;
+  clearTimeout(pushTimer);
+  write(EMPTY, false);
 }
 
 function subscribe(listener: () => void) {
@@ -90,13 +133,6 @@ export const binderActions = {
       else want[id] = true;
       return { ...b, want };
     });
-  },
-  // 演示鑄造：記下照片和一個假的 NFT 地址
-  mint(id: string, photo: string) {
-    update((b) => ({
-      ...b,
-      have: { ...b.have, [id]: { ...(b.have[id] ?? { count: 1 }), photo, mint: fakeBase58(Math.random, 44) } },
-    }));
   },
   clear() {
     write(EMPTY);

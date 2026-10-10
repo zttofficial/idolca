@@ -18,7 +18,9 @@ npm run lint
 
 | 變數 | 留空時 |
 |---|---|
-| `NEXT_PUBLIC_PRIVY_APP_ID` | 「連接錢包」按鈕不可用 |
+| `DATABASE_URL` | 本機開發自動用 PGlite，資料存在 `.data/`；線上環境沒配置時帳號功能顯示「未開通」 |
+| `ADMIN_TOKEN` | 管理接口（寫入鑑定結果）關閉 |
+| `NEXT_PUBLIC_PRIVY_APP_ID` | 不載入 Privy；收藏錢包功能要等配置後才有 |
 | `HELIUS_API_KEY`、`NEXT_PUBLIC_CARD_COLLECTION` | 金庫頁顯示展示資料，不讀鏈上集合 |
 | `NEXT_PUBLIC_SOLANA_CLUSTER` | 默認 devnet |
 
@@ -72,6 +74,8 @@ src/
     packs/                盲盒卡包列表和卡包頁（機率、卡池、開包）
     catalog/              圖鑑：團體列表、團體卡款（標記有 / 想要）
     binder/               收藏冊：卡冊、收集進度、想要清單、上鏈
+    charts/               專輯銷量榜看板（週榜、初動）
+  app/api/                帳號（註冊、登入、登出、當前用戶）、收藏冊同步、自由上鏈、鑑定結果（管理）
   i18n/                   next-intl 路由、導航、請求配置
   proxy.ts                語言前綴路由
   components/
@@ -81,13 +85,17 @@ src/
     binder/               圖鑑卡款、卡冊、上鏈對話框
     market/               卡片列表、全息懸停卡（HoloTile）、鏈上成交跑馬燈
     landing/              首頁說明區塊
+    brand/                文字標誌
     layout/               導航列、語言選單、頁腳
     web3/                 Privy 登入、錢包按鈕、USDT 價格、On Solana 徽章
   lib/
+    server/               資料庫連線（Neon / PGlite）、表結構、密碼與會話
     solana/               網路與地址配置、USDT 餘額、Helius DAS、掛單 PDA
     vault.ts              金庫資料：有 Helius 配置時讀鏈上集合，否則用展示資料
     card-detail.ts        卡片內頁的樣本資料：鑑定、成交、鏈上紀錄、同款在售、賣家
     packs.ts              盲盒卡包：卡池、按剩餘張數計算的機率、抽卡
+    charts.ts             專輯銷量榜樣本數據
+    sources.ts            小卡來源分類
     catalog.ts            圖鑑：團體、成員、專輯、版本和卡款
     binder.ts             收藏冊資料（目前存在瀏覽器 localStorage）
     fx.ts                 當地貨幣參考價
