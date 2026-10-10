@@ -8,21 +8,46 @@ import { HoloCardFace } from "@/components/market/HoloTile";
 import { CardBackArt } from "@/components/market/CardArt";
 import { formatUsdt } from "@/lib/fx";
 import { BUYBACK_RATE, TIER_COLOR, drawFromPool, entryCard, type Pack, type PoolEntry } from "@/lib/packs";
+import { useAuth } from "@/components/auth/AuthContext";
+import { payAndConfirm, postAction, useChainState } from "@/lib/chain-client";
+import { signAndSend } from "@/lib/solana/wallets";
+import { solscanUrl } from "@/lib/solana/config";
 
 const QUANTITIES = [1, 5, 10] as const;
 type Stage = "closed" | "pack" | "tearing" | "reveal" | "results";
 type Choice = "kept" | "listed" | "sold";
+// 鏈上開包時每張抽到的卡：NFT 地址、鑄造交易，賣回後的交易
+type Minted = { asset: string; tx: string; buybackTx?: string };
 
 const cryptoRandom = () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+// 鏈上已配置時是真實流程：用錢包付測試 USDT → 伺服器對帳後抽卡 → 抽到的卡鑄成 NFT 進錢包，可以即時賣回。
+// 未配置時退回本機演示
 export default function PackOpener({ pack }: { pack: Pack }) {
   const t = useTranslations("Packs");
   const { phase } = usePackPhase(pack.startsAt, pack.endsAt);
   const [qty, setQty] = useState<(typeof QUANTITIES)[number]>(1);
-  // 演示模式下在本機扣減卡池，連續開包時機率跟著變
-  const [pool, setPool] = useState(pack.pool);
   const [stage, setStage] = useState<Stage>("closed");
+  const chain = useChainState();
+  const live = Boolean(chain?.ready);
+  const { user, login } = useAuth();
+  const wallet = user?.walletAddress;
+  const [pool, setPool] = useState(pack.pool);
+  const [minted, setMinted] = useState<Minted[]>([]);
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState<string>();
+  const [paySig, setPaySig] = useState<string>();
+
+  // 卡池剩餘張數以伺服器為準（扣掉所有人已開出的）；關掉開包畫面時重新讀
+  const closed = stage === "closed";
+  useEffect(() => {
+    if (!live) return;
+    fetch(`/api/packs/${pack.id}/pool`)
+      .then((r) => r.json())
+      .then((d: { pool?: PoolEntry[] }) => d.pool && setPool(d.pool))
+      .catch(() => {});
+  }, [live, pack.id, closed]);
   const [pulls, setPulls] = useState<PoolEntry[]>([]);
   const [flipped, setFlipped] = useState<boolean[]>([]);
   const [choices, setChoices] = useState<Record<number, Choice>>({});
@@ -30,13 +55,51 @@ export default function PackOpener({ pack }: { pack: Pack }) {
   const left = pool.reduce((n, e) => n + e.remaining, 0);
   const canOpen = phase === "live" && left >= qty;
 
-  const open = () => {
-    const drawn = drawFromPool(pool, qty, cryptoRandom);
-    setPool((prev) => prev.map((e) => ({ ...e, remaining: e.remaining - drawn.filter((d) => d.id === e.id).length })));
+  const reveal = (drawn: PoolEntry[]) => {
     setPulls(drawn);
     setFlipped(drawn.map(() => false));
     setChoices({});
     setStage("pack");
+  };
+
+  const open = async () => {
+    if (!live) {
+      const drawn = drawFromPool(pool, qty, cryptoRandom);
+      setPool((prev) => prev.map((e) => ({ ...e, remaining: e.remaining - drawn.filter((d) => d.id === e.id).length })));
+      setMinted([]);
+      reveal(drawn);
+      return;
+    }
+    if (!user) return login();
+    if (!wallet) return;
+    setPaying(true);
+    setPayError(undefined);
+    try {
+      const { signature, result } = await payAndConfirm<{ pulls: (Minted & { entryId: string })[] }>(
+        `/api/packs/${pack.id}/order`,
+        { qty },
+        (id) => `/api/packs/orders/${id}/confirm`,
+        wallet,
+      );
+      setPaySig(signature);
+      setMinted(result.pulls.map(({ asset, tx }) => ({ asset, tx })));
+      reveal(result.pulls.map((p) => pack.pool.find((e) => e.id === p.entryId)!).filter(Boolean));
+    } catch (e) {
+      setPayError(e instanceof Error ? e.message : "network");
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  // 即時回購：一筆交易裡 NFT 轉給平台、平台付 USDT
+  const sellBack = async (i: number) => {
+    const m = minted[i];
+    if (!m || !wallet) return;
+    const { tx } = await postAction<{ tx: string }>("/api/packs/buyback", { asset: m.asset });
+    const signature = await signAndSend(tx, wallet);
+    await postAction("/api/packs/buyback/confirm", { asset: m.asset, signature });
+    setMinted((prev) => prev.map((x, j) => (j === i ? { ...x, buybackTx: signature } : x)));
+    setChoices((prev) => ({ ...prev, [i]: "sold" }));
   };
 
   const tear = () => {
@@ -52,8 +115,11 @@ export default function PackOpener({ pack }: { pack: Pack }) {
 
   const close = () => setStage("closed");
 
-  const label =
-    phase === "upcoming"
+  const label = paying
+    ? t("paying")
+    : live && !user
+      ? t("loginToOpen")
+      : phase === "upcoming"
       ? t("notStarted")
       : phase === "ended"
         ? t("ended")
@@ -80,13 +146,15 @@ export default function PackOpener({ pack }: { pack: Pack }) {
       </div>
       <button
         onClick={open}
-        disabled={!canOpen}
+        disabled={!canOpen || paying || (live && Boolean(user) && !wallet)}
         className="btn-primary mt-3 w-full rounded-full px-6 py-3.5 text-base font-bold disabled:cursor-not-allowed disabled:opacity-50"
       >
         {label}
       </button>
+      {live && user && !wallet && <p className="mt-2 text-center text-xs text-ink-2">{t("linkWalletToOpen")}</p>}
+      {payError && <p className="mt-2 text-center text-xs text-down">{t.has(`error_${payError}`) ? t(`error_${payError}`) : t("error_generic")}</p>}
       <p className="mt-3 rounded-lg border border-notice-line bg-notice-bg px-3 py-2 text-[11px] leading-relaxed text-notice-ink">
-        {t("demoNote")}
+        {t(live ? "chainNote" : "demoNote")}
       </p>
 
       {stage !== "closed" && (
@@ -101,6 +169,9 @@ export default function PackOpener({ pack }: { pack: Pack }) {
           onRevealAll={revealAll}
           onResults={() => setStage("results")}
           onChoose={(i, c) => setChoices((prev) => ({ ...prev, [i]: c }))}
+          minted={minted}
+          paySig={paySig}
+          onSellBack={live ? sellBack : undefined}
           onAgain={canOpen ? open : undefined}
           onClose={close}
         />
@@ -122,6 +193,9 @@ function OpeningModal({
   onChoose,
   onAgain,
   onClose,
+  minted,
+  paySig,
+  onSellBack,
 }: {
   pack: Pack;
   stage: Stage;
@@ -135,6 +209,9 @@ function OpeningModal({
   onChoose: (i: number, c: Choice) => void;
   onAgain?: () => void;
   onClose: () => void;
+  minted: Minted[];
+  paySig?: string;
+  onSellBack?: (i: number) => Promise<void>;
 }) {
   const t = useTranslations("Packs");
   const primary = useRef<HTMLButtonElement>(null);
@@ -228,11 +305,19 @@ function OpeningModal({
                 <dd className="mt-1 text-lg font-semibold tabular-nums">{formatUsdt(pulledValue, 2)}</dd>
               </div>
             </dl>
+            {paySig && (
+              <p className="mt-3 text-center text-xs text-ink-3">
+                <a href={solscanUrl("tx", paySig)} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
+                  {t("paymentTx")} ↗
+                </a>
+              </p>
+            )}
             <ul className="mt-5 divide-y divide-line rounded-2xl border border-line bg-surface">
               {pulls.map((entry, i) => {
                 const card = entryCard(entry);
                 const choice = choices[i];
                 const buyback = round2(entry.valueUsdt * BUYBACK_RATE);
+                const nft = minted[i];
                 return (
                   <li key={i} className="flex flex-wrap items-center gap-3 px-4 py-3">
                     <TierPill tier={entry.tier} />
@@ -243,23 +328,30 @@ function OpeningModal({
                       <p className="truncate text-xs text-ink-3">
                         {card.album} · {card.version} · {formatUsdt(entry.valueUsdt, entry.valueUsdt < 10 ? 2 : 0)}
                       </p>
+                      {nft && (
+                        <p className="mt-0.5 flex gap-3 text-[11px] text-ink-3">
+                          <a href={solscanUrl("account", nft.asset)} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
+                            NFT ↗
+                          </a>
+                          {nft.buybackTx && (
+                            <a href={solscanUrl("tx", nft.buybackTx)} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
+                              {t("buybackTx")} ↗
+                            </a>
+                          )}
+                        </p>
+                      )}
                     </div>
                     {choice ? (
                       <span className="text-xs text-up">
                         {choice === "kept" ? t("kept") : choice === "listed" ? t("listed") : t("soldBack")}
                       </span>
                     ) : (
-                      <div className="flex gap-1.5">
-                        <button onClick={() => onChoose(i, "kept")} className="rounded-full border border-line px-3 py-1 text-[11px] hover:bg-surface-3">
-                          {t("keep")}
-                        </button>
-                        <button onClick={() => onChoose(i, "listed")} className="rounded-full border border-line px-3 py-1 text-[11px] hover:bg-surface-3">
-                          {t("list")}
-                        </button>
-                        <button onClick={() => onChoose(i, "sold")} className="rounded-full border border-line px-3 py-1 text-[11px] hover:bg-surface-3">
-                          {t("buyback", { value: buyback })}
-                        </button>
-                      </div>
+                      <ChoiceButtons
+                        buybackLabel={t("buyback", { value: buyback })}
+                        onKeep={() => onChoose(i, "kept")}
+                        onList={onSellBack ? undefined : () => onChoose(i, "listed")}
+                        onSell={onSellBack ? () => onSellBack(i) : async () => onChoose(i, "sold")}
+                      />
                     )}
                   </li>
                 );
@@ -336,5 +428,43 @@ export function TierPill({ tier }: { tier: PoolEntry["tier"] }) {
       <span className="h-1.5 w-1.5 rounded-full" style={{ background: TIER_COLOR[tier] }} />
       {tier}
     </span>
+  );
+}
+
+// 結果頁每張卡的選擇：留著、（演示模式）掛單、賣回；賣回在鏈上執行時顯示處理中
+function ChoiceButtons({ buybackLabel, onKeep, onList, onSell }: { buybackLabel: string; onKeep: () => void; onList?: () => void; onSell: () => Promise<void> }) {
+  const t = useTranslations("Packs");
+  const [selling, setSelling] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const btn = "rounded-full border border-line px-3 py-1 text-[11px] hover:bg-surface-3 disabled:opacity-50";
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <button onClick={onKeep} disabled={selling} className={btn}>
+        {t("keep")}
+      </button>
+      {onList && (
+        <button onClick={onList} className={btn}>
+          {t("list")}
+        </button>
+      )}
+      <button
+        disabled={selling}
+        onClick={async () => {
+          setSelling(true);
+          setFailed(false);
+          try {
+            await onSell();
+          } catch {
+            setFailed(true);
+          } finally {
+            setSelling(false);
+          }
+        }}
+        className={btn}
+      >
+        {selling ? t("confirmInWallet") : buybackLabel}
+      </button>
+      {failed && <span className="text-[11px] text-down">{t("error_generic")}</span>}
+    </div>
   );
 }

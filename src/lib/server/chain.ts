@@ -10,19 +10,21 @@ import { CLUSTER } from "@/lib/solana/config";
 // 平台在鏈上的動作：鑄造收藏 NFT、把假卡寫進鏈上並凍結。平台金鑰只在伺服器上：
 // 線上放在 PLATFORM_SECRET_KEY（64 個數字的 JSON 陣列），本機也可以用 PLATFORM_KEYPAIR 指向金鑰檔
 
-const DEFAULT_RPC = { "mainnet-beta": "https://api.mainnet-beta.solana.com", devnet: "https://api.devnet.solana.com" };
+export const DEFAULT_RPC = { "mainnet-beta": "https://api.mainnet-beta.solana.com", devnet: "https://api.devnet.solana.com" };
 
-function secretKey(): Uint8Array | null {
+export function platformSecret(): Uint8Array | null {
   const raw = process.env.PLATFORM_SECRET_KEY || (process.env.PLATFORM_KEYPAIR ? readFileSync(process.env.PLATFORM_KEYPAIR, "utf8") : "");
   return raw ? Uint8Array.from(JSON.parse(raw) as number[]) : null;
 }
 
+export const SERVER_RPC = process.env.SOLANA_RPC_URL || DEFAULT_RPC[CLUSTER];
+
 let cached: Umi | null | undefined;
-function platformUmi() {
+export function platformUmi() {
   if (cached !== undefined) return cached;
-  const secret = secretKey();
+  const secret = platformSecret();
   if (!secret || !CHAIN.collectorCollection) return (cached = null);
-  const umi = createUmi(process.env.SOLANA_RPC_URL || DEFAULT_RPC[CLUSTER]).use(mplCore());
+  const umi = createUmi(SERVER_RPC).use(mplCore());
   umi.use(keypairIdentity(umi.eddsa.createKeypairFromSecretKey(secret)));
   return (cached = umi);
 }

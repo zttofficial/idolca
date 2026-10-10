@@ -7,6 +7,7 @@ import HoloTile from "./HoloTile";
 import ListingTile from "./ListingTile";
 import { openAddCard } from "@/components/binder/AddCard";
 import type { Listing } from "@/lib/items";
+import { useChainState, withLive } from "@/lib/chain-client";
 import { CARDS } from "@/lib/mock-cards";
 import { LANES, RARITIES, SORTS, applyListingQuery, applyQuery, facetCounts, parseQuery, toSearch, type MarketQuery } from "@/lib/market";
 
@@ -27,10 +28,12 @@ export default function MarketBrowser() {
       .then((d: { listings: Listing[] }) => setListings(d.listings))
       .catch(() => setListings([]));
   }, []);
-  const vaultResult = useMemo(() => applyQuery(CARDS, q), [q]);
+  const chain = useChainState();
+  const cards = useMemo(() => withLive(CARDS, chain), [chain]);
+  const vaultResult = useMemo(() => applyQuery(cards, q), [cards, q]);
   const freeResult = useMemo(() => applyListingQuery(listings ?? [], q), [listings, q]);
   const result = free ? freeResult : vaultResult;
-  const facets = useMemo(() => facetCounts(CARDS, q), [q]);
+  const facets = useMemo(() => facetCounts(cards, q), [cards, q]);
   const [showFilters, setShowFilters] = useState(false);
   const top = useRef<HTMLDivElement>(null);
 

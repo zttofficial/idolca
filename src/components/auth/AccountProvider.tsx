@@ -44,6 +44,7 @@ export default function AccountProvider({ children }: { children: React.ReactNod
       configured: me?.configured ?? false,
       user: me?.user ?? null,
       login: () => setOpen(true),
+      updateUser: (user) => setMe((m) => ({ configured: m?.configured ?? true, user })),
       logout: async () => {
         await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
         detachAccount();

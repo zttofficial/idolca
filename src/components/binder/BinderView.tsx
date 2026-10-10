@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import CardArt from "@/components/market/CardArt";
 import { AddCardButton, openAddCard } from "./AddCard";
 import VerificationBadge from "./VerificationBadge";
+import { OnChainCards, Orders } from "./BinderChain";
+import { useAuth } from "@/components/auth/AuthContext";
 import { Thumbs } from "@/components/market/PhotoGallery";
 import { Link } from "@/i18n/navigation";
 import { binderActions, useBinder, type BinderEntry } from "@/lib/binder";
@@ -15,7 +17,8 @@ import { itemTitle } from "@/lib/item-title";
 import { setListing, useMyItems, type CollectorItem } from "@/lib/items";
 
 const POCKETS = 9;
-type Tab = "binder" | "progress" | "wants";
+type Tab = "binder" | "onchain" | "orders" | "progress" | "wants";
+const TABS: Tab[] = ["binder", "onchain", "orders", "progress", "wants"];
 type Owned = { template: Template; entry: BinderEntry };
 // 卡冊裡的一格：自己上鏈的卡，或在圖鑑裡標記「有」的卡款
 type Slot = { kind: "item"; item: CollectorItem } | { kind: "card"; owned: Owned };
@@ -24,6 +27,13 @@ export default function BinderView() {
   const t = useTranslations("Binder");
   const binder = useBinder();
   const [tab, setTab] = useState<Tab>("binder");
+  const { user } = useAuth();
+  // 從其他頁連過來時用 ?tab= 指定頁籤（例如付款後看訂單）
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("tab") as Tab | null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 只在進入頁面時讀網址
+    if (wanted && TABS.includes(wanted)) setTab(wanted);
+  }, []);
   const [spread, setSpread] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
@@ -33,7 +43,7 @@ export default function BinderView() {
   const owned: Owned[] = TEMPLATES.filter((x) => binder.have[x.id]).map((template) => ({ template, entry: binder.have[template.id] }));
   const wants = TEMPLATES.filter((x) => binder.want[x.id]);
 
-  if (!owned.length && !wants.length && !items.length) {
+  if (!owned.length && !wants.length && !items.length && !user?.walletAddress) {
     return (
       <div className="mt-10 rounded-2xl border border-dashed border-line px-6 py-16 text-center">
         <h2 className="text-lg font-semibold">{t("emptyTitle")}</h2>
@@ -84,8 +94,8 @@ export default function BinderView() {
       </dl>
 
       <div className="mt-8 flex items-center justify-between gap-4 border-b border-line">
-        <div role="tablist" className="flex gap-6">
-          {(["binder", "progress", "wants"] as Tab[]).map((id) => (
+        <div role="tablist" className="flex gap-6 overflow-x-auto">
+          {TABS.filter((id) => user || (id !== "onchain" && id !== "orders")).map((id) => (
             <button
               key={id}
               role="tab"
@@ -151,6 +161,8 @@ export default function BinderView() {
         </>
       )}
 
+      {tab === "onchain" && <OnChainCards />}
+      {tab === "orders" && <Orders />}
       {tab === "progress" && <Progress />}
 
       {tab === "wants" &&

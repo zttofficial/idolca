@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import type { Wallet } from "@wallet-standard/base";
 import type { AuthUser } from "./AuthContext";
 import Wordmark from "@/components/brand/Wordmark";
-import { WalletLoginError, signInWithWallet, useWallets } from "@/lib/solana/wallets";
+import { WalletError, signInWithWallet, useWallets } from "@/lib/solana/wallets";
 
 type Mode = "signup" | "login";
 type ErrorCode = "invalid_email" | "weak_password" | "email_taken" | "invalid_credentials" | "not_configured" | "network";
@@ -179,7 +179,7 @@ function WalletLogin({ configured, onSignedIn }: { configured: boolean; onSigned
     try {
       onSignedIn(await signInWithWallet(wallet));
     } catch (e) {
-      setError(e instanceof WalletLoginError && e.message === "rejected" ? "rejected" : "wallet");
+      setError(e instanceof WalletError && e.message === "rejected" ? "rejected" : "wallet");
     } finally {
       setPending(undefined);
     }

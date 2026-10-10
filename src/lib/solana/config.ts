@@ -32,7 +32,8 @@ const STABLES: Record<Cluster, { usdt: string; usdc: string }> = {
   },
 };
 
-export const USDT_MINT = process.env.NEXT_PUBLIC_USDT_MINT || STABLES[CLUSTER].usdt;
+// devnet 上預設用 onchain/scripts/devnet-market.mts 建的測試 USDT（託管程序登記的結算代幣）
+export const USDT_MINT = process.env.NEXT_PUBLIC_USDT_MINT || (CLUSTER === "devnet" && CHAIN.market?.usdtMint) || STABLES[CLUSTER].usdt;
 export const USDC_MINT = STABLES[CLUSTER].usdc;
 export const STABLE_DECIMALS = 6;
 

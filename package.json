@@ -14,10 +14,12 @@
     "chain:devnet-market": "cd onchain && node ../node_modules/tsx/dist/cli.mjs scripts/devnet-market.mts"
   },
   "dependencies": {
+    "@anchor-lang/core": "^1.2.1",
     "@electric-sql/pglite": "^0.5.8",
     "@metaplex-foundation/mpl-core": "^1.10.0",
     "@metaplex-foundation/umi": "^1.6.0",
     "@metaplex-foundation/umi-bundle-defaults": "^1.6.0",
+    "@metaplex-foundation/umi-web3js-adapters": "^1.6.0",
     "@neondatabase/serverless": "^1.2.0",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
@@ -25,7 +27,9 @@
     "@solana-program/system": "^0.15.0",
     "@solana-program/token": "^0.17.0",
     "@solana/kit": "^8.4.0",
+    "@solana/spl-token": "^0.4.15",
     "@solana/wallet-standard-features": "^1.5.0",
+    "@solana/web3.js": "^1.99.0",
     "@wallet-standard/app": "^1.1.1",
     "@wallet-standard/base": "^1.1.1",
     "drizzle-orm": "^0.45.4",

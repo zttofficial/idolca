@@ -19,6 +19,8 @@ export type AuthState = {
   user: AuthUser | null;
   login: () => void;
   logout: () => Promise<void>;
+  // 綁定錢包等改動帳號資料之後更新
+  updateUser: (user: AuthUser) => void;
 };
 
 export const AuthContext = createContext<AuthState | null>(null);

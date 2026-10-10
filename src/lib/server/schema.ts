@@ -107,6 +107,63 @@ export const media = pgTable("media", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// 自由刊登的擔保交易：買家付款進平台錢包（pending → paid），賣家寄出（shipped），買家確認收貨後平台放款並轉移 NFT（completed）。
+// 賣家沒有綁定錢包時貨款先留在平台（payout_held），綁定後補發
+export const ORDER_STATUS = ["pending", "paid", "shipped", "completed", "cancelled"] as const;
+export type OrderStatus = (typeof ORDER_STATUS)[number];
+export const orders = pgTable("orders", {
+  id: text("id").primaryKey(),
+  itemId: text("item_id").notNull(),
+  buyerId: text("buyer_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  sellerId: text("seller_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  priceCents: integer("price_cents").notNull(),
+  feeCents: integer("fee_cents").notNull(),
+  status: text("status").$type<OrderStatus>().notNull().default("pending"),
+  buyerWallet: text("buyer_wallet").notNull(),
+  payTx: text("pay_tx").unique(),
+  payoutTx: text("payout_tx"),
+  payoutHeld: integer("payout_held").notNull().default(0),
+  transferTx: text("transfer_tx"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 開卡包：先建待付款訂單，付款交易確認後抽卡並把抽到的卡鑄成 NFT。pulls 是 JSON：[{ entryId, cardId, asset, tx }]
+export const packOrders = pgTable("pack_orders", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  packId: text("pack_id").notNull(),
+  qty: integer("qty").notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  wallet: text("wallet").notNull(),
+  payTx: text("pay_tx").unique(),
+  pulls: text("pulls"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 金庫卡提貨申請：持有人簽名凍結 NFT（requested），平台寄出時銷毀（shipped）
+export const redemptions = pgTable("redemptions", {
+  cardId: text("card_id").primaryKey(),
+  userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+  wallet: text("wallet").notNull(),
+  requestTx: text("request_tx").notNull(),
+  shipTx: text("ship_tx"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// devnet 測試幣的領取紀錄，用來限制頻率
+export const faucetClaims = pgTable("faucet_claims", {
+  userId: text("user_id").primaryKey(),
+  wallet: text("wallet").notNull(),
+  claimedAt: timestamp("claimed_at", { withTimezone: true }).notNull(),
+});
+
 // 建表語句：資料庫第一次連上時執行，全部可重複執行
 export const BOOTSTRAP_SQL = [
   `CREATE TABLE IF NOT EXISTS users (
@@ -173,6 +230,46 @@ export const BOOTSTRAP_SQL = [
     address text NOT NULL,
     message text NOT NULL,
     expires_at timestamptz NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS orders (
+    id text PRIMARY KEY,
+    item_id text NOT NULL,
+    buyer_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    seller_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    price_cents integer NOT NULL,
+    fee_cents integer NOT NULL,
+    status text NOT NULL DEFAULT 'pending',
+    buyer_wallet text NOT NULL,
+    pay_tx text UNIQUE,
+    payout_tx text,
+    payout_held integer NOT NULL DEFAULT 0,
+    transfer_tx text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS pack_orders (
+    id text PRIMARY KEY,
+    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    pack_id text NOT NULL,
+    qty integer NOT NULL,
+    amount_cents integer NOT NULL,
+    wallet text NOT NULL,
+    pay_tx text UNIQUE,
+    pulls text,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS redemptions (
+    card_id text PRIMARY KEY,
+    user_id text REFERENCES users(id) ON DELETE SET NULL,
+    wallet text NOT NULL,
+    request_tx text NOT NULL,
+    ship_tx text,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS faucet_claims (
+    user_id text PRIMARY KEY,
+    wallet text NOT NULL,
+    claimed_at timestamptz NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS media (
     id text PRIMARY KEY,

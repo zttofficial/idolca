@@ -1,6 +1,7 @@
 import "server-only";
 import { cacheLife } from "next/cache";
 import { CARDS, LAST_AUDIT_DATE, type VaultStatus } from "./mock-cards";
+import { CHAIN } from "./chain";
 import { CARD_COLLECTION } from "./solana/config";
 import { attributesOf, dasEnabled, getAssetsByCollection, isFrozen } from "./solana/das";
 import { listingAddress } from "./solana/market";
@@ -20,11 +21,12 @@ export type VaultSnapshot = {
   lastAuditDate: string;
 };
 
-// 配好 HELIUS_API_KEY 和 NEXT_PUBLIC_CARD_COLLECTION 時讀鏈上集合，否則用展示資料
+// 配好 HELIUS_API_KEY 時用 DAS 讀整個鏈上集合；否則用樣本卡清單
 export async function getVaultSnapshot(): Promise<VaultSnapshot> {
   if (dasEnabled && CARD_COLLECTION) return getChainSnapshot();
+  // 樣本卡已在 devnet 鑄造時，地址是真實的；持有人和狀態由瀏覽器讀鏈上即時資料覆蓋（見 VaultTable）
   return {
-    source: "demo",
+    source: Object.keys(CHAIN.cards).length ? "chain" : "demo",
     lastAuditDate: LAST_AUDIT_DATE,
     entries: CARDS.map((c) => ({
       serial: c.serial,

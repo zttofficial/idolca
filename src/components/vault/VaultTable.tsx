@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import type { VaultStatus } from "@/lib/mock-cards";
+import { useChainState } from "@/lib/chain-client";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 
 export type VaultRow = { serial: string; title: string; asset: string; owner: string; status: VaultStatus; intakeDate: string; cardId?: string };
@@ -16,8 +17,42 @@ const STATUS_STYLE: Record<VaultStatus, string> = {
 const STATUSES: VaultStatus[] = ["vaulted", "listed", "redeeming"];
 
 // 金庫清單：按狀態分頁籤，搜尋編號、卡名、NFT 地址或持有人
-export default function VaultTable({ rows }: { rows: VaultRow[] }) {
+// 鏈上已配置時，持有人和狀態用即時資料；已提貨銷毀的卡移出清單
+export function useLiveRows(rows: VaultRow[]) {
+  const chain = useChainState();
+  if (!chain?.ready) return rows;
+  return rows.flatMap((r) => {
+    const s = r.cardId ? chain.cards[r.cardId] : undefined;
+    if (!s) return [r];
+    if (s.burned) return [];
+    return [{ ...r, owner: s.listing?.seller ?? s.owner, status: (s.listing ? "listed" : s.redeeming ? "redeeming" : "vaulted") as VaultStatus }];
+  });
+}
+
+export function VaultSummary({ rows, lastAuditDate }: { rows: VaultRow[]; lastAuditDate: string }) {
   const t = useTranslations("Vault");
+  const live = useLiveRows(rows);
+  const summary = [
+    { label: t("nftCount"), value: live.length },
+    { label: t("redeeming"), value: live.filter((e) => e.status === "redeeming").length },
+    { label: t("physical"), value: live.length },
+    { label: t("lastAudit"), value: lastAuditDate },
+  ];
+  return (
+    <dl className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {summary.map((s) => (
+        <div key={s.label} className="rounded-2xl border border-line bg-surface p-5">
+          <dt className="text-xs text-ink-3">{s.label}</dt>
+          <dd className="mt-1 text-2xl font-semibold tabular-nums">{s.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+export default function VaultTable({ rows: staticRows }: { rows: VaultRow[] }) {
+  const t = useTranslations("Vault");
+  const rows = useLiveRows(staticRows);
   const tStatus = useTranslations("Status");
   const [status, setStatus] = useState<VaultStatus | null>(null);
   const [q, setQ] = useState("");
