@@ -4,7 +4,8 @@
     "vaultTitle": "金庫",
     "vaultDescription": "每張入庫小卡對應的 Solana NFT、持有人和狀態，公開可查。",
     "packsTitle": "盲盒卡包",
-    "packsDescription": "開一包，抽一張已鑑定、已入庫的 K-pop 小卡。有限卡池、即時機率、鏈上隨機數。"
+    "packsDescription": "開一包，抽一張已鑑定、已入庫的 K-pop 小卡。有限卡池、即時機率、鏈上隨機數。",
+    "creditsTitle": "圖片來源"
   },
   "Nav": {
     "market": "市場",
@@ -97,7 +98,8 @@
     "intakeDate": "入庫日期"
   },
   "Footer": {
-    "text": "© 2026 Idolca · Solana {cluster} · 樣本展示：價格和鏈上資料僅供示意"
+    "text": "© 2026 Idolca · Solana {cluster} · 樣本展示：價格和鏈上資料僅供示意",
+    "credits": "圖片來源"
   },
   "NotFound": {
     "title": "找不到這個頁面",
@@ -255,5 +257,13 @@
     "promoTitle": "{price} USDT，有機會抽中 {top} USDT",
     "promoBody": "有限卡池、即時機率、鏈上隨機數。抽到的每張卡都已鑑定、已入庫。",
     "promoCta": "去開包"
+  },
+  "Credits": {
+    "title": "樣本卡照片",
+    "intro": "樣本卡上的照片來自維基共享資源，採用創用 CC 姓名標示授權。每張都裁成了小卡的 55 × 85 mm 比例，沒有其他修改。",
+    "colCard": "卡片",
+    "colPhoto": "照片",
+    "colAuthor": "作者",
+    "colLicense": "授權"
   }
 }

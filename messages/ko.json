@@ -4,7 +4,8 @@
     "vaultTitle": "보관소",
     "vaultDescription": "보관 중인 모든 포토카드의 Solana NFT, 보유자, 상태를 공개합니다.",
     "packsTitle": "미스터리 팩",
-    "packsDescription": "팩을 열고 검수·보관 완료된 K-POP 포토카드를 뽑아 보세요. 수량 한정 풀, 실시간 확률, 온체인 난수."
+    "packsDescription": "팩을 열고 검수·보관 완료된 K-POP 포토카드를 뽑아 보세요. 수량 한정 풀, 실시간 확률, 온체인 난수.",
+    "creditsTitle": "이미지 출처"
   },
   "Nav": {
     "market": "마켓",
@@ -97,7 +98,8 @@
     "intakeDate": "입고일"
   },
   "Footer": {
-    "text": "© 2026 Idolca · Solana {cluster} · 샘플 표시: 가격과 온체인 데이터는 시연용입니다"
+    "text": "© 2026 Idolca · Solana {cluster} · 샘플 표시: 가격과 온체인 데이터는 시연용입니다",
+    "credits": "이미지 출처"
   },
   "NotFound": {
     "title": "페이지를 찾을 수 없습니다",
@@ -255,5 +257,13 @@
     "promoTitle": "{price} USDT로 최대 {top} USDT에 도전",
     "promoBody": "수량 한정 풀, 실시간 확률, 온체인 난수. 뽑은 카드는 모두 검수·보관 완료입니다.",
     "promoCta": "팩 열기"
+  },
+  "Credits": {
+    "title": "샘플 카드 사진",
+    "intro": "샘플 카드의 사진은 위키미디어 공용의 크리에이티브 커먼즈 저작자표시 라이선스 이미지입니다. 포토카드 비율(55 × 85 mm)로 자른 것 외에는 수정하지 않았습니다.",
+    "colCard": "카드",
+    "colPhoto": "사진",
+    "colAuthor": "저작자",
+    "colLicense": "라이선스"
   }
 }

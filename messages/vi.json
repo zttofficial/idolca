@@ -4,7 +4,8 @@
     "vaultTitle": "Kho thẻ",
     "vaultDescription": "Mọi photocard trong kho cùng NFT trên Solana, người nắm giữ và trạng thái, công khai để kiểm chứng.",
     "packsTitle": "Túi bí ẩn",
-    "packsDescription": "Mở túi và rút một photocard K-pop đã được xác thực và lưu kho. Kho thẻ có hạn, tỉ lệ cập nhật trực tiếp, số ngẫu nhiên on-chain."
+    "packsDescription": "Mở túi và rút một photocard K-pop đã được xác thực và lưu kho. Kho thẻ có hạn, tỉ lệ cập nhật trực tiếp, số ngẫu nhiên on-chain.",
+    "creditsTitle": "Nguồn hình ảnh"
   },
   "Nav": {
     "market": "Chợ",
@@ -97,7 +98,8 @@
     "intakeDate": "Ngày nhập kho"
   },
   "Footer": {
-    "text": "© 2026 Idolca · Solana {cluster} · Danh sách mẫu: giá và dữ liệu on-chain chỉ để minh họa"
+    "text": "© 2026 Idolca · Solana {cluster} · Danh sách mẫu: giá và dữ liệu on-chain chỉ để minh họa",
+    "credits": "Nguồn hình ảnh"
   },
   "NotFound": {
     "title": "Không tìm thấy trang",
@@ -255,5 +257,13 @@
     "promoTitle": "{price} USDT để có cơ hội trúng {top} USDT",
     "promoBody": "Kho thẻ có hạn, tỉ lệ trực tiếp và số ngẫu nhiên on-chain. Mọi thẻ bạn rút được đều đã xác thực và lưu kho.",
     "promoCta": "Mở túi"
+  },
+  "Credits": {
+    "title": "Ảnh thẻ mẫu",
+    "intro": "Ảnh trên các thẻ mẫu lấy từ Wikimedia Commons theo giấy phép Creative Commons Ghi công. Mỗi ảnh được cắt theo tỉ lệ photocard 55 × 85 mm, không chỉnh sửa gì khác.",
+    "colCard": "Thẻ",
+    "colPhoto": "Ảnh",
+    "colAuthor": "Tác giả",
+    "colLicense": "Giấy phép"
   }
 }

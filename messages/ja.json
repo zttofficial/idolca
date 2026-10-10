@@ -4,7 +4,8 @@
     "vaultTitle": "保管庫",
     "vaultDescription": "保管中のすべてのトレカについて、対応する Solana NFT・保有者・ステータスを公開しています。",
     "packsTitle": "ミステリーパック",
-    "packsDescription": "パックを開けて、鑑定・保管済みの K-POP トレカを引こう。枚数限定のプール、リアルタイムの確率、オンチェーンの乱数。"
+    "packsDescription": "パックを開けて、鑑定・保管済みの K-POP トレカを引こう。枚数限定のプール、リアルタイムの確率、オンチェーンの乱数。",
+    "creditsTitle": "画像クレジット"
   },
   "Nav": {
     "market": "マーケット",
@@ -97,7 +98,8 @@
     "intakeDate": "保管開始日"
   },
   "Footer": {
-    "text": "© 2026 Idolca · Solana {cluster} · サンプル表示：価格とオンチェーンデータはデモ用です"
+    "text": "© 2026 Idolca · Solana {cluster} · サンプル表示：価格とオンチェーンデータはデモ用です",
+    "credits": "画像クレジット"
   },
   "NotFound": {
     "title": "ページが見つかりません",
@@ -255,5 +257,13 @@
     "promoTitle": "{price} USDT で最大 {top} USDT のチャンス",
     "promoBody": "枚数限定のプール、リアルタイムの確率、オンチェーンの乱数。引いたカードはすべて鑑定・保管済みです。",
     "promoCta": "パックを開ける"
+  },
+  "Credits": {
+    "title": "サンプルカードの写真",
+    "intro": "サンプルカードの写真は Wikimedia Commons のクリエイティブ・コモンズ表示ライセンスの画像です。トレカの 55 × 85 mm の比率にトリミングしたほかは変更していません。",
+    "colCard": "カード",
+    "colPhoto": "写真",
+    "colAuthor": "作者",
+    "colLicense": "ライセンス"
   }
 }

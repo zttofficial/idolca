@@ -4,7 +4,8 @@
     "vaultTitle": "Vault",
     "vaultDescription": "Setiap photocard di vault beserta NFT Solana, pemegang, dan statusnya, dapat diverifikasi publik.",
     "packsTitle": "Mystery Pack",
-    "packsDescription": "Buka pack dan dapatkan photocard K-pop yang sudah diautentikasi dan disimpan di vault. Pool terbatas, peluang real-time, keacakan on-chain."
+    "packsDescription": "Buka pack dan dapatkan photocard K-pop yang sudah diautentikasi dan disimpan di vault. Pool terbatas, peluang real-time, keacakan on-chain.",
+    "creditsTitle": "Kredit gambar"
   },
   "Nav": {
     "market": "Pasar",
@@ -97,7 +98,8 @@
     "intakeDate": "Tanggal masuk"
   },
   "Footer": {
-    "text": "© 2026 Idolca · Solana {cluster} · Contoh listing: harga dan data on-chain hanya untuk demonstrasi"
+    "text": "© 2026 Idolca · Solana {cluster} · Contoh listing: harga dan data on-chain hanya untuk demonstrasi",
+    "credits": "Kredit gambar"
   },
   "NotFound": {
     "title": "Halaman tidak ditemukan",
@@ -255,5 +257,13 @@
     "promoTitle": "{price} USDT untuk peluang hingga {top} USDT",
     "promoBody": "Pool terbatas, peluang real-time, dan keacakan on-chain. Setiap kartu yang kamu dapat sudah diautentikasi dan disimpan di vault.",
     "promoCta": "Buka pack"
+  },
+  "Credits": {
+    "title": "Foto kartu contoh",
+    "intro": "Foto pada kartu contoh berasal dari Wikimedia Commons dengan lisensi Creative Commons Atribusi. Setiap foto dipotong ke rasio photocard 55 × 85 mm tanpa perubahan lain.",
+    "colCard": "Kartu",
+    "colPhoto": "Foto",
+    "colAuthor": "Pembuat",
+    "colLicense": "Lisensi"
   }
 }

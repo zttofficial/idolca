@@ -28,7 +28,7 @@ npm run lint
 
 ## 卡樣圖片
 
-樣本卡的藝人資料寫在 `src/lib/mock-cards.ts`，照片對應 `public/cards/samples/c1.jpg` 到 `c8.jpg`。這些是本機預覽用的維基共享資源 CC BY 照片，不提交進倉庫；沒有這些檔案時，卡面自動退回 canvas 佔位圖。
+樣本卡的藝人資料寫在 `src/lib/mock-cards.ts`，照片是 `public/cards/samples/c1.jpg` 到 `c8.jpg`，來自維基共享資源，CC BY 授權。作者和授權記在 `src/lib/sample-credits.json`，網站的 `/credits` 頁公開署名；更換或新增照片時要同步更新這個檔案。
 
 ## 平台端鏈上腳本
 

@@ -4,7 +4,8 @@
     "vaultTitle": "Vault",
     "vaultDescription": "Every vaulted photocard with its Solana NFT, holder and status, publicly verifiable.",
     "packsTitle": "Mystery Pack",
-    "packsDescription": "Open a pack and pull an authenticated, vaulted K-pop photocard. Finite pools, live odds, on-chain randomness."
+    "packsDescription": "Open a pack and pull an authenticated, vaulted K-pop photocard. Finite pools, live odds, on-chain randomness.",
+    "creditsTitle": "Image credits"
   },
   "Nav": {
     "market": "Market",
@@ -97,7 +98,8 @@
     "intakeDate": "Vaulted on"
   },
   "Footer": {
-    "text": "© 2026 Idolca · Solana {cluster} · Sample listings: prices and on-chain data are for demonstration only"
+    "text": "© 2026 Idolca · Solana {cluster} · Sample listings: prices and on-chain data are for demonstration only",
+    "credits": "Image credits"
   },
   "NotFound": {
     "title": "Page not found",
@@ -255,5 +257,13 @@
     "promoTitle": "{price} USDT for a chance at {top} USDT",
     "promoBody": "Finite pools, live odds and on-chain randomness. Every card you pull is authenticated and vaulted.",
     "promoCta": "Open a pack"
+  },
+  "Credits": {
+    "title": "Sample card photos",
+    "intro": "The photos on the sample cards come from Wikimedia Commons under Creative Commons Attribution licenses. Each was cropped to the 55 × 85 mm photocard ratio; no other changes were made.",
+    "colCard": "Card",
+    "colPhoto": "Photo",
+    "colAuthor": "Author",
+    "colLicense": "License"
   }
 }
