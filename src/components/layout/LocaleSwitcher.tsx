@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { Suspense, useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { LOCALE_NAMES, routing, type Locale } from "@/i18n/routing";
 
@@ -17,7 +17,40 @@ const SHORT: Record<Locale, string> = {
   vi: "VI",
 };
 
+// usePathname 在動態路由（如 /listing/[id]）上要等請求時才知道，選單放進 Suspense，先顯示同樣的按鈕
 export default function LocaleSwitcher() {
+  return (
+    <Suspense fallback={<Trigger open={false} />}>
+      <Menu />
+    </Suspense>
+  );
+}
+
+function Trigger({ open, pending = false, onClick }: { open: boolean; pending?: boolean; onClick?: () => void }) {
+  const t = useTranslations("Nav");
+  const locale = useLocale() as Locale;
+  return (
+    <button
+      type="button"
+      aria-haspopup="listbox"
+      aria-expanded={open}
+      aria-label={t("language")}
+      disabled={pending || !onClick}
+      onClick={onClick}
+      className={`flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink transition hover:bg-surface-3 ${pending ? "opacity-60" : ""}`}
+    >
+      <span aria-hidden className="text-sm leading-none">
+        🌐
+      </span>
+      {SHORT[locale]}
+      <svg viewBox="0 0 12 12" className={`h-2.5 w-2.5 text-ink-3 transition ${open ? "rotate-180" : ""}`} aria-hidden>
+        <path d="m2.5 4.5 3.5 3.5 3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
+  );
+}
+
+function Menu() {
   const t = useTranslations("Nav");
   const locale = useLocale() as Locale;
   const router = useRouter();
@@ -49,23 +82,7 @@ export default function LocaleSwitcher() {
 
   return (
     <div ref={root} className="relative">
-      <button
-        type="button"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={t("language")}
-        disabled={pending}
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink transition hover:bg-surface-3 disabled:opacity-60"
-      >
-        <span aria-hidden className="text-sm leading-none">
-          🌐
-        </span>
-        {SHORT[locale]}
-        <svg viewBox="0 0 12 12" className={`h-2.5 w-2.5 text-ink-3 transition ${open ? "rotate-180" : ""}`} aria-hidden>
-          <path d="m2.5 4.5 3.5 3.5 3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
+      <Trigger open={open} pending={pending} onClick={() => setOpen((v) => !v)} />
       {open && (
         <ul role="listbox" aria-label={t("language")} className="absolute right-0 z-50 mt-2 w-44 rounded-xl border border-line bg-surface p-1 shadow-lg">
           {routing.locales.map((l) => (

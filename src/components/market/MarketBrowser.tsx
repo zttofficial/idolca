@@ -4,18 +4,32 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import HoloTile from "./HoloTile";
+import ListingTile from "./ListingTile";
+import { openAddCard } from "@/components/binder/AddCard";
+import type { Listing } from "@/lib/items";
 import { CARDS } from "@/lib/mock-cards";
-import { RARITIES, SORTS, applyQuery, facetCounts, parseQuery, toSearch, type MarketQuery } from "@/lib/market";
+import { LANES, RARITIES, SORTS, applyListingQuery, applyQuery, facetCounts, parseQuery, toSearch, type MarketQuery } from "@/lib/market";
 
-// 市場頁：搜尋、團體 → 成員、類型、價格、只看在售、排序、分頁，狀態全在網址裡
+// 市場頁：金庫卡 / 自由刊登兩條線；搜尋、團體 → 成員、類型、價格、只看在售、排序、分頁，狀態全在網址裡
 export default function MarketBrowser() {
   const t = useTranslations("Market");
+  const tListing = useTranslations("Listing");
   const tRarity = useTranslations("Rarity");
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
   const q = useMemo(() => parseQuery(new URLSearchParams(sp.toString())), [sp]);
-  const result = useMemo(() => applyQuery(CARDS, q), [q]);
+  const free = q.lane === "free";
+  const [listings, setListings] = useState<Listing[] | null>(null);
+  useEffect(() => {
+    fetch("/api/listings")
+      .then((r) => (r.ok ? r.json() : { listings: [] }))
+      .then((d: { listings: Listing[] }) => setListings(d.listings))
+      .catch(() => setListings([]));
+  }, []);
+  const vaultResult = useMemo(() => applyQuery(CARDS, q), [q]);
+  const freeResult = useMemo(() => applyListingQuery(listings ?? [], q), [listings, q]);
+  const result = free ? freeResult : vaultResult;
   const facets = useMemo(() => facetCounts(CARDS, q), [q]);
   const [showFilters, setShowFilters] = useState(false);
   const top = useRef<HTMLDivElement>(null);
@@ -41,8 +55,10 @@ export default function MarketBrowser() {
   }, [text]);
 
   const byName = (a: string, b: string) => a.localeCompare(b, "en", { sensitivity: "base" });
-  const groups = [...new Set(CARDS.map((c) => c.group))].sort(byName);
-  const members = q.group ? [...new Set(CARDS.filter((c) => c.group === q.group).map((c) => c.member))].sort(byName) : [];
+  const groups = free ? [...new Set((listings ?? []).map((l) => l.group))].sort(byName) : [...new Set(CARDS.map((c) => c.group))].sort(byName);
+  const groupCount = (g: string | null) =>
+    free ? (listings ?? []).filter((l) => !g || l.group === g).length : g ? (facets.groups.get(g) ?? 0) : [...facets.groups.values()].reduce((a, b) => a + b, 0);
+  const members = q.group && !free ? [...new Set(CARDS.filter((c) => c.group === q.group).map((c) => c.member))].sort(byName) : [];
   const activeCount = (q.group ? 1 : 0) + (q.member ? 1 : 0) + q.types.length + (q.min !== null || q.max !== null ? 1 : 0) + (q.listedOnly ? 1 : 0);
 
   const chip = (active: boolean) =>
@@ -60,7 +76,7 @@ export default function MarketBrowser() {
                 className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left ${q.group === g ? "bg-surface-3 font-semibold" : "hover:bg-surface-2"}`}
               >
                 <span>{g ?? t("allGroups")}</span>
-                <span className="text-xs text-ink-3 tabular-nums">{g ? (facets.groups.get(g) ?? 0) : [...facets.groups.values()].reduce((a, b) => a + b, 0)}</span>
+                <span className="text-xs text-ink-3 tabular-nums">{groupCount(g)}</span>
               </button>
             </li>
           ))}
@@ -83,29 +99,33 @@ export default function MarketBrowser() {
         </div>
       )}
 
-      <div>
-        <p className="text-xs font-semibold text-ink-3">{t("type")}</p>
-        <div className="mt-2 space-y-1.5">
-          {RARITIES.map((r) => (
-            <label key={r} className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                checked={q.types.includes(r)}
-                onChange={() => go({ types: q.types.includes(r) ? q.types.filter((x) => x !== r) : [...q.types, r] })}
-                className="h-4 w-4 accent-[var(--accent)]"
-              />
-              {tRarity(r)}
-            </label>
-          ))}
+      {!free && (
+        <div>
+          <p className="text-xs font-semibold text-ink-3">{t("type")}</p>
+          <div className="mt-2 space-y-1.5">
+            {RARITIES.map((r) => (
+              <label key={r} className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={q.types.includes(r)}
+                  onChange={() => go({ types: q.types.includes(r) ? q.types.filter((x) => x !== r) : [...q.types, r] })}
+                  className="h-4 w-4 accent-[var(--accent)]"
+                />
+                {tRarity(r)}
+              </label>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <PriceRange key={`${q.min}-${q.max}`} min={q.min} max={q.max} onApply={(min, max) => go({ min, max })} />
 
-      <label className="flex cursor-pointer items-center gap-2">
-        <input type="checkbox" checked={q.listedOnly} onChange={() => go({ listedOnly: !q.listedOnly })} className="h-4 w-4 accent-[var(--accent)]" />
-        {t("listedOnly")}
-      </label>
+      {!free && (
+        <label className="flex cursor-pointer items-center gap-2">
+          <input type="checkbox" checked={q.listedOnly} onChange={() => go({ listedOnly: !q.listedOnly })} className="h-4 w-4 accent-[var(--accent)]" />
+          {t("listedOnly")}
+        </label>
+      )}
 
       {activeCount > 0 && (
         <button onClick={() => go({ group: null, member: null, types: [], min: null, max: null, listedOnly: false })} className="text-xs font-semibold text-accent-ink hover:underline">
@@ -117,6 +137,22 @@ export default function MarketBrowser() {
 
   return (
     <div ref={top} className="scroll-mt-24">
+      <div role="tablist" className="mb-5 flex gap-2">
+        {LANES.map((lane) => (
+          <button
+            key={lane}
+            role="tab"
+            aria-selected={q.lane === lane}
+            onClick={() => go({ lane, group: null, member: null, types: [], listedOnly: false })}
+            className={`rounded-2xl border px-4 py-2.5 text-left transition ${q.lane === lane ? "border-ink bg-surface" : "border-line text-ink-2 hover:border-line-strong"}`}
+          >
+            <span className="block text-sm font-semibold">
+              {t(`lane_${lane}`)} <span className="font-normal text-ink-3 tabular-nums">{lane === "vault" ? CARDS.length : (listings?.length ?? "…")}</span>
+            </span>
+            <span className="block text-[11px] text-ink-3">{t(`laneHint_${lane}`)}</span>
+          </button>
+        ))}
+      </div>
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex min-w-60 flex-1 items-center gap-2 rounded-full border border-line bg-surface px-4 py-2.5 focus-within:border-ink">
           <svg viewBox="0 0 20 20" className="h-4 w-4 text-ink-3" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
@@ -139,7 +175,7 @@ export default function MarketBrowser() {
         <label className="flex items-center gap-2 text-sm text-ink-2">
           <span className="hidden sm:inline">{t("sortLabel")}</span>
           <select value={q.sort} onChange={(e) => go({ sort: e.target.value as MarketQuery["sort"] })} className="rounded-full border border-line bg-surface px-3 py-2.5 text-sm text-ink outline-none">
-            {SORTS.map((s) => (
+            {SORTS.filter((s) => !free || s !== "trending").map((s) => (
               <option key={s} value={s}>
                 {t(`sort_${s}`)}
               </option>
@@ -152,15 +188,23 @@ export default function MarketBrowser() {
         <aside className={`${showFilters ? "block" : "hidden"} rounded-2xl border border-line bg-surface p-4 lg:sticky lg:top-24 lg:block lg:self-start lg:border-0 lg:p-0`}>{filters}</aside>
 
         <div>
+          {free && <p className="mb-4 rounded-xl bg-notice-bg px-4 py-3 text-xs leading-relaxed text-notice-ink">{tListing("disclaimerShort")}</p>}
           <p className="text-sm text-ink-2">{t("results", { count: result.total })}</p>
-          {result.items.length ? (
+          {free && listings === null ? (
+            <div className="mt-4 h-64 animate-pulse rounded-2xl bg-surface-2" />
+          ) : result.items.length ? (
             <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 xl:grid-cols-4">
-              {result.items.map((c) => (
-                <HoloTile key={c.id} card={c} />
-              ))}
+              {free ? freeResult.items.map((l) => <ListingTile key={l.id} listing={l} />) : vaultResult.items.map((c) => <HoloTile key={c.id} card={c} />)}
             </div>
           ) : (
-            <div className="mt-6 rounded-2xl border border-dashed border-line px-6 py-16 text-center text-sm text-ink-2">{t("noResults")}</div>
+            <div className="mt-6 rounded-2xl border border-dashed border-line px-6 py-16 text-center text-sm text-ink-2">
+              {free && !listings?.length ? tListing("empty") : t("noResults")}
+              {free && (
+                <button onClick={() => openAddCard()} className="btn-primary mx-auto mt-4 block rounded-full px-5 py-2.5 text-sm font-semibold">
+                  {tListing("sellYours")}
+                </button>
+              )}
+            </div>
           )}
 
           {result.pages > 1 && (

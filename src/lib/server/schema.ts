@@ -43,9 +43,10 @@ export const binderWants = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.templateId] })],
 );
 
-// 用戶自由上鏈的卡（自述收藏 NFT）。不要求在圖鑑裡，名稱由用戶填；
-// verification 只有平台能改：self_reported（預設）→ authentic（金庫鑑定為真，隨後轉成金庫 NFT）或 fake（鑑定為假）
-export const VERIFICATION = ["self_reported", "authentic", "fake"] as const;
+// 用戶自由上鏈的卡（收藏 NFT）。不要求在圖鑑裡，名稱由用戶填；可以是一張卡，也可以是一組卡。
+// 平台不查驗這類卡：一律是 unverified（待驗證）；只有被查出是假卡時，平台才改成 fake，持有人改不回來。
+// 「真品」只屬於金庫卡：卡寄進金庫鑑定通過後另鑄金庫 NFT，和這張表無關
+export const VERIFICATION = ["unverified", "fake"] as const;
 export type Verification = (typeof VERIFICATION)[number];
 
 export const collectorItems = pgTable("collector_items", {
@@ -53,9 +54,13 @@ export const collectorItems = pgTable("collector_items", {
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  // 正反面都要：背面能看出版本和真偽線索
+  // 正反面必填（背面能看出版本和真偽線索），另外最多 6 張補充照片（一組卡的合照、細節），存成 JSON 陣列
   photo: text("photo").notNull(),
   photoBack: text("photo_back"),
+  extraPhotos: text("extra_photos"),
+  // 賣家自己取的標題，例如「IVE 幸運抽一組 6 張」；留空時用團體和成員組成
+  title: text("title"),
+  quantity: integer("quantity").notNull().default(1),
   groupName: text("group_name").notNull(),
   // 來源：專輯、預購特典、幸運抽、簽售、演唱會周邊…（見 src/lib/sources.ts）
   source: text("source").notNull().default("album"),
@@ -66,9 +71,12 @@ export const collectorItems = pgTable("collector_items", {
   templateId: text("template_id"),
   // NFT 地址（演示模式下是隨機字串）
   asset: text("asset").notNull(),
-  verification: text("verification").$type<Verification>().notNull().default("self_reported"),
+  verification: text("verification").$type<Verification>().notNull().default("unverified"),
   verificationNote: text("verification_note"),
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  // 自由刊登：有價格就是刊登中（USDT，存到分）
+  priceCents: integer("price_cents"),
+  listedAt: timestamp("listed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -116,7 +124,7 @@ export const BOOTSTRAP_SQL = [
     version text,
     template_id text,
     asset text NOT NULL,
-    verification text NOT NULL DEFAULT 'self_reported',
+    verification text NOT NULL DEFAULT 'unverified',
     verification_note text,
     verified_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now()
@@ -125,6 +133,14 @@ export const BOOTSTRAP_SQL = [
   // 舊資料庫補欄位
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS photo_back text`,
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'album'`,
+  `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS extra_photos text`,
+  `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS title text`,
+  `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS quantity integer NOT NULL DEFAULT 1`,
+  `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS price_cents integer`,
+  `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS listed_at timestamptz`,
+  `ALTER TABLE collector_items ALTER COLUMN verification SET DEFAULT 'unverified'`,
+  `UPDATE collector_items SET verification = 'unverified' WHERE verification NOT IN ('unverified', 'fake')`,
+  `CREATE INDEX IF NOT EXISTS collector_items_listed_idx ON collector_items(listed_at) WHERE price_cents IS NOT NULL`,
   `CREATE TABLE IF NOT EXISTS binder_wants (
     user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     template_id text NOT NULL,

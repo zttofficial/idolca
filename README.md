@@ -2,7 +2,7 @@
 
 K-pop 小卡鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Solana 上對應一個 Metaplex Core NFT，以 USDT 結算，銷毀 NFT 即可提貨。
 
-技術選型見 [docs/tech-stack.md](docs/tech-stack.md)，命名方案見 [docs/naming.md](docs/naming.md)。
+市場調研和競品分析見 [docs/research.md](docs/research.md)，技術選型見 [docs/tech-stack.md](docs/tech-stack.md)，命名方案見 [docs/naming.md](docs/naming.md)。
 
 ## 開發
 
@@ -69,14 +69,15 @@ anchor test        # 本地驗證節點會從主網複製 Metaplex Core 程序
 src/
   app/[locale]/           所有頁面都在語言段下
     page.tsx              首頁
-    market/               市場頁：搜尋、團體和成員、類型、價格、排序、分頁
+    market/               市場頁：金庫卡和自由刊登兩個頁籤，搜尋、團體和成員、類型、價格、排序、分頁
     vault/                金庫頁：每張卡的 NFT 地址、持有人、狀態，可按狀態篩選和搜尋
-    card/[id]/            卡片內頁：看卡、購買、鑑定報告、價格走勢、同款在售、鏈上紀錄、費用與保障
+    card/[id]/            金庫卡內頁：看卡、購買、鑑定報告、價格走勢、同款在售、鏈上紀錄、費用與保障
+    listing/[id]/         自由刊登商品頁：賣家照片、價格、免責聲明、擔保交易流程
     packs/                盲盒卡包列表和卡包頁（機率、卡池、開包）
     catalog/              圖鑑：團體列表、團體卡款（標記有 / 想要）
-    binder/               收藏冊：卡冊、收集進度、想要清單、上鏈
+    binder/               收藏冊：卡冊、收集進度、想要清單、上鏈、刊登
     charts/               專輯銷量榜看板（週榜、初動）
-  app/api/                帳號（註冊、登入、登出、當前用戶）、收藏冊同步、自由上鏈、卡片照片、鑑定結果（管理）
+  app/api/                帳號（註冊、登入、登出、當前用戶）、收藏冊同步、自由上鏈與刊登、自由刊登列表、卡片照片、標記假卡（管理）
   i18n/                   next-intl 路由、導航、請求配置
   proxy.ts                語言前綴路由
   components/
@@ -84,7 +85,7 @@ src/
     card/                 卡片內頁的看卡切換、購買面板、價格走勢圖
     packs/                卡包包裝、倒數、開包流程（撕包、翻卡、結果）
     binder/               圖鑑卡款、卡冊、上鏈對話框
-    market/               市場瀏覽、卡片列表、全息懸停卡（HoloTile）、鏈上成交跑馬燈
+    market/               市場瀏覽、金庫卡全息懸停卡（HoloTile）、自由刊登卡、照片圖庫、鏈上成交跑馬燈
     vault/                金庫清單
     landing/              首頁說明區塊
     brand/                文字標誌
@@ -97,7 +98,7 @@ src/
     card-detail.ts        卡片內頁的樣本資料：鑑定、成交、鏈上紀錄、同款在售、賣家
     packs.ts              盲盒卡包：卡池、按剩餘張數計算的機率、抽卡
     charts.ts             專輯銷量榜樣本數據
-    market.ts             市場的篩選、排序、分頁和網址參數
+    market.ts             市場兩條線的篩選、排序、分頁和網址參數
     sources.ts            小卡來源分類
     catalog.ts            圖鑑：團體、成員、專輯、版本和卡款
     binder.ts             收藏冊資料（目前存在瀏覽器 localStorage）
@@ -108,6 +109,7 @@ messages/                 八種語言的介面文字
 scripts/                  平台端 Metaplex Core 腳本：建集合、鑄造、提貨
 onchain/                  Anchor 工作區：idolca-market 掛單託管程序和測試
 docs/
+  research.md             市場調研與競品分析
   tech-stack.md           技術選型
   naming.md               命名方案
 ```

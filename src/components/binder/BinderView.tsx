@@ -5,12 +5,14 @@ import { useTranslations } from "next-intl";
 import CardArt from "@/components/market/CardArt";
 import { AddCardButton, openAddCard } from "./AddCard";
 import VerificationBadge from "./VerificationBadge";
+import { Thumbs } from "@/components/market/PhotoGallery";
 import { Link } from "@/i18n/navigation";
 import { binderActions, useBinder, type BinderEntry } from "@/lib/binder";
 import { GROUPS, TEMPLATES, templateCard, type Template } from "@/lib/catalog";
 import { formatUsdt } from "@/lib/fx";
 import { shortAddress } from "@/lib/solana/config";
-import { useMyItems, type CollectorItem } from "@/lib/items";
+import { itemTitle } from "@/lib/item-title";
+import { setListing, useMyItems, type CollectorItem } from "@/lib/items";
 
 const POCKETS = 9;
 type Tab = "binder" | "progress" | "wants";
@@ -262,20 +264,24 @@ function CardSheet({ owned, onClose }: { owned: Owned; onClose: () => void }) {
   );
 }
 
-// 自己上鏈的卡：照片 + 鑑定狀態；假卡打紅框、轉灰階並蓋上斜向 FAKE 字樣
+// 自己上鏈的卡：照片 + 狀態；假卡打紅框、轉灰階並蓋上斜向 FAKE 字樣；刊登中的標出價格
 function ItemPocket({ item, onSelect }: { item: CollectorItem; onSelect: () => void }) {
   const fake = item.verification === "fake";
   return (
     <button onClick={onSelect} className={`group relative block aspect-[55/85] overflow-hidden rounded-lg text-left ${fake ? "ring-2 ring-down" : ""}`}>
-      {/* eslint-disable-next-line @next/next/no-img-element -- 用戶上傳的 data URL */}
-      <img src={item.photo} alt={`${item.group} ${item.member}`} className={`h-full w-full object-cover ${fake ? "grayscale" : ""}`} />
+      {/* eslint-disable-next-line @next/next/no-img-element -- 用戶上傳的照片 */}
+      <img src={item.photo} alt={itemTitle(item)} className={`h-full w-full object-cover ${fake ? "grayscale" : ""}`} />
       <span className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-br from-white/25 via-transparent to-transparent ring-1 ring-black/5 ring-inset" />
       {fake && (
         <span className="pointer-events-none absolute inset-0 grid place-items-center">
           <span className="-rotate-[30deg] rounded border-2 border-down bg-white/70 px-2 text-lg font-black tracking-widest text-down">FAKE</span>
         </span>
       )}
-      <VerificationBadge status={item.verification} className="absolute bottom-1 left-1" />
+      {item.quantity > 1 && <span className="absolute top-1 right-1 rounded-full bg-ink/80 px-1.5 text-[10px] font-bold text-white">×{item.quantity}</span>}
+      <span className="absolute bottom-1 left-1 flex gap-1">
+        <VerificationBadge status={item.verification} />
+        {item.priceUsdt !== null && <span className="rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-bold text-white tabular-nums">{formatUsdt(item.priceUsdt)}</span>}
+      </span>
       <span className="absolute inset-0 bg-ink/0 transition group-hover:bg-ink/10" />
     </button>
   );
@@ -285,34 +291,23 @@ function ItemSheet({ item, onClose }: { item: CollectorItem; onClose: () => void
   const t = useTranslations("Binder");
   const tMint = useTranslations("Mint");
   const tSource = useTranslations("Source");
-  const [side, setSide] = useState<"front" | "back">("front");
+  const [shown, setShown] = useState(0);
   const fake = item.verification === "fake";
+  const photo = item.photos[shown] ?? item.photo;
   return (
-    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="grid w-full max-w-xl gap-6 rounded-2xl border border-line bg-surface p-6 shadow-2xl sm:grid-cols-[180px_1fr]" onClick={(e) => e.stopPropagation()}>
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] grid place-items-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="grid w-full max-w-xl gap-6 rounded-2xl border border-line bg-surface p-6 shadow-2xl sm:grid-cols-[200px_1fr]" onClick={(e) => e.stopPropagation()}>
         <div>
           <div className={`aspect-[55/85] overflow-hidden rounded-xl ${fake ? "ring-2 ring-down" : ""}`}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- 用戶上傳的 data URL */}
-            <img src={side === "back" && item.photoBack ? item.photoBack : item.photo} alt="" className={`h-full w-full object-cover ${fake ? "grayscale" : ""}`} />
+            {/* eslint-disable-next-line @next/next/no-img-element -- 用戶上傳的照片 */}
+            <img src={photo} alt="" className={`h-full w-full object-cover ${fake ? "grayscale" : ""}`} />
           </div>
-          {item.photoBack && (
-            <div className="mt-2 flex justify-center gap-1.5">
-              {(["front", "back"] as const).map((x) => (
-                <button
-                  key={x}
-                  onClick={() => setSide(x)}
-                  className={`rounded-full border px-3 py-1 text-[11px] ${side === x ? "border-line-strong bg-ink text-bg" : "border-line text-ink-2"}`}
-                >
-                  {tMint(x)}
-                </button>
-              ))}
-            </div>
-          )}
+          {item.photos.length > 1 && <Thumbs photos={item.photos} shown={shown} onShow={setShown} />}
         </div>
         <div className="flex flex-col">
           <p className="text-xs text-ink-3">{[item.group, tSource(item.source), item.album].filter(Boolean).join(" · ")}</p>
-          <h3 className="mt-1 text-xl font-bold">{item.member}</h3>
-          {item.version && <p className="text-sm text-ink-2">{item.version}</p>}
+          <h3 className="mt-1 text-xl font-bold">{itemTitle(item)}</h3>
+          <p className="text-sm text-ink-2">{[item.member, item.version, item.quantity > 1 ? t("setOf", { count: item.quantity }) : null].filter(Boolean).join(" · ")}</p>
           <div className="mt-3">
             <VerificationBadge status={item.verification} className="text-[10px]" />
           </div>
@@ -322,8 +317,9 @@ function ItemSheet({ item, onClose }: { item: CollectorItem; onClose: () => void
           <p className="mt-3 font-mono text-[11px] text-ink-3">{shortAddress(item.asset, 6, 6)}</p>
 
           <div className="mt-auto flex flex-col gap-2 pt-5">
-            {item.verification === "self_reported" && (
-              <Link href="/#how" className="btn-primary rounded-full py-2.5 text-center text-sm font-semibold">
+            {!fake && <ListingControl item={item} />}
+            {!fake && (
+              <Link href="/#how" className="rounded-full border border-line py-2.5 text-center text-sm font-semibold hover:bg-surface-2">
                 {t("sendToVault")}
               </Link>
             )}
@@ -334,6 +330,82 @@ function ItemSheet({ item, onClose }: { item: CollectorItem; onClose: () => void
         </div>
       </div>
     </div>
+  );
+}
+
+// 刊登出售 / 改價 / 下架
+function ListingControl({ item }: { item: CollectorItem }) {
+  const t = useTranslations("Binder");
+  const listed = item.priceUsdt !== null;
+  const [editing, setEditing] = useState(false);
+  const [price, setPrice] = useState(item.priceUsdt?.toString() ?? "");
+  const [busy, setBusy] = useState(false);
+  const value = Number(price);
+  const valid = price !== "" && value > 0 && value <= 100_000;
+  const run = async (next: number | null) => {
+    setBusy(true);
+    try {
+      await setListing(item.id, next);
+      setEditing(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (listed && !editing) {
+    return (
+      <div className="rounded-xl bg-accent-soft p-3 text-sm">
+        <p className="font-semibold text-accent-ink">{t("listedAt", { price: formatUsdt(item.priceUsdt!) })}</p>
+        <div className="mt-2 flex gap-3 text-xs">
+          <Link href={`/listing/${item.id}`} className="font-semibold text-accent-ink hover:underline">
+            {t("viewListing")}
+          </Link>
+          <button onClick={() => setEditing(true)} className="text-ink-2 hover:text-ink">
+            {t("editPrice")}
+          </button>
+          <button disabled={busy} onClick={() => run(null)} className="text-ink-2 hover:text-down">
+            {t("unlist")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+  if (!editing) {
+    return (
+      <button onClick={() => setEditing(true)} className="btn-primary rounded-full py-2.5 text-sm font-semibold">
+        {t("listForSale")}
+      </button>
+    );
+  }
+  return (
+    <form
+      className="rounded-xl border border-line p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (valid) run(value);
+      }}
+    >
+      <label className="flex items-center gap-2 text-xs text-ink-2">
+        {t("price")}
+        <input
+          autoFocus
+          inputMode="decimal"
+          value={price}
+          onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))}
+          className="w-24 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm tabular-nums outline-none focus:border-ink"
+        />
+        USDT
+      </label>
+      <p className="mt-2 text-[11px] leading-snug text-ink-3">{t("listingNote")}</p>
+      <div className="mt-2 flex gap-2">
+        <button disabled={!valid || busy} className="btn-primary rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-40">
+          {t(listed ? "savePrice" : "confirmList")}
+        </button>
+        <button type="button" onClick={() => setEditing(false)} className="px-2 text-xs text-ink-3 hover:text-ink">
+          {t("cancel")}
+        </button>
+      </div>
+    </form>
   );
 }
 

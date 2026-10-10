@@ -5,6 +5,7 @@ import sharp from "sharp";
 import type { Db } from "./db";
 import { media } from "./schema";
 import credits from "@/lib/sample-credits.json";
+import { sampleId } from "@/lib/sample-image";
 
 // 卡片照片：統一裁成 55:85、轉 JPEG，存進 media 表。
 // 原圖（未加浮水印）留給鑑定，對外只提供加了浮水印的展示圖
@@ -21,8 +22,8 @@ const WORDMARK_W = 2901;
 function watermark(w: number, h: number) {
   const markW = w * 0.2;
   const s = markW / WORDMARK_W;
-  const stepX = markW * 1.7;
-  const stepY = markW * 0.75;
+  const stepX = markW * 2.4;
+  const stepY = markW * 1.35;
   const d = Math.hypot(w, h);
   const uses: string[] = [];
   for (let row = 0, y = -d / 2; y < d / 2 + stepY; row++, y += stepY) {
@@ -33,8 +34,8 @@ function watermark(w: number, h: number) {
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">` +
       `<defs><g id="m"><g transform="scale(${s})"><path d="${WORDMARK}"/><rect x="42" y="-880" width="210" height="300" rx="50" transform="rotate(14 147 -730)"/></g></g></defs>` +
       `<g transform="translate(${w / 2} ${h / 2}) rotate(-30)">` +
-      `<g fill="#000" opacity="0.1" transform="translate(1 1)">${tiles}</g>` +
-      `<g fill="#fff" opacity="0.28">${tiles}</g>` +
+      `<g fill="#000" opacity="0.06" transform="translate(1 1)">${tiles}</g>` +
+      `<g fill="#fff" opacity="0.2">${tiles}</g>` +
       `</g></svg>`,
   );
 }
@@ -87,11 +88,11 @@ export async function saveUploads(db: Db, ownerId: string, dataUrls: unknown[]) 
   );
 }
 
-// 讀展示圖。樣本卡（id 為 sample-c1 之類）第一次被讀時從維基共享資源抓原圖入庫
+// 讀展示圖。樣本卡（id 見 src/lib/sample-image.ts）第一次被讀時從維基共享資源抓原圖入庫
 export async function readDisplay(db: Db, id: string) {
   const [row] = await db.select({ display: media.display }).from(media).where(eq(media.id, id));
   if (row) return Buffer.from(row.display, "base64");
-  const sample = id.startsWith("sample-") && credits.find((c) => `sample-${c.card}` === id);
+  const sample = credits.find((c) => sampleId(c.card) === id);
   if (!sample) return null;
   const res = await fetch(sample.src, { headers: { "User-Agent": "Idolca/0.1 (sample photo seeding)" } });
   if (!res.ok) return null;

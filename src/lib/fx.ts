@@ -38,7 +38,8 @@ export function formatFiat(usdt: number, locale: string) {
   }).format(usdt * USDT_RATES[code]);
 }
 
-export function formatUsdt(amount: number, fractionDigits = 0) {
+// 不指定小數位時：整數不帶小數，有零頭的價格（如賣家標的 42.5）顯示到分
+export function formatUsdt(amount: number, fractionDigits = Number.isInteger(amount) ? 0 : 2) {
   return `${amount.toLocaleString("en-US", {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,

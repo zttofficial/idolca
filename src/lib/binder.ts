@@ -11,7 +11,7 @@ export type BinderEntry = {
   count: number;
   // 用戶自己拍的正面照（已裁成 55:85 的 JPEG data URL）
   photo?: string;
-  // 自述收藏 NFT 的地址（演示模式下是假地址）
+  // 收藏 NFT 的地址（演示模式下是假地址）
   mint?: string;
 };
 

@@ -3,7 +3,7 @@ import { getDb } from "@/lib/server/db";
 import { VERIFICATION, collectorItems, type Verification } from "@/lib/server/schema";
 import { publicItem } from "@/lib/server/items";
 
-// 金庫鑑定後寫入結果。用 ADMIN_TOKEN 保護；正式版換成後台帳號權限，並同步更新鏈上元數據
+// 平台把自由上鏈的卡標成假卡（被檢舉或寄到金庫查出是假），或撤銷誤標。標成假卡時同時下架。用 ADMIN_TOKEN 保護；正式版換成後台帳號權限，並同步更新鏈上元數據
 export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/items/[id]">) {
   const token = process.env.ADMIN_TOKEN;
   if (!token || request.headers.get("x-admin-token") !== token) return Response.json({ error: "forbidden" }, { status: 403 });
@@ -19,7 +19,8 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/item
     .set({
       verification: body.verification as Verification,
       verificationNote: body.note?.slice(0, 200) ?? null,
-      verifiedAt: body.verification === "self_reported" ? null : new Date(),
+      verifiedAt: body.verification === "fake" ? new Date() : null,
+      ...(body.verification === "fake" ? { priceCents: null, listedAt: null } : {}),
     })
     .where(eq(collectorItems.id, id))
     .returning();

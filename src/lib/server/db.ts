@@ -7,7 +7,9 @@ import * as schema from "./schema";
 // 線上環境沒配置資料庫時回傳 null，帳號功能顯示「未開通」，不偷偷寫進會丟失的臨時目錄
 export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 
-let ready: Promise<Db | null> | undefined;
+// 連線掛在 globalThis 上：Next 會把頁面和 API 路由打包成不同的模組圖，模組級變數各有一份；
+// PGlite 若被開兩次，兩個實例互相看不到對方的寫入，還可能弄壞資料目錄
+const shared = globalThis as typeof globalThis & { __idolcaDb?: Promise<Db | null> };
 
 async function connect(): Promise<Db | null> {
   const url = process.env.DATABASE_URL;
@@ -30,9 +32,9 @@ async function connect(): Promise<Db | null> {
 }
 
 export function getDb() {
-  ready ??= connect().catch((err) => {
-    ready = undefined;
+  shared.__idolcaDb ??= connect().catch((err) => {
+    shared.__idolcaDb = undefined;
     throw err;
   });
-  return ready;
+  return shared.__idolcaDb;
 }

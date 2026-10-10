@@ -108,7 +108,7 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
   return (
     <>
       <nav aria-label="breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs text-ink-3">
-        <Link href="/#market" className="hover:text-ink">
+        <Link href="/market" className="hover:text-ink">
           {t("breadcrumbMarket")}
         </Link>
         <span>/</span>

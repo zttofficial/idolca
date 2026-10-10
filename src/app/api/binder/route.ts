@@ -1,6 +1,5 @@
 import { eq } from "drizzle-orm";
-import { getDb } from "@/lib/server/db";
-import { currentUser } from "@/lib/server/auth";
+import { requireUser } from "@/lib/server/require-user";
 import { binderEntries, binderWants } from "@/lib/server/schema";
 import { findTemplate } from "@/lib/catalog";
 
@@ -10,16 +9,8 @@ type BinderBody = { have?: Record<string, Entry>; want?: Record<string, true> };
 // 自己拍的照片是壓縮過的 JPEG data URL，限制大小避免把資料庫塞爆
 const MAX_PHOTO = 200_000;
 
-async function authed() {
-  const db = await getDb();
-  if (!db) return { error: Response.json({ error: "not_configured" }, { status: 503 }) };
-  const user = await currentUser(db);
-  if (!user) return { error: Response.json({ error: "unauthorized" }, { status: 401 }) };
-  return { db, user };
-}
-
 export async function GET() {
-  const a = await authed();
+  const a = await requireUser();
   if ("error" in a) return a.error;
   const [entries, wants] = await Promise.all([
     a.db.select().from(binderEntries).where(eq(binderEntries.userId, a.user.id)),
@@ -33,7 +24,7 @@ export async function GET() {
 
 // 整本收藏冊覆蓋寫入：收藏冊不大，比逐條同步簡單可靠
 export async function PUT(request: Request) {
-  const a = await authed();
+  const a = await requireUser();
   if ("error" in a) return a.error;
   const body = (await request.json().catch(() => ({}))) as BinderBody;
   const have = Object.entries(body.have ?? {}).filter(([id, e]) => findTemplate(id) && Number.isInteger(e.count) && e.count > 0 && e.count < 1000);
