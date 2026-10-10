@@ -50,7 +50,7 @@ export const CARDS: Card[] = [
     status: "listed",
     intakeDate: "2026-07-14",
     location: "SEL-A03-12",
-    image: { front: "/cards/samples/c1.jpg" },
+    image: { front: "/api/media/sample-c1" },
   },
   {
     id: "c2",
@@ -69,7 +69,7 @@ export const CARDS: Card[] = [
     status: "listed",
     intakeDate: "2026-07-21",
     location: "SEL-A03-18",
-    image: { front: "/cards/samples/c2.jpg" },
+    image: { front: "/api/media/sample-c2" },
   },
   {
     id: "c3",
@@ -87,7 +87,7 @@ export const CARDS: Card[] = [
     status: "vaulted",
     intakeDate: "2026-08-02",
     location: "SEL-B01-04",
-    image: { front: "/cards/samples/c3.jpg" },
+    image: { front: "/api/media/sample-c3" },
   },
   {
     id: "c4",
@@ -105,7 +105,7 @@ export const CARDS: Card[] = [
     status: "listed",
     intakeDate: "2026-08-02",
     location: "SEL-B01-05",
-    image: { front: "/cards/samples/c4.jpg" },
+    image: { front: "/api/media/sample-c4" },
   },
   {
     id: "c5",
@@ -124,7 +124,7 @@ export const CARDS: Card[] = [
     status: "vaulted",
     intakeDate: "2026-08-19",
     location: "SEL-A07-22",
-    image: { front: "/cards/samples/c5.jpg" },
+    image: { front: "/api/media/sample-c5" },
   },
   {
     id: "c6",
@@ -142,7 +142,7 @@ export const CARDS: Card[] = [
     status: "redeeming",
     intakeDate: "2026-09-03",
     location: "SEL-C02-09",
-    image: { front: "/cards/samples/c6.jpg" },
+    image: { front: "/api/media/sample-c6" },
   },
   {
     id: "c7",
@@ -160,7 +160,7 @@ export const CARDS: Card[] = [
     status: "listed",
     intakeDate: "2026-09-11",
     location: "SEL-B04-31",
-    image: { front: "/cards/samples/c7.jpg" },
+    image: { front: "/api/media/sample-c7" },
   },
   {
     id: "c8",
@@ -179,7 +179,7 @@ export const CARDS: Card[] = [
     status: "vaulted",
     intakeDate: "2026-09-26",
     location: "SEL-C05-02",
-    image: { front: "/cards/samples/c8.jpg" },
+    image: { front: "/api/media/sample-c8" },
   },
   {
     id: "c9",
@@ -197,7 +197,7 @@ export const CARDS: Card[] = [
     status: "listed",
     intakeDate: "2026-09-14",
     location: "SEL-B02-11",
-    image: { front: "/cards/samples/c9.jpg" },
+    image: { front: "/api/media/sample-c9" },
   },
   {
     id: "c10",
@@ -216,7 +216,7 @@ export const CARDS: Card[] = [
     status: "listed",
     intakeDate: "2026-09-15",
     location: "SEL-A01-03",
-    image: { front: "/cards/samples/c10.jpg" },
+    image: { front: "/api/media/sample-c10" },
   },
   {
     id: "c11",
@@ -235,7 +235,7 @@ export const CARDS: Card[] = [
     status: "listed",
     intakeDate: "2026-09-18",
     location: "SEL-C01-07",
-    image: { front: "/cards/samples/c11.jpg" },
+    image: { front: "/api/media/sample-c11" },
   },
   {
     id: "c12",
@@ -253,7 +253,7 @@ export const CARDS: Card[] = [
     status: "vaulted",
     intakeDate: "2026-09-20",
     location: "SEL-C01-12",
-    image: { front: "/cards/samples/c12.jpg" },
+    image: { front: "/api/media/sample-c12" },
   },
   {
     id: "c13",
@@ -272,7 +272,7 @@ export const CARDS: Card[] = [
     status: "listed",
     intakeDate: "2026-09-22",
     location: "SEL-A04-02",
-    image: { front: "/cards/samples/c13.jpg" },
+    image: { front: "/api/media/sample-c13" },
   },
   {
     id: "c14",
@@ -291,7 +291,7 @@ export const CARDS: Card[] = [
     status: "listed",
     intakeDate: "2026-09-25",
     location: "SEL-B03-19",
-    image: { front: "/cards/samples/c14.jpg" },
+    image: { front: "/api/media/sample-c14" },
   },
   {
     id: "c15",
@@ -309,7 +309,7 @@ export const CARDS: Card[] = [
     status: "listed",
     intakeDate: "2026-09-27",
     location: "SEL-B03-22",
-    image: { front: "/cards/samples/c15.jpg" },
+    image: { front: "/api/media/sample-c15" },
   },
   {
     id: "c16",
@@ -328,7 +328,7 @@ export const CARDS: Card[] = [
     status: "vaulted",
     intakeDate: "2026-09-29",
     location: "SEL-A02-08",
-    image: { front: "/cards/samples/c16.jpg" },
+    image: { front: "/api/media/sample-c16" },
   },
   {
     id: "c17",
@@ -347,7 +347,7 @@ export const CARDS: Card[] = [
     status: "listed",
     intakeDate: "2026-10-01",
     location: "SEL-A02-14",
-    image: { front: "/cards/samples/c17.jpg" },
+    image: { front: "/api/media/sample-c17" },
   },
   {
     id: "c18",
@@ -365,7 +365,7 @@ export const CARDS: Card[] = [
     status: "redeeming",
     intakeDate: "2026-10-03",
     location: "SEL-C04-05",
-    image: { front: "/cards/samples/c18.jpg" },
+    image: { front: "/api/media/sample-c18" },
   },
   {
     id: "c19",
@@ -384,7 +384,7 @@ export const CARDS: Card[] = [
     status: "listed",
     intakeDate: "2026-10-06",
     location: "SEL-C04-09",
-    image: { front: "/cards/samples/c19.jpg" },
+    image: { front: "/api/media/sample-c19" },
   },
 ];
 

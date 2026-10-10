@@ -30,7 +30,7 @@ npm run lint
 
 ## 卡樣圖片
 
-樣本卡的藝人資料寫在 `src/lib/mock-cards.ts`，照片是 `public/cards/samples/c1.jpg` 到 `c19.jpg`，來自維基共享資源，CC BY 授權。作者和授權記在 `src/lib/sample-credits.json`，網站的 `/credits` 頁公開署名；更換或新增照片時要同步更新這個檔案。
+樣本卡的藝人資料寫在 `src/lib/mock-cards.ts`，照片來自維基共享資源，CC BY 授權，不放在倉庫裡：`src/lib/sample-credits.json` 記著每張的來源網址、裁切位置、作者和授權，第一次顯示時由伺服器抓圖、裁切、加浮水印後存進資料庫（`media` 表）。網站的 `/credits` 頁公開署名；更換或新增照片時改這個檔案即可。
 
 ## 平台端鏈上腳本
 
@@ -76,7 +76,7 @@ src/
     catalog/              圖鑑：團體列表、團體卡款（標記有 / 想要）
     binder/               收藏冊：卡冊、收集進度、想要清單、上鏈
     charts/               專輯銷量榜看板（週榜、初動）
-  app/api/                帳號（註冊、登入、登出、當前用戶）、收藏冊同步、自由上鏈、鑑定結果（管理）
+  app/api/                帳號（註冊、登入、登出、當前用戶）、收藏冊同步、自由上鏈、卡片照片、鑑定結果（管理）
   i18n/                   next-intl 路由、導航、請求配置
   proxy.ts                語言前綴路由
   components/
@@ -91,7 +91,7 @@ src/
     layout/               導航列、語言選單、頁腳
     web3/                 Privy 登入、錢包按鈕、USDT 價格、On Solana 徽章
   lib/
-    server/               資料庫連線（Neon / PGlite）、表結構、密碼與會話
+    server/               資料庫連線（Neon / PGlite）、表結構、密碼與會話、照片處理與浮水印
     solana/               網路與地址配置、USDT 餘額、Helius DAS、掛單 PDA
     vault.ts              金庫資料：有 Helius 配置時讀鏈上集合，否則用展示資料
     card-detail.ts        卡片內頁的樣本資料：鑑定、成交、鏈上紀錄、同款在售、賣家

@@ -72,6 +72,17 @@ export const collectorItems = pgTable("collector_items", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// 卡片照片。original 是裁切後未加浮水印的版本，留給鑑定；display 加了浮水印，經 /api/media/{id} 對外提供。
+// 都存 base64 文字，Neon 和 PGlite 的驅動處理方式一致
+export const media = pgTable("media", {
+  id: text("id").primaryKey(),
+  // 樣本卡照片沒有上傳者
+  ownerId: text("owner_id").references(() => users.id, { onDelete: "cascade" }),
+  original: text("original").notNull(),
+  display: text("display").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // 建表語句：資料庫第一次連上時執行，全部可重複執行
 export const BOOTSTRAP_SQL = [
   `CREATE TABLE IF NOT EXISTS users (
@@ -118,5 +129,12 @@ export const BOOTSTRAP_SQL = [
     user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     template_id text NOT NULL,
     PRIMARY KEY (user_id, template_id)
+  )`,
+  `CREATE TABLE IF NOT EXISTS media (
+    id text PRIMARY KEY,
+    owner_id text REFERENCES users(id) ON DELETE CASCADE,
+    original text NOT NULL,
+    display text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
   )`,
 ];

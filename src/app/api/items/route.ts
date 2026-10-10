@@ -2,7 +2,8 @@ import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/server/db";
 import { currentUser } from "@/lib/server/auth";
 import { collectorItems } from "@/lib/server/schema";
-import { demoAssetId, isPhoto, matchTemplate, newItemId, publicItem } from "@/lib/server/items";
+import { demoAssetId, matchTemplate, newItemId, publicItem } from "@/lib/server/items";
+import { saveUploads } from "@/lib/server/media";
 import { isCardSource } from "@/lib/sources";
 
 async function authed() {
@@ -31,17 +32,20 @@ export async function POST(request: Request) {
   const member = text(body.member, 60);
   const album = text(body.album, 80) || null;
   const version = text(body.version, 80) || null;
-  if (!isPhoto(body.photo) || !isPhoto(body.photoBack)) return Response.json({ error: "invalid_photo" }, { status: 400 });
   const source = isCardSource(body.source) ? body.source : "album";
   if (!group || !member) return Response.json({ error: "missing_name" }, { status: 400 });
+  // 照片入庫並加浮水印，NFT 和卡片頁引用的是展示圖網址
+  const urls = await saveUploads(a.db, a.user.id, [body.photo, body.photoBack]);
+  if (!urls) return Response.json({ error: "invalid_photo" }, { status: 400 });
+  const [photo, photoBack] = urls;
 
   const [row] = await a.db
     .insert(collectorItems)
     .values({
       id: newItemId(),
       userId: a.user.id,
-      photo: body.photo,
-      photoBack: body.photoBack,
+      photo,
+      photoBack,
       source,
       groupName: group,
       member,

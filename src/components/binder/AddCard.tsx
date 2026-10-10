@@ -44,10 +44,10 @@ export function AddCardHost() {
   return s.open ? <AddCardDialog prefill={s.prefill} onClose={() => set({ open: false, prefill: {} })} /> : null;
 }
 
-const OUT_W = 330;
-const OUT_H = 510;
+const OUT_W = 660;
+const OUT_H = 1020;
 
-// 置中裁成 55:85，壓成小 JPEG
+// 置中裁成 55:85 再上傳；伺服器端會再驗證、加浮水印
 async function cropToCard(file: File): Promise<string> {
   const url = URL.createObjectURL(file);
   try {
@@ -66,7 +66,7 @@ async function cropToCard(file: File): Promise<string> {
     canvas.width = OUT_W;
     canvas.height = OUT_H;
     canvas.getContext("2d")!.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, 0, 0, OUT_W, OUT_H);
-    return canvas.toDataURL("image/jpeg", 0.82);
+    return canvas.toDataURL("image/jpeg", 0.9);
   } finally {
     URL.revokeObjectURL(url);
   }

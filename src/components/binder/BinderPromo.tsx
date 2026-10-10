@@ -31,7 +31,6 @@ export default function BinderPromo() {
               <span className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/25 via-transparent to-transparent" />
             </div>
           ))}
-          <div className="aspect-[55/85] rounded-lg border border-dashed border-line bg-surface-2" />
         </div>
       </div>
     </section>

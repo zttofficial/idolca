@@ -1,44 +1,94 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { LOCALE_NAMES, routing, type Locale } from "@/i18n/routing";
 
+// 按鈕只顯示目前語言的短名，寬度跟著內容走；展開的清單列出各語言的全名
+const SHORT: Record<Locale, string> = {
+  en: "EN",
+  "zh-Hant": "繁中",
+  "zh-Hans": "简中",
+  ja: "日本語",
+  ko: "한국어",
+  th: "ไทย",
+  id: "ID",
+  vi: "VI",
+};
+
 export default function LocaleSwitcher() {
   const t = useTranslations("Nav");
-  const locale = useLocale();
+  const locale = useLocale() as Locale;
   const router = useRouter();
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => !root.current?.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const choose = (next: Locale) => {
+    setOpen(false);
+    if (next === locale) return;
+    startTransition(() => {
+      // pathname 不帶語言前綴（如 /card/c1），換語言時留在同一頁
+      router.replace(pathname, { locale: next });
+    });
+  };
 
   return (
-    <label className="relative flex items-center">
-      <span className="sr-only">{t("language")}</span>
-      <svg viewBox="0 0 20 20" className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-ink-3" aria-hidden>
-        <path
-          fill="currentColor"
-          d="M10 1.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Zm5.9 7.75h-2.6a13 13 0 0 0-1.2-5.1 7 7 0 0 1 3.8 5.1ZM10 3.1c.8 1 1.6 3.1 1.8 6.15H8.2C8.4 6.2 9.2 4.1 10 3.1ZM7.9 4.15a13 13 0 0 0-1.2 5.1H4.1a7 7 0 0 1 3.8-5.1ZM4.1 10.75h2.6a13 13 0 0 0 1.2 5.1 7 7 0 0 1-3.8-5.1Zm5.9 6.15c-.8-1-1.6-3.1-1.8-6.15h3.6c-.2 3.05-1 5.15-1.8 6.15Zm2.1-1.05a13 13 0 0 0 1.2-5.1h2.6a7 7 0 0 1-3.8 5.1Z"
-        />
-      </svg>
-      <select
-        value={locale}
+    <div ref={root} className="relative">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={t("language")}
         disabled={pending}
-        onChange={(e) => {
-          const next = e.target.value as Locale;
-          startTransition(() => {
-            // pathname 不帶語言前綴（如 /card/c1），換語言時留在同一頁
-            router.replace(pathname, { locale: next });
-          });
-        }}
-        className="appearance-none rounded-full border border-line bg-surface py-1.5 pr-3 pl-7 text-xs text-ink transition hover:bg-surface-3 focus:outline-none"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink transition hover:bg-surface-3 disabled:opacity-60"
       >
-        {routing.locales.map((l) => (
-          <option key={l} value={l} className="bg-surface">
-            {LOCALE_NAMES[l]}
-          </option>
-        ))}
-      </select>
-    </label>
+        <span aria-hidden className="text-sm leading-none">
+          🌐
+        </span>
+        {SHORT[locale]}
+        <svg viewBox="0 0 12 12" className={`h-2.5 w-2.5 text-ink-3 transition ${open ? "rotate-180" : ""}`} aria-hidden>
+          <path d="m2.5 4.5 3.5 3.5 3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <ul role="listbox" aria-label={t("language")} className="absolute right-0 z-50 mt-2 w-44 rounded-xl border border-line bg-surface p-1 shadow-lg">
+          {routing.locales.map((l) => (
+            <li key={l}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={l === locale}
+                lang={l}
+                onClick={() => choose(l)}
+                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${l === locale ? "font-semibold text-ink" : "text-ink-2 hover:bg-surface-2 hover:text-ink"}`}
+              >
+                {LOCALE_NAMES[l]}
+                {l === locale && (
+                  <svg viewBox="0 0 12 12" className="h-3 w-3 text-accent" aria-hidden>
+                    <path d="m2.5 6.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

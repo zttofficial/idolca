@@ -45,7 +45,3 @@ export function demoAssetId() {
 }
 
 export const newItemId = () => randomUUID();
-
-// 用戶自己拍的照片是壓縮過的 JPEG data URL
-export const MAX_PHOTO = 200_000;
-export const isPhoto = (s: unknown): s is string => typeof s === "string" && s.startsWith("data:image/") && s.length <= MAX_PHOTO;

@@ -60,8 +60,8 @@ K-pop 小卡的鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Sola
 
 | 層 | 選擇 | 理由 |
 |---|---|---|
-| 資料庫 | PostgreSQL + Drizzle ORM | 線上用 Neon（在 Vercel Marketplace 一鍵接入，連線字串自動填入 `DATABASE_URL`）；本機開發沒有 `DATABASE_URL` 時用 PGlite（嵌入式 Postgres，資料在 `.data/`）。目前存帳號、會話和收藏冊；之後放卡片資料、倉庫庫存、訂單、物流，鏈上狀態經 Webhook 同步進來 |
-| 圖片存儲 | Cloudflare R2 | 卡片正反面高清掃描圖；出口流量免費；NFT 的圖片指向這裡，另存一份到 Arweave 作永久備份 |
+| 資料庫 | PostgreSQL + Drizzle ORM | 線上用 Neon（在 Vercel Marketplace 一鍵接入，連線字串自動填入 `DATABASE_URL`）；本機開發沒有 `DATABASE_URL` 時用 PGlite（嵌入式 Postgres，資料在 `.data/`）。目前存帳號、會話、收藏冊和卡片照片；之後放卡片資料、倉庫庫存、訂單、物流，鏈上狀態經 Webhook 同步進來 |
+| 圖片存儲 | PostgreSQL `media` 表 | 卡片正反面照片和資料一起存進資料庫，不另接存儲服務，也不放進代碼倉庫。經 `/api/media/{id}` 提供並長期快取，Vercel 的 CDN 擋掉重複請求。照片量大到撐不住資料庫容量時，只換 `src/lib/server/media.ts` 的實現，遷到 Cloudflare R2 這類對象存儲，網址格式不變 |
 | 法幣入金（第二階段） | Privy 內建入金或 MoonPay | 用信用卡買 USDT 直接到內嵌錢包 |
 | 部署 | Vercel（前端）、Anchor 程序部署到 Solana 主網 | — |
 | 包管理 | npm | 本機已有，不另裝 |
@@ -94,7 +94,7 @@ K-pop 小卡的鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Sola
 - **鑑定為真**：銷毀自述 NFT，在金庫集合鑄造可交易的金庫 NFT（`custody: vault`、`verification: authentic`）。
 - **鑑定為假**：自述 NFT 不銷毀，改寫為 `verification: fake`；名稱加上「[FAKE]」，圖片換成蓋了 FAKE 浮水印的版本，任何外部市場和錢包都看得到。集合帶 PermanentFreezeDelegate 插件，平台可以凍結假卡 NFT，防止它被當作真卡轉賣。標記不可由持有人移除。
 - 託管合約只接受金庫集合的資產，自述和假卡 NFT 在鏈上就無法在 Idolca 掛單。
-- 目前鑄造是演示模式：紀錄、照片和隨機生成的資產 ID 存進資料庫（`collector_items` 表），鑑定結果透過管理接口 `PATCH /api/admin/items/{id}` 寫入（用 `ADMIN_TOKEN` 保護）。接上 Bubblegum 後，同一個接口同步改寫鏈上元數據。
+- 目前鑄造是演示模式：紀錄和隨機生成的資產 ID 存進 `collector_items` 表，照片存進 `media` 表，鑑定結果透過管理接口 `PATCH /api/admin/items/{id}` 寫入（用 `ADMIN_TOKEN` 保護）。接上 Bubblegum 後，同一個接口同步改寫鏈上元數據。
 
 ## 專輯銷量榜單
 
@@ -127,4 +127,6 @@ K-pop 小卡的鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Sola
 
 - 沒有實拍圖的卡，卡面由 `src/lib/card-art.ts` 用 canvas 生成佔位圖。
 - 卡片資料帶 `image` 時，3D 卡和列表卡改用實拍圖，載入失敗退回佔位圖。入庫後填入正反面掃描圖即可，渲染代碼不用改。
-- 樣本卡照片是維基共享資源上 CC BY 授權的偶像照片，放在 `public/cards/samples/`，裁成 55:85；作者和授權記在 `src/lib/sample-credits.json`，由 `/credits` 頁公開署名。
+- 所有照片走同一條處理流程（`src/lib/server/media.ts`）：伺服器端驗證確實是圖片，裁成 55:85、660×1020 的 JPEG，存兩份——未加浮水印的原圖留給鑑定，加了浮水印的展示圖對外提供。上傳的一組正反面只要有一張不合格就整組拒絕。
+- 浮水印學 Pocamarket：半透明的白色 idolca 文字標誌斜 30° 平鋪滿整張圖，帶極淡的黑色描影，深淺背景上都看得見；裁掉一角也去不掉。正反面用同一套處理，和平台統一卡背的平鋪標誌一致。標誌用字形輪廓繪製，不依賴伺服器上的字型。
+- 樣本卡照片是維基共享資源上 CC BY 授權的偶像照片，倉庫裡只記來源網址和裁切位置（`src/lib/sample-credits.json`）。某張樣本照第一次被請求時，伺服器從維基共享資源抓圖，走上面的流程入庫，之後直接從資料庫讀。作者和授權由 `/credits` 頁公開署名。
