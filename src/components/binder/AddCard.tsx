@@ -5,7 +5,9 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/auth/AuthContext";
 import { Link } from "@/i18n/navigation";
 import { GROUPS, TEMPLATES } from "@/lib/catalog";
-import { mintItem } from "@/lib/items";
+import { mintItem, type CollectorItem } from "@/lib/items";
+import { CHAIN } from "@/lib/chain";
+import { solscanUrl } from "@/lib/solana/config";
 import { CARD_SOURCES, type CardSource } from "@/lib/sources";
 
 // 「新增我的卡」= 自由上鏈：拍正反面（可以再補幾張）、選來源、填名字、上鏈，可以順手標價刊登。
@@ -93,7 +95,7 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
   const [version, setVersion] = useState(prefill.version ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<CollectorItem | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -115,8 +117,7 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
     setBusy(true);
     setError(false);
     try {
-      await mintItem({ photos: [front, back, ...extras], title, quantity, source, group, member, album, version, priceUsdt: sell ? priceValue : undefined });
-      setDone(true);
+      setDone(await mintItem({ photos: [front, back, ...extras], title, quantity, source, group, member, album, version, priceUsdt: sell ? priceValue : undefined }));
     } catch {
       setError(true);
     } finally {
@@ -142,8 +143,8 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
         <div className="mt-6 grid gap-6 sm:grid-cols-[230px_1fr]">
           <div>
             <div className="grid grid-cols-2 gap-3">
-              <PhotoSlot label={t("front")} value={front} onChange={setFront} disabled={done} hint={t("choosePhoto")} retake={t("retake")} />
-              <PhotoSlot label={t("back")} value={back} onChange={setBack} disabled={done} hint={t("chooseBack")} retake={t("retake")} />
+              <PhotoSlot label={t("front")} value={front} onChange={setFront} disabled={Boolean(done)} hint={t("choosePhoto")} retake={t("retake")} />
+              <PhotoSlot label={t("back")} value={back} onChange={setBack} disabled={Boolean(done)} hint={t("chooseBack")} retake={t("retake")} />
             </div>
             <p className="mt-3 text-xs font-medium text-ink-2">{t("morePhotos")}</p>
             <div className="mt-1 grid grid-cols-4 gap-1.5">
@@ -166,7 +167,14 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
 
           {done ? (
             <div>
-              <div className="rounded-xl bg-up/10 p-4 text-sm text-up">{t("done")}</div>
+              <div className="rounded-xl bg-up/10 p-4 text-sm text-up">
+                {t("done")}
+                {done.mintTx && (
+                  <a href={solscanUrl("tx", done.mintTx)} target="_blank" rel="noreferrer" className="mt-2 block text-xs font-semibold underline underline-offset-2">
+                    {t("viewMintTx")}
+                  </a>
+                )}
+              </div>
               <Link href="/binder" onClick={onClose} className="btn-primary mt-4 block rounded-full py-3 text-center text-sm font-semibold">
                 {t("viewBinder")}
               </Link>
@@ -253,7 +261,7 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
                   {t("loginToMint")}
                 </button>
               )}
-              <p className="mt-3 text-[11px] text-ink-3">{t("demoNote")}</p>
+              <p className="mt-3 text-[11px] text-ink-3">{t(CHAIN.collectorCollection ? "devnetNote" : "demoNote")}</p>
             </div>
           )}
         </div>

@@ -31,13 +31,10 @@
     "body": "把小卡寄進 Idolca，鑑定後在 Solana 上生成專屬 NFT。成交時卡留在倉庫，NFT 和 USDT 在同一筆交易裡交換，不用再寄來寄去、怕收到假卡。想摸到實物時，銷毀 NFT 就能寄到全球。",
     "browse": "逛市場",
     "consign": "寄卡入庫",
-    "statVaultValue": "金庫總值（USDT）",
-    "statHolders": "鏈上持有人數",
-    "statVolume": "24h 鏈上成交（USDT）",
     "hint": "拖動旋轉，看看背面"
   },
   "Market": {
-    "title": "熱門小卡",
+    "title": "最新入庫",
     "subtitle": "全部已入庫鑑定，成交即在鏈上轉移所有權",
     "pageTitle": "市場",
     "searchPlaceholder": "搜尋團體、成員、專輯、版本或編號",
@@ -67,9 +64,6 @@
     "laneHint_vault": "寄進金庫鑑定過，成交即轉移",
     "laneHint_free": "卡在賣家手上，平台未查驗",
     "pageSubtitle": "金庫鑑定的卡由 Idolca 實物鑑定，成交即轉移；自由刊登的卡在賣家手上，Idolca 不查驗。"
-  },
-  "Ticker": {
-    "minutesAgo": "{minutes} 分鐘前"
   },
   "How": {
     "title": "卡留在倉庫，交易在鏈上",
@@ -402,7 +396,11 @@
     "price": "價格",
     "needPrice": "請填價格",
     "confirmSell": "上鏈並刊登",
-    "chooseBack": "拍下或上傳卡片背面"
+    "chooseBack": "拍下或上傳卡片背面",
+    "viewMintTx": "在 Solscan 查看鑄造交易",
+    "devnetNote": "會在 Solana devnet（測試網）真實鑄造，不花你任何費用，手續費由 Idolca 支付。",
+    "onSolscan": "在 Solscan 查看",
+    "fakeTx": "鏈上標記假卡的交易"
   },
   "Auth": {
     "login": "登入",
@@ -432,13 +430,21 @@
     "switchToSignup": "建立帳號",
     "myBinder": "我的收藏冊",
     "walletTitle": "你的收藏錢包",
-    "walletBody": "你買到或鑄造的卡都放在這裡，不需要管理助記詞。",
-    "walletLater": "第一次交易或把卡上鏈時自動建立。在那之前，你的收藏冊存在帳號裡。",
+    "walletBody": "你用來登入的錢包，上鏈和買到的卡直接進這裡。",
     "balance": "餘額",
     "copy": "複製",
     "copied": "已複製",
     "logout": "登出",
-    "addCard": "新增我的卡"
+    "addCard": "新增我的卡",
+    "walletLogin": "或用錢包登入",
+    "walletLoginHint": "適合已經在用 Solana 錢包的人，上鏈的卡直接進你的錢包。",
+    "walletSigning": "請在錢包裡確認…",
+    "noWallet": "沒偵測到瀏覽器錢包。",
+    "installPhantom": "安裝 Phantom",
+    "error_rejected": "你取消了簽名。",
+    "error_wallet": "錢包登入失敗，請再試一次。",
+    "walletAccount": "以錢包登入",
+    "custodyBody": "你上鏈的卡由 Idolca 代為保管。用錢包登入的話，卡會直接進你的錢包。"
   },
   "Source": {
     "album": "專輯",

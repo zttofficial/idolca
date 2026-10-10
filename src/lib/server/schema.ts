@@ -1,12 +1,23 @@
 import { integer, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 
+// 兩種登入方式：郵箱 + 密碼（不懂加密的粉絲），或錢包簽名（加密用戶）。至少有其中一種
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
   // 一律存小寫，登入時也轉小寫比對
-  email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
+  email: text("email").unique(),
+  passwordHash: text("password_hash"),
+  // 用錢包登入的帳號：Solana 地址（base58）
+  walletAddress: text("wallet_address").unique(),
   displayName: text("display_name").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 錢包登入的挑戰碼：伺服器發一段含隨機數的訊息，錢包簽名後換成會話；用過或過期就作廢
+export const loginNonces = pgTable("login_nonces", {
+  nonce: text("nonce").primaryKey(),
+  address: text("address").notNull(),
+  message: text("message").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
 // id 是會話令牌的 SHA-256；令牌本身只存在用戶的 httpOnly cookie 裡
@@ -69,8 +80,13 @@ export const collectorItems = pgTable("collector_items", {
   version: text("version"),
   // 和圖鑑卡款對得上時記下，方便收集進度和行情；對不上就留空
   templateId: text("template_id"),
-  // NFT 地址（演示模式下是隨機字串）
+  // NFT 地址。鏈上未配置的環境（演示模式）是隨機字串，mint_tx 為空
   asset: text("asset").notNull(),
+  mintTx: text("mint_tx"),
+  // NFT 的持有地址：錢包登入的用戶是自己的錢包，郵箱帳號是平台代管錢包
+  ownerAddress: text("owner_address"),
+  // 標成假卡時改寫鏈上元數據並凍結的交易
+  fakeTx: text("fake_tx"),
   verification: text("verification").$type<Verification>().notNull().default("unverified"),
   verificationNote: text("verification_note"),
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
@@ -139,12 +155,24 @@ export const BOOTSTRAP_SQL = [
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS price_cents integer`,
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS listed_at timestamptz`,
   `ALTER TABLE collector_items ALTER COLUMN verification SET DEFAULT 'unverified'`,
+  `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS mint_tx text`,
+  `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS owner_address text`,
+  `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS fake_tx text`,
   `UPDATE collector_items SET verification = 'unverified' WHERE verification NOT IN ('unverified', 'fake')`,
   `CREATE INDEX IF NOT EXISTS collector_items_listed_idx ON collector_items(listed_at) WHERE price_cents IS NOT NULL`,
   `CREATE TABLE IF NOT EXISTS binder_wants (
     user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     template_id text NOT NULL,
     PRIMARY KEY (user_id, template_id)
+  )`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_address text UNIQUE`,
+  `ALTER TABLE users ALTER COLUMN email DROP NOT NULL`,
+  `ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL`,
+  `CREATE TABLE IF NOT EXISTS login_nonces (
+    nonce text PRIMARY KEY,
+    address text NOT NULL,
+    message text NOT NULL,
+    expires_at timestamptz NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS media (
     id text PRIMARY KEY,

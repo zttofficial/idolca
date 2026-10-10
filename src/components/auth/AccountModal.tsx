@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import type { Wallet } from "@wallet-standard/base";
 import type { AuthUser } from "./AuthContext";
 import Wordmark from "@/components/brand/Wordmark";
+import { WalletLoginError, signInWithWallet, useWallets } from "@/lib/solana/wallets";
 
 type Mode = "signup" | "login";
 type ErrorCode = "invalid_email" | "weak_password" | "email_taken" | "invalid_credentials" | "not_configured" | "network";
 
-// 郵箱 + 密碼註冊 / 登入，帳號存在我們自己的資料庫
+// 兩種登入方式並列：郵箱 + 密碼給不懂加密的粉絲，錢包簽名給已有 Solana 錢包的人。帳號都存在我們自己的資料庫
 export default function AccountModal({
   configured,
   onClose,
@@ -145,7 +147,7 @@ export default function AccountModal({
           </button>
         </form>
 
-        <p className="mt-5 text-center text-xs text-ink-3">
+        <p className="mt-4 text-center text-xs text-ink-3">
           {t(mode === "signup" ? "haveAccount" : "noAccount")}{" "}
           <button
             onClick={() => {
@@ -157,7 +159,61 @@ export default function AccountModal({
             {t(mode === "signup" ? "switchToLogin" : "switchToSignup")}
           </button>
         </p>
+
+        <WalletLogin configured={configured} onSignedIn={onSignedIn} />
       </div>
+    </div>
+  );
+}
+
+// 已安裝的瀏覽器錢包列在這裡；一個都沒有時提示安裝 Phantom
+function WalletLogin({ configured, onSignedIn }: { configured: boolean; onSignedIn: (user: AuthUser) => void }) {
+  const t = useTranslations("Auth");
+  const wallets = useWallets();
+  const [pending, setPending] = useState<string>();
+  const [error, setError] = useState<string>();
+
+  const connect = async (wallet: Wallet) => {
+    setPending(wallet.name);
+    setError(undefined);
+    try {
+      onSignedIn(await signInWithWallet(wallet));
+    } catch (e) {
+      setError(e instanceof WalletLoginError && e.message === "rejected" ? "rejected" : "wallet");
+    } finally {
+      setPending(undefined);
+    }
+  };
+
+  return (
+    <div className="mt-5 border-t border-line pt-4">
+      <p className="text-xs font-semibold text-ink-2">{t("walletLogin")}</p>
+      <p className="mt-0.5 text-[11px] leading-snug text-ink-3">{t("walletLoginHint")}</p>
+      {wallets.length ? (
+        <div className="mt-3 grid gap-2">
+          {wallets.map((w) => (
+            <button
+              key={w.name}
+              onClick={() => connect(w)}
+              disabled={!configured || pending !== undefined}
+              className="flex items-center gap-3 rounded-xl border border-line px-3.5 py-2.5 text-sm font-medium hover:bg-surface-2 disabled:opacity-50"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- 錢包自帶的 data URL 圖示 */}
+              <img src={w.icon} alt="" className="h-6 w-6 rounded-md" />
+              {w.name}
+              {pending === w.name && <span className="ml-auto text-xs text-ink-3">{t("walletSigning")}</span>}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 rounded-xl bg-surface-2 px-3.5 py-2.5 text-xs text-ink-2">
+          {t("noWallet")}{" "}
+          <a href="https://phantom.com/download" target="_blank" rel="noreferrer" className="font-semibold text-accent-ink hover:underline">
+            {t("installPhantom")}
+          </a>
+        </p>
+      )}
+      {error && <p className="mt-2 text-xs text-down">{t(`error_${error}`)}</p>}
     </div>
   );
 }

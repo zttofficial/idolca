@@ -3,7 +3,8 @@
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { HERO_CARDS, VAULT_STATS } from "@/lib/mock-cards";
+import { Link } from "@/i18n/navigation";
+import { HERO_CARDS } from "@/lib/mock-cards";
 
 const HoloCard3D = dynamic(() => import("./HoloCard3D"), {
   ssr: false,
@@ -14,8 +15,6 @@ const HoloCard3D = dynamic(() => import("./HoloCard3D"), {
   ),
 });
 
-const compact = (n: number) => new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
-
 export default function Hero() {
   const t = useTranslations("Hero");
   const tRarity = useTranslations("Rarity");
@@ -23,19 +22,10 @@ export default function Hero() {
   const card = HERO_CARDS[active];
   const rarityLabel = tRarity(card.rarity);
 
-  const stats = [
-    { label: t("statVaultValue"), value: compact(VAULT_STATS.totalValueUsdt) },
-    { label: t("statHolders"), value: VAULT_STATS.holders.toLocaleString("en-US") },
-    { label: t("statVolume"), value: compact(VAULT_STATS.volume24hUsdt) },
-  ];
-
   return (
     <section className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 pt-10 pb-16 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:pt-16">
       <div className="relative z-10">
-        <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs text-accent-ink backdrop-blur">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-up" />
-          {t("badge")}
-        </p>
+        <p className="text-xs font-semibold tracking-[0.2em] text-accent-ink">{t("badge")}</p>
         <h1 className="mt-6 text-4xl leading-tight font-extrabold tracking-tight sm:text-6xl">
           {t("titleLine1")}
           <br />
@@ -45,9 +35,9 @@ export default function Hero() {
           {t("body")}
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <a href="#market" className="btn-primary rounded-full px-6 py-3 text-sm font-semibold">
+          <Link href="/market" className="btn-primary rounded-full px-6 py-3 text-sm font-semibold">
             {t("browse")}
-          </a>
+          </Link>
           <a
             href="#how"
             className="rounded-full border border-line bg-surface px-6 py-3 text-sm font-semibold text-ink backdrop-blur transition hover:bg-surface-3"
@@ -55,14 +45,6 @@ export default function Hero() {
             {t("consign")}
           </a>
         </div>
-        <dl className="mt-12 grid max-w-lg grid-cols-3 gap-4">
-          {stats.map((s) => (
-            <div key={s.label}>
-              <dt className="text-xs text-ink-3">{s.label}</dt>
-              <dd className="mt-1 text-2xl font-bold text-ink tabular-nums sm:text-3xl">{s.value}</dd>
-            </div>
-          ))}
-        </dl>
       </div>
 
       <div className="relative">

@@ -31,13 +31,10 @@
     "body": "Kirim kartumu ke Idolca. Setelah diautentikasi, setiap kartu mendapat NFT-nya sendiri di Solana. Saat terjual, kartu tetap di vault sementara NFT dan USDT bertukar dalam satu transaksi, jadi tidak perlu lagi kirim kartu bolak-balik atau takut dapat barang palsu. Ingin memegang kartunya? Burn NFT-nya dan kami kirim ke seluruh dunia.",
     "browse": "Lihat pasar",
     "consign": "Titipkan kartu",
-    "statVaultValue": "Nilai vault (USDT)",
-    "statHolders": "Pemegang on-chain",
-    "statVolume": "Volume 24 jam (USDT)",
     "hint": "Seret untuk memutar dan lihat sisi belakang"
   },
   "Market": {
-    "title": "Kartu populer",
+    "title": "Baru masuk vault",
     "subtitle": "Semua kartu sudah disimpan dan diautentikasi. Kepemilikan berpindah on-chain begitu transaksi selesai",
     "pageTitle": "Pasar",
     "searchPlaceholder": "Cari grup, member, album, versi, atau nomor seri",
@@ -67,9 +64,6 @@
     "laneHint_vault": "Diautentikasi di vault, kepemilikan langsung pindah",
     "laneHint_free": "Kartu dipegang penjual, tidak diperiksa Idolca",
     "pageSubtitle": "Kartu terverifikasi vault diautentikasi Idolca dan langsung berpindah saat dibeli. Kartu listing penjual dipegang penjual dan tidak diperiksa Idolca."
-  },
-  "Ticker": {
-    "minutesAgo": "{minutes} menit lalu"
   },
   "How": {
     "title": "Kartu tetap di vault, transaksi terjadi on-chain",
@@ -402,7 +396,11 @@
     "price": "Harga",
     "needPrice": "Isi harga",
     "confirmSell": "Mint dan jual",
-    "chooseBack": "Ambil atau unggah foto bagian belakang"
+    "chooseBack": "Ambil atau unggah foto bagian belakang",
+    "viewMintTx": "Lihat transaksi mint di Solscan",
+    "devnetNote": "Di-mint sungguhan di Solana devnet (testnet). Gratis untukmu; biaya ditanggung Idolca.",
+    "onSolscan": "Lihat di Solscan",
+    "fakeTx": "Transaksi label palsu on-chain"
   },
   "Auth": {
     "login": "Masuk",
@@ -432,13 +430,21 @@
     "switchToSignup": "Buat akun",
     "myBinder": "Binder saya",
     "walletTitle": "Wallet koleksimu",
-    "walletBody": "Kartu yang kamu beli atau mint disimpan di sini, tanpa perlu mengurus seed phrase.",
-    "walletLater": "Dibuat otomatis saat pertama kali kamu jual beli atau mint kartu. Sampai saat itu, binder-mu tersimpan di akun.",
+    "walletBody": "Dompet yang kamu pakai untuk masuk. Kartu yang di-mint atau dibeli langsung masuk ke sini.",
     "balance": "Saldo",
     "copy": "Salin",
     "copied": "Tersalin",
     "logout": "Keluar",
-    "addCard": "Tambah kartu milikku"
+    "addCard": "Tambah kartu milikku",
+    "walletLogin": "Atau masuk dengan dompet",
+    "walletLoginHint": "Untuk yang sudah memakai dompet Solana. Kartu yang di-mint langsung masuk ke dompetmu.",
+    "walletSigning": "Konfirmasi di dompetmu…",
+    "noWallet": "Tidak ada dompet browser yang terdeteksi.",
+    "installPhantom": "Pasang Phantom",
+    "error_rejected": "Kamu membatalkan tanda tangan.",
+    "error_wallet": "Gagal masuk dengan dompet. Coba lagi.",
+    "walletAccount": "Masuk dengan dompet",
+    "custodyBody": "Kartu yang kamu mint disimpan Idolca untukmu. Masuk dengan dompet agar kartu langsung masuk ke dompetmu."
   },
   "Source": {
     "album": "Album",

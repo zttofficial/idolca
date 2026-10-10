@@ -31,13 +31,10 @@
     "body": "トレカを Idolca に送ると、鑑定後に Solana 上で専用の NFT が発行されます。売買が成立してもカードは倉庫に置いたまま、NFT と USDT が 1 回の取引で交換されるので、郵送の手間や偽物の心配はもうありません。手元に欲しくなったら、NFT をバーンすれば世界中どこへでも発送します。",
     "browse": "マーケットを見る",
     "consign": "カードを預ける",
-    "statVaultValue": "保管総額（USDT）",
-    "statHolders": "オンチェーン保有者数",
-    "statVolume": "24h 取引額（USDT）",
     "hint": "ドラッグで回転、裏面も見られます"
   },
   "Market": {
-    "title": "人気のトレカ",
+    "title": "新着入庫",
     "subtitle": "すべて保管・鑑定済み。取引成立と同時にオンチェーンで所有権が移転します",
     "pageTitle": "マーケット",
     "searchPlaceholder": "グループ・メンバー・アルバム・バージョン・シリアルで検索",
@@ -67,9 +64,6 @@
     "laneHint_vault": "金庫で鑑定済み、購入と同時に所有権が移ります",
     "laneHint_free": "カードは出品者の手元、Idolca は未検品",
     "pageSubtitle": "金庫鑑定済みのカードは Idolca が実物を鑑定し、購入と同時に所有権が移ります。個人出品のカードは出品者の手元にあり、Idolca は検品しません。"
-  },
-  "Ticker": {
-    "minutesAgo": "{minutes} 分前"
   },
   "How": {
     "title": "カードは倉庫に、取引はオンチェーンで",
@@ -402,7 +396,11 @@
     "price": "価格",
     "needPrice": "価格を入力してください",
     "confirmSell": "ミントして出品",
-    "chooseBack": "カードの裏面を撮影・アップロード"
+    "chooseBack": "カードの裏面を撮影・アップロード",
+    "viewMintTx": "Solscan でミント取引を見る",
+    "devnetNote": "Solana devnet（テストネット）で実際にミントされます。手数料は Idolca が負担し、費用はかかりません。",
+    "onSolscan": "Solscan で見る",
+    "fakeTx": "オンチェーンで偽物と記録した取引"
   },
   "Auth": {
     "login": "ログイン",
@@ -432,13 +430,21 @@
     "switchToSignup": "アカウントを作成",
     "myBinder": "マイコレクション",
     "walletTitle": "コレクション用ウォレット",
-    "walletBody": "購入・ミントしたカードはここに保管され、シードフレーズの管理は不要です。",
-    "walletLater": "初めて取引またはミントするときに自動で作成されます。それまではコレクションはアカウントに保存されます。",
+    "walletBody": "ログインに使ったウォレットです。ミントしたカードや購入したカードはここに直接入ります。",
     "balance": "残高",
     "copy": "コピー",
     "copied": "コピーしました",
     "logout": "ログアウト",
-    "addCard": "手持ちのカードを追加"
+    "addCard": "手持ちのカードを追加",
+    "walletLogin": "またはウォレットでログイン",
+    "walletLoginHint": "Solana ウォレットを使っている方向け。ミントしたカードはそのままウォレットに入ります。",
+    "walletSigning": "ウォレットで確認してください…",
+    "noWallet": "ブラウザウォレットが見つかりません。",
+    "installPhantom": "Phantom をインストール",
+    "error_rejected": "署名がキャンセルされました。",
+    "error_wallet": "ウォレットでのログインに失敗しました。もう一度お試しください。",
+    "walletAccount": "ウォレットでログイン中",
+    "custodyBody": "ミントしたカードは Idolca が預かります。ウォレットでログインすると、直接ウォレットに届きます。"
   },
   "Source": {
     "album": "アルバム",

@@ -31,13 +31,10 @@
     "body": "포카를 Idolca로 보내면 검수 후 Solana에 전용 NFT가 발행됩니다. 거래가 성사돼도 카드는 창고에 그대로 있고, NFT와 USDT가 한 번의 트랜잭션으로 교환되니 택배를 주고받거나 가품을 걱정할 필요가 없습니다. 실물을 갖고 싶을 땐 NFT를 소각하면 전 세계 어디로든 보내드립니다.",
     "browse": "마켓 둘러보기",
     "consign": "포카 맡기기",
-    "statVaultValue": "보관 총액 (USDT)",
-    "statHolders": "온체인 보유자 수",
-    "statVolume": "24시간 거래액 (USDT)",
     "hint": "드래그해서 돌려 보고 뒷면도 확인하세요"
   },
   "Market": {
-    "title": "인기 포토카드",
+    "title": "새로 입고된 카드",
     "subtitle": "모두 보관·검수 완료. 거래가 체결되는 순간 온체인으로 소유권이 이전됩니다",
     "pageTitle": "마켓",
     "searchPlaceholder": "그룹, 멤버, 앨범, 버전, 일련번호 검색",
@@ -67,9 +64,6 @@
     "laneHint_vault": "금고에서 감정 완료, 구매 즉시 소유권 이전",
     "laneHint_free": "카드는 판매자 보관, Idolca 미검수",
     "pageSubtitle": "금고 감정 카드는 Idolca가 실물을 감정했고 구매 즉시 소유권이 넘어가요. 개인 판매 카드는 판매자가 보관하며 Idolca가 검수하지 않아요."
-  },
-  "Ticker": {
-    "minutesAgo": "{minutes}분 전"
   },
   "How": {
     "title": "카드는 창고에, 거래는 온체인에서",
@@ -402,7 +396,11 @@
     "price": "가격",
     "needPrice": "가격을 입력하세요",
     "confirmSell": "민팅하고 판매 등록",
-    "chooseBack": "카드 뒷면을 찍거나 올리기"
+    "chooseBack": "카드 뒷면을 찍거나 올리기",
+    "viewMintTx": "Solscan에서 민팅 거래 보기",
+    "devnetNote": "Solana devnet(테스트넷)에 실제로 민팅돼요. 수수료는 Idolca가 내서 비용이 들지 않아요.",
+    "onSolscan": "Solscan에서 보기",
+    "fakeTx": "온체인 가품 표시 거래"
   },
   "Auth": {
     "login": "로그인",
@@ -432,13 +430,21 @@
     "switchToSignup": "계정 만들기",
     "myBinder": "내 바인더",
     "walletTitle": "내 컬렉션 지갑",
-    "walletBody": "구매하거나 민팅한 카드가 여기 보관되며, 시드 문구를 관리할 필요가 없어요.",
-    "walletLater": "처음 거래하거나 민팅할 때 자동으로 만들어져요. 그전까지 바인더는 계정에 저장돼요.",
+    "walletBody": "로그인에 사용한 지갑이에요. 민팅하거나 구매한 카드가 바로 여기로 들어와요.",
     "balance": "잔액",
     "copy": "복사",
     "copied": "복사됨",
     "logout": "로그아웃",
-    "addCard": "내 카드 추가"
+    "addCard": "내 카드 추가",
+    "walletLogin": "또는 지갑으로 로그인",
+    "walletLoginHint": "Solana 지갑을 이미 쓰는 분께 추천해요. 민팅한 카드가 바로 지갑으로 들어가요.",
+    "walletSigning": "지갑에서 확인해 주세요…",
+    "noWallet": "브라우저 지갑을 찾지 못했어요.",
+    "installPhantom": "Phantom 설치하기",
+    "error_rejected": "서명을 취소했어요.",
+    "error_wallet": "지갑 로그인에 실패했어요. 다시 시도해 주세요.",
+    "walletAccount": "지갑으로 로그인됨",
+    "custodyBody": "민팅한 카드는 Idolca가 대신 보관해요. 지갑으로 로그인하면 카드가 바로 지갑으로 들어가요."
   },
   "Source": {
     "album": "앨범",

@@ -52,13 +52,13 @@ export async function endSession(db: Db) {
   jar.delete(COOKIE);
 }
 
-export type PublicUser = { id: string; email: string; displayName: string };
+export type PublicUser = { id: string; email: string | null; displayName: string; walletAddress: string | null };
 
 export async function currentUser(db: Db): Promise<PublicUser | null> {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   const rows = await db
-    .select({ id: users.id, email: users.email, displayName: users.displayName })
+    .select({ id: users.id, email: users.email, displayName: users.displayName, walletAddress: users.walletAddress })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
     .where(and(eq(sessions.id, sha256(token)), gt(sessions.expiresAt, new Date())))

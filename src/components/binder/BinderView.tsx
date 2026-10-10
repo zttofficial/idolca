@@ -10,7 +10,7 @@ import { Link } from "@/i18n/navigation";
 import { binderActions, useBinder, type BinderEntry } from "@/lib/binder";
 import { GROUPS, TEMPLATES, templateCard, type Template } from "@/lib/catalog";
 import { formatUsdt } from "@/lib/fx";
-import { shortAddress } from "@/lib/solana/config";
+import { shortAddress, solscanUrl } from "@/lib/solana/config";
 import { itemTitle } from "@/lib/item-title";
 import { setListing, useMyItems, type CollectorItem } from "@/lib/items";
 
@@ -314,7 +314,19 @@ function ItemSheet({ item, onClose }: { item: CollectorItem; onClose: () => void
           <p className="mt-3 text-xs leading-relaxed text-ink-2">{tMint(`statusBody_${item.verification}`)}</p>
           {item.verificationNote && <p className="mt-2 text-xs text-ink-3">{item.verificationNote}</p>}
           {item.verifiedAt && <p className="mt-1 text-[11px] text-ink-3">{tMint("verifiedOn", { date: item.verifiedAt.slice(0, 10) })}</p>}
-          <p className="mt-3 font-mono text-[11px] text-ink-3">{shortAddress(item.asset, 6, 6)}</p>
+          {item.mintTx ? (
+            <a href={solscanUrl("account", item.asset)} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-ink-2 hover:text-ink">
+              <span className="font-mono">{shortAddress(item.asset, 6, 6)}</span>
+              <span className="font-semibold text-accent-ink">{tMint("onSolscan")} ↗</span>
+            </a>
+          ) : (
+            <p className="mt-3 font-mono text-[11px] text-ink-3">{shortAddress(item.asset, 6, 6)}</p>
+          )}
+          {item.fakeTx && (
+            <a href={solscanUrl("tx", item.fakeTx)} target="_blank" rel="noreferrer" className="mt-1 block text-[11px] font-semibold text-down hover:underline">
+              {tMint("fakeTx")} ↗
+            </a>
+          )}
 
           <div className="mt-auto flex flex-col gap-2 pt-5">
             {!fake && <ListingControl item={item} />}

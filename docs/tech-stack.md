@@ -4,9 +4,9 @@
 
 K-pop 小卡的鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Solana 上對應一個 NFT；成交時卡留在倉庫，NFT 在鏈上轉移；持有人隨時可以銷毀 NFT，換取實物寄出。價格以 USDT 計價和結算。
 
-用戶有兩種進入方式：
-- **加密用戶**：直接連 Phantom、Solflare、Backpack 等錢包。
-- **粉絲**：用郵箱註冊，第一次交易或上鏈時系統自動生成一個內嵌錢包，不用懂助記詞和 Gas。
+用戶有兩種登入方式，登入框裡並列，互不衝突：
+- **加密用戶**：用 Phantom、Solflare、Backpack 等瀏覽器錢包簽名登入，上鏈的卡直接進自己的錢包。
+- **粉絲**：用郵箱和密碼註冊，不需要錢包；上鏈的卡由平台錢包代管，不用懂助記詞和 Gas。
 
 這樣首頁和產品都是 Web3 的，但不把不懂加密的粉絲擋在門外。
 
@@ -25,10 +25,9 @@ K-pop 小卡的鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Sola
 | 層 | 選擇 | 理由 |
 |---|---|---|
 | 鏈 | **Solana** | 卡牌 RWA 的主戰場（約 63% 的代幣化卡牌交易在 Solana）；Magic Eden、Tensor、Jupiter 都能直接交易；手續費不到 1 美分 |
-| 帳號 | 自建：郵箱 + 密碼 | 帳號存在自己的資料庫，不依賴第三方登入服務；密碼用 Node 內建 scrypt 加鹽雜湊，會話令牌放 httpOnly cookie、資料庫只存它的 SHA-256。逛圖鑑、記收藏冊只需要帳號，不需要錢包。Google、Apple 登入和郵箱驗證暫不做 |
-| 收藏錢包 | **Privy**（延後引入） | 用戶第一次交易或上鏈時才建立 Solana 內嵌錢包，介面上叫「收藏錢包」，不出現助記詞；這樣平台不託管私鑰，也不用申請託管牌照。免費方案約 500 月活，付費每月 299 美元起 |
-| 外部錢包 | Wallet Standard（Privy 內建連接器） | Phantom、Solflare、Backpack 及瀏覽器裡偵測到的其他 Solana 錢包 |
-| 卡片 NFT | **Metaplex Core**（金庫卡）、Bubblegum v2 壓縮 NFT（自由上鏈的收藏卡），都帶平台可改的 `verification` 鑑定狀態 | 一張卡一個帳戶，鑄造成本約 0.003 SOL；Attributes 插件存屬性（編號、團體、成員、專輯、版本、類型、評級、庫位、入庫日期），FreezeDelegate、BurnDelegate 插件管提貨，集合上的 Royalties 插件收二級市場版稅 |
+| 帳號 | 自建：郵箱 + 密碼，或錢包簽名 | 帳號存在自己的資料庫，不依賴第三方登入服務。密碼用 Node 內建 scrypt 加鹽雜湊；錢包登入是 Sign In With Solana 的簡化版：伺服器發一段帶一次性隨機數的訊息（5 分鐘有效、用過即作廢），錢包簽名後伺服器用 ed25519 驗簽，地址第一次出現就建帳號。兩種方式都換成同一種會話：令牌放 httpOnly cookie，資料庫只存它的 SHA-256。Google、Apple 登入和郵箱驗證暫不做 |
+| 錢包 | Wallet Standard（`@wallet-standard/app`） | 直接偵測瀏覽器裡的 Phantom、Solflare、Backpack 等 Solana 錢包，不經過第三方連接服務。郵箱帳號的卡由平台錢包代管，之後提供提領到自己錢包的功能 |
+| 卡片 NFT | **Metaplex Core**，金庫卡和自由上鏈的收藏卡各一個集合，都帶平台可改的 `verification` 鑑定狀態。收藏卡量大後改用 Bubblegum v2 壓縮 NFT 降低成本 | 一張卡一個帳戶，鑄造成本約 0.003 SOL；Attributes 插件存屬性（編號、團體、成員、專輯、版本、類型、評級、庫位、入庫日期），FreezeDelegate、BurnDelegate 插件管提貨，集合上的 Royalties 插件收二級市場版稅 |
 | 計價與結算 | **USDT（SPL）**，同時接受 USDC | 前台一律顯示 USDT，懸停時按瀏覽器語言顯示當地貨幣參考價（₩、¥、CN¥、NT$、HK$、฿、Rp、₫）；devnet 沒有官方 USDT，用 Circle 的 devnet USDC 或自鑄測試幣代替 |
 | 鏈上程序 | Anchor 1.x（Rust） | 自寫一個最小的掛單託管程序：賣家掛單時 NFT 轉進以資產地址為種子的 PDA，買家付款後原子交換，平台抽成在同一筆交易內扣除；只接受平台集合的資產和 USDT、USDC，抽成上限 10% |
 | 鏈上數據讀取 | Helius RPC + DAS API | 查詢集合裡的卡、錢包持有的卡；Webhook 監聽託管程序的掛單、成交、取消事件，同步到資料庫 |
@@ -62,7 +61,7 @@ K-pop 小卡的鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Sola
 |---|---|---|
 | 資料庫 | PostgreSQL + Drizzle ORM | 線上用 Neon（在 Vercel Marketplace 一鍵接入，連線字串自動填入 `DATABASE_URL`；接入時設了變數前綴也認得，會找以 `_DATABASE_URL` 結尾的變數）；本機開發沒有 `DATABASE_URL` 時用 PGlite（嵌入式 Postgres，資料在 `.data/`）。目前存帳號、會話、收藏冊和卡片照片；之後放卡片資料、倉庫庫存、訂單、物流，鏈上狀態經 Webhook 同步進來 |
 | 圖片存儲 | PostgreSQL `media` 表 | 卡片正反面照片和資料一起存進資料庫，不另接存儲服務，也不放進代碼倉庫。經 `/api/media/{id}` 提供並長期快取，Vercel 的 CDN 擋掉重複請求。照片量大到撐不住資料庫容量時，只換 `src/lib/server/media.ts` 的實現，遷到 Cloudflare R2 這類對象存儲，網址格式不變 |
-| 法幣入金（第二階段） | Privy 內建入金或 MoonPay | 用信用卡買 USDT 直接到內嵌錢包 |
+| 法幣入金（第二階段） | MoonPay 等入金服務 | 用信用卡買 USDT |
 | 部署 | Vercel（前端）、Anchor 程序部署到 Solana 主網 | — |
 | 包管理 | npm | 本機已有，不另裝 |
 
@@ -107,11 +106,11 @@ K-pop 小卡的鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Sola
 | `fake`（假卡） | 收藏 NFT | 被檢舉或寄到金庫後查出是假卡；同時下架，之後不能再刊登 |
 | `authentic`（真品） | 金庫 NFT | 金庫入庫鑑定通過才鑄造，所以金庫 NFT 一律是真品 |
 
-- **收藏 NFT**：鑄造到獨立的「Idolca Collector」Core 集合，用 Bubblegum v2 壓縮 NFT，單張成本可忽略，手續費由平台代付。平台是集合的更新權限持有人，可以用 Bubblegum 的元數據更新指令改寫名稱和元數據 JSON。屬性：標題、團體、成員、張數、來源、出處名稱、版本、圖鑑卡款 ID（有就填）、`custody: self`、`verification`；所有照片都放進元數據。集合帶 PermanentTransferDelegate 插件，自由刊登成交時由平台把 NFT 轉給買家。
+- **收藏 NFT**：鑄造到獨立的「Idolca Collector」Core 集合，手續費由平台代付。錢包登入的用戶鑄到自己的錢包，郵箱帳號鑄到平台代管錢包。平台是集合的更新權限持有人，可以改寫名稱和屬性。屬性（Attributes 插件）：團體、成員、來源、張數、出處名稱、版本、`custody: self`、`verification`；元數據 JSON 由 `/api/meta/item/{id}` 提供，含所有照片。每個 NFT 自帶 PermanentFreezeDelegate 插件，平台可以單獨凍結假卡；集合帶 PermanentTransferDelegate 插件，自由刊登成交時由平台把 NFT 轉給買家。
 - **寄進金庫**：收藏 NFT 的卡寄到金庫鑑定為真後，銷毀收藏 NFT，在金庫集合鑄造金庫 NFT。查出是假卡則退回卡片，收藏 NFT 改成假卡。
-- **標記假卡**：收藏 NFT 不銷毀，改寫為 `verification: fake`；名稱加上「[FAKE]」，圖片換成蓋了 FAKE 浮水印的版本，任何外部市場和錢包都看得到。集合帶 PermanentFreezeDelegate 插件，平台可以凍結假卡 NFT，防止它被當作真卡轉賣。標記不可由持有人移除。
+- **標記假卡**：收藏 NFT 不銷毀。平台在同一筆交易裡把名稱改成「[FAKE] …」、屬性改成 `verification: fake`，並凍結 NFT，防止它被當作真卡轉賣；元數據 JSON 也同步顯示假卡說明，任何外部市場和錢包都看得到。標記不可由持有人移除，平台也不會在鏈上撤銷。
 - 金庫的託管合約只接受金庫集合的資產，收藏 NFT 在鏈上就無法走金庫交易。
-- 目前鑄造是演示模式：紀錄、刊登價格和隨機生成的資產 ID 存進 `collector_items` 表，照片存進 `media` 表；標記假卡透過管理接口 `PATCH /api/admin/items/{id}` 寫入（用 `ADMIN_TOKEN` 保護）。接上 Bubblegum 後，同一個接口同步改寫鏈上元數據。
+- 鑄造和標假卡都在 Solana devnet 真實執行（見「devnet 部署」）。紀錄、刊登價格、NFT 地址和交易簽名存進 `collector_items` 表，照片存進 `media` 表；標記假卡透過管理接口 `PATCH /api/admin/items/{id}` 觸發（用 `ADMIN_TOKEN` 保護）。沒有平台金鑰的環境退回演示模式：NFT 地址是隨機字串，介面不顯示 Solscan 連結。
 
 ## 專輯銷量榜單
 
@@ -126,13 +125,33 @@ K-pop 小卡的鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Sola
 - 一次可開 1、5、10 包：撕開卡包，逐張翻卡，SSR 有金色光圈。抽到的卡以 NFT 進錢包，可以留在金庫、上架、即時回購或提貨。
 - 卡包合約上線前，開包是演示模式：瀏覽器本地按同樣規則抽卡，不扣款，頁面註明。
 
-## 首頁的 Web3 元素
+## 首頁
 
-- 導航列的「連接錢包」按鈕：登入後顯示縮寫地址和 USDT 餘額。
+- 學 Courtyard：商品照片當主角，不放成交跑馬燈、金庫總值、24h 成交量這類行情元素，列表卡也不顯示漲跌幅。行情只在卡片內頁的價格走勢裡看。
+- 首頁順序：主視覺（3D 卡）、盲盒卡包、最新入庫的 8 張卡、收藏冊入口、運作方式。
 - 所有價格用 USDT 顯示，例如 `1,280 USDT`，滑鼠懸停顯示當地貨幣參考價。
 - 卡片標上「On Solana」徽章；點進去能看到 NFT 地址，並連到 Solscan。
-- 成交跑馬燈換成鏈上活動流：每筆成交附交易哈希的縮寫。
-- 統計區顯示「金庫總值（USDT）」「鏈上持有人數」「24h 鏈上成交」。
+
+## devnet 部署
+
+已部署並跑過真實交易的部分：
+
+| 項目 | 地址 |
+|---|---|
+| 掛單託管程序 | [`4vQ6uRMFPRfU79JuwwriDVRoFsEZBCSW2FnsefwmtetD`](https://solscan.io/account/4vQ6uRMFPRfU79JuwwriDVRoFsEZBCSW2FnsefwmtetD?cluster=devnet) |
+| 金庫卡集合 | [`9C5Sj6UHgqTqxaEp6uW18mDWPhCoYiX46mbw7CTzzt3H`](https://solscan.io/account/9C5Sj6UHgqTqxaEp6uW18mDWPhCoYiX46mbw7CTzzt3H?cluster=devnet) |
+| 收藏卡集合 | [`AJUuGEU343B48NtkLUa5MA9mRAY1Fa9iYRP9W322Xh8t`](https://solscan.io/account/AJUuGEU343B48NtkLUa5MA9mRAY1Fa9iYRP9W322Xh8t?cluster=devnet) |
+| 平台錢包 | [`2iSmLoVcb9zNvBjdXAcN2duc1CY6Dar7vjsuPJDVa7FJ`](https://solscan.io/account/2iSmLoVcb9zNvBjdXAcN2duc1CY6Dar7vjsuPJDVa7FJ?cluster=devnet) |
+| 測試 USDT（6 位小數） | [`E8cviabpxswY9ouL7CPNJhTs5wqChuF3XDUobYuoKqEK`](https://solscan.io/account/E8cviabpxswY9ouL7CPNJhTs5wqChuF3XDUobYuoKqEK?cluster=devnet) |
+
+- **金庫卡**：19 張樣本卡都已鑄造成 Core NFT；樣本資料裡「掛單中」的卡真的掛進託管程序，資產由 Listing PDA 持有。示範成交：c15 以 14 USDT 賣給測試買家，貨款 13.65 USDT 給賣家、0.35 USDT（2.5%）給平台收款錢包，NFT 轉給買家，全在[同一筆交易](https://solscan.io/tx/4Qfd5yn8V8CS7ypPjA5SXATRxy5kW4spxr7Yrct6eSo5RTQh9cEtFqHzrufKvPRxwsyLaK6cEEtEDCFELhd5gD16?cluster=devnet)裡完成。
+- **收藏卡**：網站上自由上鏈即時鑄造；標假卡在鏈上改名為「[FAKE] …」、改寫 `verification` 屬性並凍結。
+- devnet 沒有官方 USDT，用平台自己鑄的測試幣；第二種結算代幣是 Circle 的 devnet USDC。
+- 平台錢包的私鑰只在伺服器：本機在 `.data/platform-devnet.json`，Vercel 上是 `PLATFORM_SECRET_KEY`（敏感變數）。程序升級權限也在平台錢包。
+- 建置分三步，地址和交易都寫進 `src/lib/chain/devnet.json`（公開資訊，提交進倉庫），都可以重複執行：`scripts/setup-devnet.ts` 建兩個集合並鑄造金庫卡；`onchain/scripts/devnet-market.mts` 初始化託管程序、掛單並跑示範成交；`scripts/devnet-history.ts` 從鏈上讀回每張卡的鑄造、掛單、成交紀錄，卡片頁的「鏈上紀錄」直接顯示這些真實交易。
+- NFT 元數據指向網站的 `/api/meta/card/{id}`、`/api/meta/item/{id}`、`/api/meta/collection/{vault|collector}`。
+- Magic Eden 和 Tensor 只支援主網，devnet 上卡片頁只連 Solscan。
+- 合約要用 `anchor build --arch v0` 編譯：Anchor 1.2.1 預設輸出 SBF v3，devnet 還沒啟用。
 
 ## 合規要點
 

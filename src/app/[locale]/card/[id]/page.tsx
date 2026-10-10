@@ -13,7 +13,7 @@ import { Link } from "@/i18n/navigation";
 import { FEES, getCardDetail, type ChainEvent } from "@/lib/card-detail";
 import { formatUsdt } from "@/lib/fx";
 import { CARDS, findCard } from "@/lib/mock-cards";
-import { shortAddress, solscanUrl } from "@/lib/solana/config";
+import { CLUSTER, shortAddress, solscanUrl } from "@/lib/solana/config";
 
 export function generateStaticParams() {
   return CARDS.map((c) => ({ id: c.id }));
@@ -99,10 +99,15 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
     [tCard("grade"), card.grade ? `${card.grade}` : tCard("ungraded")],
     [tCard("intakeDate"), card.intakeDate],
   ];
+  // Magic Eden 和 Tensor 只支援主網，devnet 上只連 Solscan
   const explorers = [
     { label: "Solscan", href: solscanUrl("account", card.asset) },
-    { label: "Magic Eden", href: `https://magiceden.io/item-details/${card.asset}` },
-    { label: "Tensor", href: `https://www.tensor.trade/item/${card.asset}` },
+    ...(CLUSTER === "mainnet-beta"
+      ? [
+          { label: "Magic Eden", href: `https://magiceden.io/item-details/${card.asset}` },
+          { label: "Tensor", href: `https://www.tensor.trade/item/${card.asset}` },
+        ]
+      : []),
   ];
 
   return (

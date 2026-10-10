@@ -25,6 +25,9 @@ export function publicItem(r: ItemRow) {
     version: r.version,
     templateId: r.templateId,
     asset: r.asset,
+    mintTx: r.mintTx,
+    ownerAddress: r.ownerAddress,
+    fakeTx: r.fakeTx,
     verification: r.verification,
     verificationNote: r.verificationNote,
     verifiedAt: r.verifiedAt?.toISOString() ?? null,
@@ -61,7 +64,7 @@ export function matchTemplate(group: string, member: string, album?: string | nu
 
 const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
-// 演示模式的 NFT 地址；接上 Bubblegum 鑄造後換成真實的資產 ID
+// 鏈上未配置的環境（演示模式）用的假 NFT 地址
 export function demoAssetId() {
   return Array.from(randomBytes(44), (b) => BASE58[b % 58]).join("");
 }
@@ -90,3 +93,14 @@ export async function getListing(db: Db, id: string) {
 }
 
 export type Listing = ReturnType<typeof publicListing>;
+
+// 鏈上屬性用的收藏品資料
+export const chainAttributes = (r: ItemRow) => ({
+  title: r.title || [r.groupName, r.member, r.version].filter(Boolean).join(" "),
+  group: r.groupName,
+  member: r.member,
+  source: r.source,
+  quantity: r.quantity,
+  album: r.album,
+  version: r.version,
+});

@@ -5,12 +5,11 @@ anchor_version = "1.2.1"
 resolution = true
 skip-lint = false
 
-# 程序地址在第一次 `anchor keys sync` 時生成並同步到 lib.rs 的 declare_id!
-[programs.localnet]
-idolca_market = "11111111111111111111111111111111"
-
 [programs.devnet]
-idolca_market = "11111111111111111111111111111111"
+idolca_market = "4vQ6uRMFPRfU79JuwwriDVRoFsEZBCSW2FnsefwmtetD"
+
+[programs.localnet]
+idolca_market = "4vQ6uRMFPRfU79JuwwriDVRoFsEZBCSW2FnsefwmtetD"
 
 [provider]
 cluster = "localnet"
@@ -19,9 +18,18 @@ wallet = "~/.config/solana/id.json"
 [scripts]
 test = "npx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 
-# 本地驗證節點從主網複製 Metaplex Core 程序，測試裡才能真的鑄造和轉移 Core 資產
+[hooks]
+
+[test]
+startup_wait = 30000
+shutdown_wait = 2000
+upgradeable = false
+
 [test.validator]
+bind_address = "127.0.0.1"
 url = "https://api.mainnet-beta.solana.com"
+ledger = ".anchor/test-ledger"
+rpc_port = 8899
 
 [[test.validator.clone]]
 address = "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"

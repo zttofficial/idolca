@@ -2,13 +2,14 @@
 
 import { createContext, useContext } from "react";
 
-// 登入的統一介面：帳號是我們自己的（郵箱 + 密碼，存在自己的資料庫），頁面只管 useAuth()
+// 登入的統一介面：帳號存在自己的資料庫，用郵箱 + 密碼或錢包簽名登入，頁面只管 useAuth()
 export type AuthUser = {
   id: string;
-  email: string;
+  // 用錢包登入的帳號沒有郵箱
+  email: string | null;
   displayName: string;
-  // 收藏錢包在第一次交易或上鏈時才建立，帳號本身不需要錢包
-  walletAddress?: string;
+  // 用錢包登入時是那個錢包的地址；郵箱帳號為 null，上鏈的卡由平台代管
+  walletAddress: string | null;
 };
 
 export type AuthState = {

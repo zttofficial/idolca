@@ -19,9 +19,9 @@ npm run lint
 | 變數 | 留空時 |
 |---|---|
 | `DATABASE_URL` | Vercel 接 Neon 時自動填入，帶前綴的 `xxx_DATABASE_URL` 也認得。本機開發自動用 PGlite，資料存在 `.data/`；線上環境沒配置時帳號功能顯示「未開通」 |
-| `ADMIN_TOKEN` | 管理接口（寫入鑑定結果）關閉 |
-| `NEXT_PUBLIC_PRIVY_APP_ID` | 不載入 Privy；收藏錢包功能要等配置後才有 |
-| `HELIUS_API_KEY`、`NEXT_PUBLIC_CARD_COLLECTION` | 金庫頁顯示展示資料，不讀鏈上集合 |
+| `ADMIN_TOKEN` | 管理接口（標記假卡）關閉 |
+| `PLATFORM_SECRET_KEY` 或 `PLATFORM_KEYPAIR` | 自由上鏈退回演示模式：不真的鑄造，NFT 地址是隨機字串 |
+| `HELIUS_API_KEY` | 金庫頁用樣本卡資料（NFT 地址是 devnet 上真實鑄造的），不即時讀鏈上持有人 |
 | `NEXT_PUBLIC_SOLANA_CLUSTER` | 默認 devnet |
 
 ## 多語言
@@ -34,11 +34,13 @@ npm run lint
 
 ## 平台端鏈上腳本
 
-需要在 `.env.local` 設定 `PLATFORM_KEYPAIR`（Solana CLI 格式的金鑰檔路徑，不要放進倉庫），錢包裡要有 SOL 付手續費。
+需要在 `.env.local` 設定 `PLATFORM_KEYPAIR`（Solana CLI 格式的金鑰檔路徑，不要放進倉庫），錢包裡要有 SOL 付手續費。devnet 的地址和交易記在 `src/lib/chain/devnet.json`，說明見技術選型的「devnet 部署」。
 
 ```bash
-# 每個網路建一次集合，把輸出的地址填進 NEXT_PUBLIC_CARD_COLLECTION
-npm run chain:create-collection -- --uri https://.../collection.json
+# devnet 建置，三步都可以重複執行
+npm run chain:setup-devnet     # 兩個集合 + 19 張樣本金庫卡
+npm run chain:devnet-market    # 初始化託管程序、掛單、示範成交（要先部署程序，見下節）
+npm run chain:devnet-history   # 從鏈上讀回每張卡的鑄造、掛單、成交紀錄
 
 # 入庫鑑定通過後鑄造 NFT；卡片資料格式見 scripts/cards/IC-000128.json，估值低於 10 USDT 的卡會被拒絕
 npm run chain:mint-card -- --card scripts/cards/IC-000128.json --owner <寄存人錢包> --uri https://.../IC-000128.json
@@ -51,17 +53,18 @@ npm run chain:redeem -- cancel --asset <NFT 地址>
 
 ## 掛單託管程序
 
-[onchain/](onchain/) 是獨立的 Anchor 工作區，有自己的依賴。需要 Rust、Solana CLI 和 Anchor 1.2.1，建議在 WSL 或 Linux 裡建置：
+[onchain/](onchain/) 是獨立的 Anchor 工作區，有自己的依賴。需要 Rust、Solana CLI 和 Anchor 1.2.1，在 WSL 或 Linux 裡建置。在 WSL 裡要把工作區放在 Linux 檔案系統（例如 `~/idolca-onchain`）再編譯，直接在 `/mnt/c` 上編譯會因記憶體錯誤失敗。
 
 ```bash
 cd onchain
 npm install
-anchor keys sync   # 生成程序地址並寫進 lib.rs 和 Anchor.toml
-anchor build
-anchor test        # 本地驗證節點會從主網複製 Metaplex Core 程序
+anchor keys sync          # 生成程序地址並寫進 lib.rs 和 Anchor.toml
+anchor build --arch v0    # devnet 還沒啟用 Anchor 1.2.1 預設的 SBF v3
+anchor test               # 本地驗證節點會從主網複製 Metaplex Core 程序
+solana program deploy target/deploy/idolca_market.so --program-id target/deploy/idolca_market-keypair.json --url devnet
 ```
 
-部署後把程序地址填進 `NEXT_PUBLIC_MARKET_PROGRAM_ID`，金庫頁據此判斷哪些卡在掛單中。
+程序地址預設從 `src/lib/chain/devnet.json` 讀取，也可以用 `NEXT_PUBLIC_MARKET_PROGRAM_ID` 覆蓋。
 
 ## 目錄
 
@@ -85,15 +88,15 @@ src/
     card/                 卡片內頁的看卡切換、購買面板、價格走勢圖
     packs/                卡包包裝、倒數、開包流程（撕包、翻卡、結果）
     binder/               圖鑑卡款、卡冊、上鏈對話框
-    market/               市場瀏覽、金庫卡全息懸停卡（HoloTile）、自由刊登卡、照片圖庫、鏈上成交跑馬燈
+    market/               市場瀏覽、金庫卡全息懸停卡（HoloTile）、自由刊登卡、照片圖庫
     vault/                金庫清單
     landing/              首頁說明區塊
     brand/                文字標誌
     layout/               導航列、語言選單、頁腳
-    web3/                 Privy 登入、錢包按鈕、USDT 價格、On Solana 徽章
+    web3/                 帳號 Provider、USDT 價格、On Solana 徽章
   lib/
-    server/               資料庫連線（Neon / PGlite）、表結構、密碼與會話、照片處理與浮水印
-    solana/               網路與地址配置、USDT 餘額、Helius DAS、掛單 PDA
+    server/               資料庫連線（Neon / PGlite）、表結構、密碼與會話、錢包簽名驗證、照片處理與浮水印、鏈上鑄造與標假卡
+    solana/               網路與地址配置、瀏覽器錢包偵測與簽名登入、USDT 餘額、Helius DAS、掛單 PDA
     vault.ts              金庫資料：有 Helius 配置時讀鏈上集合，否則用展示資料
     card-detail.ts        卡片內頁的樣本資料：鑑定、成交、鏈上紀錄、同款在售、賣家
     packs.ts              盲盒卡包：卡池、按剩餘張數計算的機率、抽卡

@@ -2,6 +2,7 @@
 // 按卡片 id 確定性生成，接入資料庫和鏈上索引後整個換掉；欄位就是正式資料要提供的內容。
 
 import { CARDS, type Card } from "./mock-cards";
+import { CHAIN } from "./chain";
 import { fakeBase58, seeded } from "./seeded";
 
 // 樣本資料的「今天」，固定下來讓頁面能靜態預渲染
@@ -89,6 +90,8 @@ export function getCardDetail(card: Card): CardDetail {
   sales.push({ date: isoDate(TODAY - DAY), priceUsdt: Math.round(card.priceUsdt / (1 + card.change24h / 100)) });
 
   // 鏈上流轉：入庫鑄造 → 幾次掛單成交 → 當前持有人（掛單中的卡最後一筆是掛單）
+  // 已上鏈的卡用真實紀錄（src/lib/chain/devnet.json），否則生成示意紀錄
+  const real = CHAIN.events?.[card.id];
   const holders = [card.owner, fakeBase58(rand, 44), fakeBase58(rand, 44)].reverse();
   const events: ChainEvent[] = [
     { type: "mint", date: card.intakeDate, to: holders[0], signature: fakeBase58(rand, 88) },
@@ -139,7 +142,7 @@ export function getCardDetail(card: Card): CardDetail {
   const sameGroup = CARDS.filter((c) => c.id !== card.id && c.group === card.group);
   const related = [...sameGroup, ...CARDS.filter((c) => c.id !== card.id && c.group !== card.group)].slice(0, 4);
 
-  return { condition, sales, events, otherListings, seller, likes: 40 + Math.floor(rand() * 900), related };
+  return { condition, sales, events: real ?? events, otherListings, seller, likes: 40 + Math.floor(rand() * 900), related };
 }
 
 // 平台規則，和託管合約、提貨腳本一致

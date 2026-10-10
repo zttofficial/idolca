@@ -4,11 +4,11 @@ import { Link } from "@/i18n/navigation";
 import { CARDS } from "@/lib/mock-cards";
 import { RARITIES } from "@/lib/market";
 
-// 首頁：只放 24h 漲幅前 8 張，完整瀏覽去市場頁
+// 首頁：放最新入庫的 8 張，完整瀏覽去市場頁。不放漲跌、成交跑馬燈這類行情元素，學 Courtyard 讓商品本身當主角
 export default function MarketGrid() {
   const t = useTranslations("Market");
   const tRarity = useTranslations("Rarity");
-  const trending = [...CARDS].sort((a, b) => b.change24h - a.change24h).slice(0, 8);
+  const newest = [...CARDS].sort((a, b) => b.intakeDate.localeCompare(a.intakeDate)).slice(0, 8);
 
   return (
     <section id="market" className="mx-auto max-w-7xl scroll-mt-20 px-4 py-20 sm:px-6">
@@ -26,7 +26,7 @@ export default function MarketGrid() {
         </div>
       </div>
       <div className="mt-10 grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">
-        {trending.map((c) => (
+        {newest.map((c) => (
           <HoloTile key={c.id} card={c} />
         ))}
       </div>

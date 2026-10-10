@@ -12,7 +12,7 @@ import { Link } from "@/i18n/navigation";
 import { itemTitle } from "@/lib/item-title";
 import { getDb } from "@/lib/server/db";
 import { getListing } from "@/lib/server/items";
-import { shortAddress } from "@/lib/solana/config";
+import { shortAddress, solscanUrl } from "@/lib/solana/config";
 
 export async function generateMetadata(props: PageProps<"/[locale]/listing/[id]">): Promise<Metadata> {
   await connection();
@@ -123,7 +123,16 @@ async function ListingContent({ params }: { params: PageProps<"/[locale]/listing
               ))}
               <div className="col-span-2">
                 <dt className="text-xs text-ink-3">{t("nft")}</dt>
-                <dd className="mt-0.5 font-mono text-xs text-ink-2">{shortAddress(listing.asset, 8, 8)}</dd>
+                <dd className="mt-0.5 text-xs">
+                  {listing.mintTx ? (
+                    <a href={solscanUrl("account", listing.asset)} target="_blank" rel="noreferrer" className="inline-flex gap-1.5 hover:underline">
+                      <span className="font-mono text-ink-2">{shortAddress(listing.asset, 8, 8)}</span>
+                      <span className="font-semibold text-accent-ink">{tMint("onSolscan")} ↗</span>
+                    </a>
+                  ) : (
+                    <span className="font-mono text-ink-2">{shortAddress(listing.asset, 8, 8)}</span>
+                  )}
+                </dd>
               </div>
             </dl>
           </div>

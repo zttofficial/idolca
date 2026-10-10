@@ -31,13 +31,10 @@
     "body": "Gửi thẻ của bạn đến Idolca. Sau khi được xác thực, mỗi thẻ sẽ có NFT riêng trên Solana. Khi bán được, thẻ vẫn nằm trong kho còn NFT và USDT được hoán đổi trong cùng một giao dịch, không còn phải gửi thẻ qua lại hay lo nhận hàng giả. Muốn cầm thẻ trên tay? Đốt NFT và chúng tôi giao đến bất kỳ đâu trên thế giới.",
     "browse": "Xem chợ",
     "consign": "Ký gửi thẻ",
-    "statVaultValue": "Giá trị kho (USDT)",
-    "statHolders": "Người nắm giữ on-chain",
-    "statVolume": "Khối lượng 24 giờ (USDT)",
     "hint": "Kéo để xoay và xem mặt sau"
   },
   "Market": {
-    "title": "Thẻ nổi bật",
+    "title": "Mới nhập kho",
     "subtitle": "Tất cả thẻ đã được lưu kho và xác thực. Quyền sở hữu chuyển on-chain ngay khi giao dịch hoàn tất",
     "pageTitle": "Chợ",
     "searchPlaceholder": "Tìm nhóm, thành viên, album, phiên bản hoặc số sê-ri",
@@ -67,9 +64,6 @@
     "laneHint_vault": "Đã giám định trong kho, chuyển quyền sở hữu ngay",
     "laneHint_free": "Thẻ do người bán giữ, Idolca chưa kiểm tra",
     "pageSubtitle": "Thẻ kho đã giám định được Idolca kiểm tra thực tế và chuyển quyền ngay khi mua. Thẻ người bán tự đăng do người bán giữ và Idolca không kiểm tra."
-  },
-  "Ticker": {
-    "minutesAgo": "{minutes} phút trước"
   },
   "How": {
     "title": "Thẻ nằm trong kho, giao dịch diễn ra on-chain",
@@ -402,7 +396,11 @@
     "price": "Giá",
     "needPrice": "Nhập giá",
     "confirmSell": "Mint và đăng bán",
-    "chooseBack": "Chụp hoặc tải ảnh mặt sau"
+    "chooseBack": "Chụp hoặc tải ảnh mặt sau",
+    "viewMintTx": "Xem giao dịch mint trên Solscan",
+    "devnetNote": "Được mint thật trên Solana devnet (mạng thử nghiệm). Bạn không mất phí, Idolca trả phí giao dịch.",
+    "onSolscan": "Xem trên Solscan",
+    "fakeTx": "Giao dịch gắn nhãn giả trên chuỗi"
   },
   "Auth": {
     "login": "Đăng nhập",
@@ -432,13 +430,21 @@
     "switchToSignup": "Tạo tài khoản",
     "myBinder": "Album sưu tầm của tôi",
     "walletTitle": "Ví sưu tầm của bạn",
-    "walletBody": "Thẻ bạn mua hoặc mint được giữ ở đây, không cần quản lý cụm từ khôi phục.",
-    "walletLater": "Được tạo tự động khi bạn giao dịch hoặc mint thẻ lần đầu. Trước đó, album sưu tầm được lưu trong tài khoản của bạn.",
+    "walletBody": "Ví bạn dùng để đăng nhập. Thẻ bạn mint hoặc mua sẽ vào thẳng đây.",
     "balance": "Số dư",
     "copy": "Sao chép",
     "copied": "Đã sao chép",
     "logout": "Đăng xuất",
-    "addCard": "Thêm thẻ tôi có"
+    "addCard": "Thêm thẻ tôi có",
+    "walletLogin": "Hoặc đăng nhập bằng ví",
+    "walletLoginHint": "Dành cho người đã dùng ví Solana. Thẻ bạn mint sẽ vào thẳng ví của bạn.",
+    "walletSigning": "Hãy xác nhận trong ví…",
+    "noWallet": "Không tìm thấy ví trên trình duyệt.",
+    "installPhantom": "Cài Phantom",
+    "error_rejected": "Bạn đã hủy chữ ký.",
+    "error_wallet": "Đăng nhập bằng ví thất bại. Hãy thử lại.",
+    "walletAccount": "Đã đăng nhập bằng ví",
+    "custodyBody": "Thẻ bạn mint do Idolca giữ hộ. Đăng nhập bằng ví để thẻ vào thẳng ví của bạn."
   },
   "Source": {
     "album": "Album",

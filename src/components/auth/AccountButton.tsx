@@ -70,7 +70,7 @@ export default function AccountButton() {
             <span className="grid h-10 w-10 place-items-center rounded-full bg-accent-soft font-bold text-accent-ink">{initial}</span>
             <div className="min-w-0">
               <p className="truncate font-semibold">{user.displayName}</p>
-              <p className="truncate text-xs text-ink-3">{user.email}</p>
+              <p className="truncate text-xs text-ink-3">{user.email ?? t("walletAccount")}</p>
             </div>
           </div>
           <div className="mt-3 space-y-0.5">
@@ -90,7 +90,7 @@ export default function AccountButton() {
 
           <div className="mt-2 rounded-xl bg-surface-2 p-3">
             <p className="text-xs font-semibold">{t("walletTitle")}</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-ink-3">{t(address ? "walletBody" : "walletLater")}</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-ink-3">{t(address ? "walletBody" : "custodyBody")}</p>
           </div>
           {address && (
             <div className="mt-2 rounded-xl bg-surface-2 p-3">

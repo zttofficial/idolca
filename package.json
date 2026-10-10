@@ -7,9 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "chain:create-collection": "node --env-file-if-exists=.env.local scripts/create-collection.ts",
     "chain:mint-card": "node --env-file-if-exists=.env.local scripts/mint-card.ts",
-    "chain:redeem": "node --env-file-if-exists=.env.local scripts/redeem.ts"
+    "chain:redeem": "node --env-file-if-exists=.env.local scripts/redeem.ts",
+    "chain:setup-devnet": "tsx --env-file-if-exists=.env.local scripts/setup-devnet.ts",
+    "chain:devnet-history": "tsx --env-file-if-exists=.env.local scripts/devnet-history.ts",
+    "chain:devnet-market": "cd onchain && node ../node_modules/tsx/dist/cli.mjs scripts/devnet-market.mts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
@@ -17,13 +19,15 @@
     "@metaplex-foundation/umi": "^1.6.0",
     "@metaplex-foundation/umi-bundle-defaults": "^1.6.0",
     "@neondatabase/serverless": "^1.2.0",
-    "@privy-io/react-auth": "^3.48.0",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
     "@solana-program/memo": "^0.15.0",
     "@solana-program/system": "^0.15.0",
     "@solana-program/token": "^0.17.0",
     "@solana/kit": "^8.4.0",
+    "@solana/wallet-standard-features": "^1.5.0",
+    "@wallet-standard/app": "^1.1.1",
+    "@wallet-standard/base": "^1.1.1",
     "drizzle-orm": "^0.45.4",
     "next": "16.4.0",
     "next-intl": "^4.14.9",
@@ -42,6 +46,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

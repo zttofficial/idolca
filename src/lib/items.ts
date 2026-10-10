@@ -22,6 +22,12 @@ export type CollectorItem = {
   version: string | null;
   templateId: string | null;
   asset: string;
+  // 鏈上鑄造的交易；為 null 表示演示模式（鏈上未配置），asset 是假地址
+  mintTx: string | null;
+  // NFT 持有地址：自己的錢包，或平台代管錢包
+  ownerAddress: string | null;
+  // 標成假卡時改寫鏈上元數據並凍結的交易
+  fakeTx: string | null;
   verification: Verification;
   verificationNote: string | null;
   verifiedAt: string | null;

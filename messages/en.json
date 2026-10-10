@@ -31,13 +31,10 @@
     "body": "Send your cards to Idolca. Once authenticated, each one gets its own NFT on Solana. When it sells, the card stays in the vault while the NFT and USDT swap in a single transaction, so no more mailing cards back and forth or worrying about fakes. Want to hold it? Burn the NFT and we ship it anywhere.",
     "browse": "Browse market",
     "consign": "Consign cards",
-    "statVaultValue": "Vault value (USDT)",
-    "statHolders": "On-chain holders",
-    "statVolume": "24h volume (USDT)",
     "hint": "Drag to rotate and see the back"
   },
   "Market": {
-    "title": "Trending cards",
+    "title": "Just vaulted",
     "subtitle": "All cards are vaulted and authenticated. Ownership transfers on-chain the moment a trade settles.",
     "pageTitle": "Market",
     "searchPlaceholder": "Search group, member, album, version or serial",
@@ -67,9 +64,6 @@
     "laneHint_vault": "Authenticated in our vault, ownership moves instantly",
     "laneHint_free": "Held by the seller, not checked by Idolca",
     "pageSubtitle": "Vault-verified cards are authenticated by Idolca and trade instantly. Seller listings stay with the seller and aren't checked by Idolca."
-  },
-  "Ticker": {
-    "minutesAgo": "{minutes} min ago"
   },
   "How": {
     "title": "Cards stay in the vault, trading happens on-chain",
@@ -402,7 +396,11 @@
     "price": "Price",
     "needPrice": "Enter a price",
     "confirmSell": "Mint and list",
-    "chooseBack": "Take or upload a photo of the back"
+    "chooseBack": "Take or upload a photo of the back",
+    "viewMintTx": "View the mint transaction on Solscan",
+    "devnetNote": "Minted for real on Solana devnet (testnet). It costs you nothing; Idolca pays the fees.",
+    "onSolscan": "View on Solscan",
+    "fakeTx": "On-chain fake label transaction"
   },
   "Auth": {
     "login": "Log in",
@@ -432,13 +430,21 @@
     "switchToSignup": "Create an account",
     "myBinder": "My binder",
     "walletTitle": "Your collection wallet",
-    "walletBody": "Cards you buy or mint are kept here. No seed phrase to manage.",
-    "walletLater": "Created automatically the first time you trade or mint a card. Until then, your binder lives in your account.",
+    "walletBody": "The wallet you signed in with. Cards you mint or buy go straight here.",
     "balance": "Balance",
     "copy": "Copy",
     "copied": "Copied",
     "logout": "Log out",
-    "addCard": "Add a card I own"
+    "addCard": "Add a card I own",
+    "walletLogin": "Or sign in with a wallet",
+    "walletLoginHint": "For people who already use a Solana wallet. Cards you mint go straight to your wallet.",
+    "walletSigning": "Confirm in your wallet…",
+    "noWallet": "No browser wallet detected.",
+    "installPhantom": "Install Phantom",
+    "error_rejected": "You cancelled the signature.",
+    "error_wallet": "Wallet sign-in failed. Try again.",
+    "walletAccount": "Signed in with wallet",
+    "custodyBody": "Cards you mint are held for you by Idolca. Sign in with a wallet to receive them directly."
   },
   "Source": {
     "album": "Album",

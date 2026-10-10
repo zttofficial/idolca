@@ -45,10 +45,9 @@ export function HoloCardFace({ card }: { card: Card }) {
   );
 }
 
-// 列表卡：卡面 + 名稱、價格、24h 漲跌
+// 列表卡：卡面 + 名稱、價格
 export default function HoloTile({ card }: { card: Card }) {
   const tRarity = useTranslations("Rarity");
-  const up = card.change24h >= 0;
 
   return (
     <article className="group">
@@ -65,12 +64,7 @@ export default function HoloTile({ card }: { card: Card }) {
         <p className="font-semibold text-ink">
           {card.member} <span className="font-normal text-ink-3">{card.version}</span>
         </p>
-        <div className="flex items-baseline justify-between">
-          <UsdtPrice amount={card.priceUsdt} className="text-base font-bold tabular-nums" />
-          <span className={`text-xs font-medium tabular-nums ${up ? "text-up" : "text-down"}`}>
-            {up ? "▲" : "▼"} {Math.abs(card.change24h).toFixed(1)}%
-          </span>
-        </div>
+        <UsdtPrice amount={card.priceUsdt} className="text-base font-bold tabular-nums" />
       </div>
     </article>
   );

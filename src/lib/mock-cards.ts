@@ -1,7 +1,7 @@
-// 首頁展示用的樣本卡。團體、成員、專輯對應 public/cards/samples/ 裡的照片；
-// 版本、價格、評級是示意值，NFT 地址、持有人和交易哈希是隨機生成的 base58 字串，鏈上不存在。
+// 首頁展示用的樣本卡。團體、成員和照片對應 src/lib/sample-credits.json 裡的維基共享資源照片；
+// 版本、價格、評級是示意值。devnet 建置前 NFT 地址和持有人是隨機字串，建置後換成鏈上真實地址（見下方 CARDS）。
 
-import { fakeBase58, seeded } from "./seeded";
+import { CHAIN } from "./chain";
 import { sampleImage } from "./sample-image";
 
 export type Rarity = "album" | "pob" | "luckydraw" | "fansign";
@@ -27,13 +27,12 @@ export type Card = {
   status: VaultStatus;
   intakeDate: string;
   location: string;
-  // 入庫時拍攝的正反面（public/ 下的路徑）。檔案不存在時退回 canvas 佔位圖；
-  // 展示資料指向 public/cards/samples/，那裡的卡樣只在本機，不提交
+  // 入庫時拍攝的正反面。圖片載入失敗時退回 canvas 佔位圖
   image?: { front: string; back?: string };
 };
 
 
-export const CARDS: Card[] = [
+const SAMPLES: Card[] = [
   {
     id: "c1",
     serial: "IC-000128",
@@ -389,36 +388,22 @@ export const CARDS: Card[] = [
   },
 ];
 
+// devnet 建置後，樣本卡換成鏈上的真實狀態：NFT 地址、持有人（平台錢包，或示範成交的買家），
+// 掛單狀態以託管程序裡實際的掛單為準
+function onChain(c: Card): Card {
+  const asset = CHAIN.cards[c.id];
+  if (!asset) return c;
+  const trade = CHAIN.market?.demoTrade;
+  if (trade?.card === c.id) return { ...c, asset, owner: trade.buyer, status: "vaulted" };
+  const listed = Boolean(CHAIN.market?.listings[c.id]);
+  return { ...c, asset, owner: CHAIN.platform, status: listed ? "listed" : c.status === "listed" ? "vaulted" : c.status };
+}
+
+export const CARDS: Card[] = SAMPLES.map(onChain);
+
 export const HERO_CARDS = [CARDS[0], CARDS[4], CARDS[5]];
 
-export type Trade = { card: Card; priceUsdt: number; minutesAgo: number; signature: string };
-
-const SIGNATURES = [
-  "5UBvrioqdaAKVLna3EXxeGu1K5MbSZdqS1UcN2bJk7NvqWLRtrF6ebHDfz91QvMAtXa6LWxJa51DdzaqHXWXRLig",
-  "4VwdnKiMf2qBcJuav7o7QzzW7YyWYgoGKKA41EB7gYEFiJPM1WgUiHAYozZiLviY9cyYCmKpWgjafjnnDQ94pMD6",
-  "2waHkKqm1zXnDDsbapSv4P1Qk7fgwrx29amb2Rikw1CgQvtyVmFsEMC3ScTUoZAhoGMjg2NeBGk3Fa2UhCHKxZLb",
-  "4WV1ArN7sEijQu13ZT9LEvtfF4rf9MFPNHcRDVfrfcb3rV21jG3RP3vBaELfeyGWCFRFvqqCv1vr2DstpG3XAYHU",
-  "Na4eSNexBPn8Nno51S6qHkMgnCxmqMZTVHFJuhhrcMwxRQWxTnKbA31DJP4qCWdGiup6exGTQULeW7GSdXSiXaA",
-  "397LFkRJMEWeYhUS3tncvHpHL2yepp4BeXTL9tEDfNvArjGabsBsVVjyoXeq3PPyq7oMGJNZqdReVA9J1ndhbXvc",
-  "DQfyYjyCezujoVkR5oTtdAJMjqUvNkrUu3JrgJk3F99rVTKvx6xAT3C5cup4rWEgEpDqD3J9UA3eD3cEzZb1cf1",
-  "Ekasp52y7j4c7DPR8G46du7bVh9c3FMw5DeJeqhn3higeXpccugo9m4v5x2WNKMdG9NQz6NkcH1jGdnho9TbHcC",
-];
-
-export const RECENT_TRADES: Trade[] = CARDS.map((card, i) => ({
-  card,
-  priceUsdt: Math.round(card.priceUsdt * (0.94 + ((i * 37) % 13) / 100)),
-  minutesAgo: (i * 7 + 2) % 59,
-  signature: SIGNATURES[i] ?? fakeBase58(seeded(`trade:${card.id}`), 88),
-}));
-
 export const LAST_AUDIT_DATE = "2026-10-01";
-
-// 首頁統計區的展示數字（接入索引資料庫前）
-export const VAULT_STATS = {
-  totalValueUsdt: 3_184_920,
-  holders: 21_406,
-  volume24hUsdt: 84_210,
-};
 
 export function findCard(id: string) {
   return CARDS.find((c) => c.id === id);

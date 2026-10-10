@@ -19,5 +19,5 @@ export async function POST(request: Request) {
   const user = { id: newUserId(), email, displayName: body.displayName?.trim().slice(0, 40) || email.split("@")[0] };
   await db.insert(users).values({ ...user, passwordHash: await hashPassword(password) });
   await startSession(db, user.id);
-  return Response.json({ user });
+  return Response.json({ user: { ...user, walletAddress: null } });
 }

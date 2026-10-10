@@ -9,7 +9,7 @@ use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked};
 use mpl_core::instructions::TransferV1CpiBuilder;
 
-declare_id!("11111111111111111111111111111111");
+declare_id!("4vQ6uRMFPRfU79JuwwriDVRoFsEZBCSW2FnsefwmtetD");
 
 pub const MPL_CORE_ID: Pubkey = pubkey!("CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d");
 
@@ -85,9 +85,9 @@ pub mod idolca_market {
         let fee = fee_for(price, ctx.accounts.config.fee_bps);
         let decimals = ctx.accounts.payment_mint.decimals;
 
-        transfer_tokens(&ctx, &ctx.accounts.seller_token, price - fee, decimals)?;
+        transfer_tokens(&ctx.accounts, &ctx.accounts.seller_token, price - fee, decimals)?;
         if fee > 0 {
-            transfer_tokens(&ctx, &ctx.accounts.treasury_token, fee, decimals)?;
+            transfer_tokens(&ctx.accounts, &ctx.accounts.treasury_token, fee, decimals)?;
         }
 
         let asset_key = ctx.accounts.asset.key();
@@ -137,23 +137,20 @@ pub fn fee_for(price: u64, fee_bps: u16) -> u64 {
     (price as u128 * fee_bps as u128 / 10_000) as u64
 }
 
+// 買家付款給賣家或平台。直接傳需要的帳戶，不傳整個 Context（Anchor 1.x 的 Context 對生命週期是不變的）
 fn transfer_tokens<'info>(
-    ctx: &Context<'_, '_, '_, 'info, Buy<'info>>,
+    accounts: &Buy<'info>,
     to: &InterfaceAccount<'info, TokenAccount>,
     amount: u64,
     decimals: u8,
 ) -> Result<()> {
-    let accounts = TransferChecked {
-        from: ctx.accounts.buyer_token.to_account_info(),
-        mint: ctx.accounts.payment_mint.to_account_info(),
+    let transfer = TransferChecked {
+        from: accounts.buyer_token.to_account_info(),
+        mint: accounts.payment_mint.to_account_info(),
         to: to.to_account_info(),
-        authority: ctx.accounts.buyer.to_account_info(),
+        authority: accounts.buyer.to_account_info(),
     };
-    token_interface::transfer_checked(
-        CpiContext::new(ctx.accounts.token_program.to_account_info(), accounts),
-        amount,
-        decimals,
-    )
+    token_interface::transfer_checked(CpiContext::new(accounts.token_program.key(), transfer), amount, decimals)
 }
 
 #[account]

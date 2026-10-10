@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/server/require-user";
 import { collectorItems } from "@/lib/server/schema";
 import { MAX_PHOTOS, demoAssetId, matchTemplate, newItemId, priceToCents, publicItem } from "@/lib/server/items";
 import { saveUploads } from "@/lib/server/media";
+import { chainEnabled, mintCollectorNft } from "@/lib/server/chain";
 import { isCardSource } from "@/lib/sources";
 
 export async function GET() {
@@ -14,7 +15,8 @@ export async function GET() {
 
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
-// 自由上鏈：不要求卡款在圖鑑裡，也不檢查真假；新卡一律是待驗證。帶價格時同時刊登出售
+// 自由上鏈：不要求卡款在圖鑑裡，也不檢查真假；新卡一律是待驗證。帶價格時同時刊登出售。
+// 鏈上已配置時在 Solana 上真實鑄造收藏 NFT：錢包登入的用戶鑄到自己的錢包，郵箱帳號鑄到平台代管錢包
 export async function POST(request: Request) {
   const a = await requireUser();
   if ("error" in a) return a.error;
@@ -37,10 +39,21 @@ export async function POST(request: Request) {
   if (!urls) return Response.json({ error: "invalid_photo" }, { status: 400 });
   const [photo, photoBack, ...extra] = urls;
 
+  const id = newItemId();
+  let minted: Awaited<ReturnType<typeof mintCollectorNft>> = null;
+  if (chainEnabled()) {
+    try {
+      minted = await mintCollectorNft(id, { title: title || [group, member, version].filter(Boolean).join(" "), group, member, source, quantity, album, version }, a.user.walletAddress);
+    } catch (err) {
+      console.error("mint failed", err);
+      return Response.json({ error: "mint_failed" }, { status: 502 });
+    }
+  }
+
   const [row] = await a.db
     .insert(collectorItems)
     .values({
-      id: newItemId(),
+      id,
       userId: a.user.id,
       photo,
       photoBack,
@@ -53,7 +66,9 @@ export async function POST(request: Request) {
       album,
       version,
       templateId: quantity === 1 ? matchTemplate(group, member, album, version) : null,
-      asset: demoAssetId(),
+      asset: minted?.asset ?? demoAssetId(),
+      mintTx: minted?.tx ?? null,
+      ownerAddress: minted?.owner ?? null,
       priceCents: price,
       listedAt: price === null ? null : new Date(),
     })
