@@ -27,7 +27,7 @@ K-pop 小卡的鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Sola
 | 鏈 | **Solana** | 卡牌 RWA 的主戰場（約 63% 的代幣化卡牌交易在 Solana）；Magic Eden、Tensor、Jupiter 都能直接交易；手續費不到 1 美分 |
 | 登入與錢包 | **Privy** | 郵箱、社群帳號登入自動生成 Solana 內嵌錢包，也支援連接外部錢包；2025 年被 Stripe 收購，之後接法幣入金比較順 |
 | 外部錢包 | Wallet Standard（Privy 內建連接器） | Phantom、Solflare、Backpack 及瀏覽器裡偵測到的其他 Solana 錢包 |
-| 卡片 NFT | **Metaplex Core** | 一張卡一個帳戶，鑄造成本約 0.003 SOL；Attributes 插件存屬性（編號、團體、成員、專輯、版本、類型、評級、庫位、入庫日期），FreezeDelegate、BurnDelegate 插件管提貨，集合上的 Royalties 插件收二級市場版稅 |
+| 卡片 NFT | **Metaplex Core**（金庫卡）、Bubblegum v2 壓縮 NFT（自述收藏） | 一張卡一個帳戶，鑄造成本約 0.003 SOL；Attributes 插件存屬性（編號、團體、成員、專輯、版本、類型、評級、庫位、入庫日期），FreezeDelegate、BurnDelegate 插件管提貨，集合上的 Royalties 插件收二級市場版稅 |
 | 計價與結算 | **USDT（SPL）**，同時接受 USDC | 前台一律顯示 USDT，懸停時按瀏覽器語言顯示當地貨幣參考價（₩、¥、CN¥、NT$、HK$、฿、Rp、₫）；devnet 沒有官方 USDT，用 Circle 的 devnet USDC 或自鑄測試幣代替 |
 | 鏈上程序 | Anchor 1.x（Rust） | 自寫一個最小的掛單託管程序：賣家掛單時 NFT 轉進以資產地址為種子的 PDA，買家付款後原子交換，平台抽成在同一筆交易內扣除；只接受平台集合的資產和 USDT、USDC，抽成上限 10% |
 | 鏈上數據讀取 | Helius RPC + DAS API | 查詢集合裡的卡、錢包持有的卡；Webhook 監聽託管程序的掛單、成交、取消事件，同步到資料庫 |
@@ -64,6 +64,16 @@ K-pop 小卡的鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Sola
 | 法幣入金（第二階段） | Privy 內建入金或 MoonPay | 用信用卡買 USDT 直接到內嵌錢包 |
 | 部署 | Vercel（前端）、Anchor 程序部署到 Solana 主網 | — |
 | 包管理 | npm | 本機已有，不另裝 |
+
+## 圖鑑與收藏冊
+
+- 不交易的粉絲也有理由每天來：圖鑑收錄每個卡款（團體 × 專輯 × 成員 × 版本），可以標記「有」和「想要」，旁邊顯示在售數量和最低價；收藏冊照實體卡冊做成 3×3 卡位、雙頁攤開，附收集進度和想要清單。
+- 手上的卡可以上鏈，分兩級：
+  - **自述收藏 NFT**：用戶拍卡片正面，鑄造到獨立的「Idolca Collector」集合，屬性標明 `custody: self`。用 Bubblegum v2 壓縮 NFT 鑄造，單張成本可忽略，手續費由平台代付，當作拉新成本。
+  - **金庫 NFT**：實物寄到金庫鑑定後，鑄造到金庫集合，同時銷毀對應的自述 NFT。
+- 託管合約只接受金庫集合的資產，自述 NFT 在鏈上就無法在 Idolca 掛單；外部市場也會把兩個集合分開顯示。
+- 用戶路徑：記錄收藏 → 上鏈展示 → 寄卡入庫 → 交易。
+- 帳號上線前，收藏冊存在瀏覽器本地，鑄造是演示模式。
 
 ## 盲盒卡包（Mystery Pack）
 

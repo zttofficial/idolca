@@ -5,6 +5,7 @@ import MarketGrid from "@/components/market/MarketGrid";
 import HowItWorks from "@/components/landing/HowItWorks";
 import Footer from "@/components/layout/Footer";
 import PackPromo from "@/components/packs/PackPromo";
+import BinderPromo from "@/components/binder/BinderPromo";
 
 export default function Home() {
   return (
@@ -15,6 +16,7 @@ export default function Home() {
         <TradeTicker />
         <PackPromo />
         <MarketGrid />
+        <BinderPromo />
         <HowItWorks />
       </main>
       <Footer />

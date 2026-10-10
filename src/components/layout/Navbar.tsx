@@ -8,8 +8,9 @@ export default function Navbar() {
   const links = [
     { href: "/#market", label: t("market") },
     { href: "/packs", label: t("packs") },
+    { href: "/catalog", label: t("catalog") },
+    { href: "/binder", label: t("binder") },
     { href: "/vault", label: t("vault") },
-    { href: "/#how", label: t("how") },
   ];
 
   return (
