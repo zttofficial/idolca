@@ -39,8 +39,29 @@
   "Market": {
     "title": "熱門小卡",
     "subtitle": "全部已入庫鑑定，成交即在鏈上轉移所有權",
-    "all": "全部",
-    "graded": "已評級"
+    "pageTitle": "市場",
+    "searchPlaceholder": "搜尋團體、成員、專輯、版本或編號",
+    "filters": "篩選",
+    "sortLabel": "排序",
+    "sort_trending": "熱門",
+    "sort_newest": "最新入庫",
+    "sort_priceAsc": "價格由低到高",
+    "sort_priceDesc": "價格由高到低",
+    "group": "團體",
+    "allGroups": "全部團體",
+    "member": "成員",
+    "allMembers": "全部",
+    "type": "類型",
+    "price": "價格（USDT）",
+    "min": "最低",
+    "max": "最高",
+    "listedOnly": "只看在售",
+    "clear": "清除篩選",
+    "results": "共 {count} 張",
+    "noResults": "沒有符合的卡，換個關鍵字或清除部分篩選試試。",
+    "prev": "上一頁",
+    "next": "下一頁",
+    "viewAll": "看全部 {count} 張"
   },
   "Ticker": {
     "minutesAgo": "{minutes} 分鐘前"
@@ -81,7 +102,10 @@
     "colAsset": "NFT 地址",
     "colOwner": "持有人",
     "colStatus": "狀態",
-    "colIntake": "入庫日期"
+    "colIntake": "入庫日期",
+    "all": "全部",
+    "search": "搜尋編號、卡名、NFT 地址或持有人",
+    "noResults": "沒有符合的卡。"
   },
   "Card": {
     "onchain": "鏈上資料",
@@ -281,7 +305,10 @@
     "noneForSale": "目前無人出售",
     "placeholderNote": "還沒有掃描圖的卡款顯示佔位卡面，掃描圖來自收藏者投稿和金庫入庫。",
     "sampleNote": "樣本圖鑑：團體、成員、專輯是真實資料，版本清單為示意。",
-    "mint": "把這張卡上鏈"
+    "mint": "把這張卡上鏈",
+    "search": "搜尋成員、專輯或版本",
+    "allTypes": "全部類型",
+    "noResults": "沒有符合的卡款。"
   },
   "Binder": {
     "title": "我的收藏冊",

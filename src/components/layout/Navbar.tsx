@@ -1,13 +1,14 @@
-import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import { Link, getPathname } from "@/i18n/navigation";
 import LocaleSwitcher from "./LocaleSwitcher";
 import Wordmark from "@/components/brand/Wordmark";
 import AccountButton from "@/components/auth/AccountButton";
 
 export default function Navbar() {
   const t = useTranslations("Nav");
+  const locale = useLocale();
   const links = [
-    { href: "/#market", label: t("market") },
+    { href: "/market", label: t("market") },
     { href: "/packs", label: t("packs") },
     { href: "/catalog", label: t("catalog") },
     { href: "/binder", label: t("binder") },
@@ -31,13 +32,16 @@ export default function Navbar() {
           ))}
         </ul>
         <div className="ml-auto flex items-center gap-3">
-          <label className="hidden items-center rounded-full border border-line bg-surface px-4 py-1.5 text-sm text-ink-3 xl:flex">
+          {/* 搜尋送到市場頁，帶上關鍵字 */}
+          <form action={getPathname({ href: "/market", locale })} method="get" className="hidden items-center rounded-full border border-line bg-surface px-4 py-1.5 text-sm text-ink-3 xl:flex">
             <input
               type="search"
+              name="q"
               placeholder={t("search")}
+              aria-label={t("search")}
               className="w-56 bg-transparent text-ink placeholder:text-ink-3 focus:outline-none"
             />
-          </label>
+          </form>
           <LocaleSwitcher />
           <AccountButton />
         </div>

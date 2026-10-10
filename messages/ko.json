@@ -39,8 +39,29 @@
   "Market": {
     "title": "인기 포토카드",
     "subtitle": "모두 보관·검수 완료. 거래가 체결되는 순간 온체인으로 소유권이 이전됩니다",
-    "all": "전체",
-    "graded": "그레이딩 완료"
+    "pageTitle": "마켓",
+    "searchPlaceholder": "그룹, 멤버, 앨범, 버전, 일련번호 검색",
+    "filters": "필터",
+    "sortLabel": "정렬",
+    "sort_trending": "인기순",
+    "sort_newest": "최신 입고순",
+    "sort_priceAsc": "낮은 가격순",
+    "sort_priceDesc": "높은 가격순",
+    "group": "그룹",
+    "allGroups": "전체 그룹",
+    "member": "멤버",
+    "allMembers": "전체",
+    "type": "종류",
+    "price": "가격 (USDT)",
+    "min": "최소",
+    "max": "최대",
+    "listedOnly": "판매 중만 보기",
+    "clear": "필터 초기화",
+    "results": "{count}장",
+    "noResults": "조건에 맞는 카드가 없어요. 다른 키워드로 찾거나 필터를 줄여 보세요.",
+    "prev": "이전",
+    "next": "다음",
+    "viewAll": "{count}장 전체 보기"
   },
   "Ticker": {
     "minutesAgo": "{minutes}분 전"
@@ -81,7 +102,10 @@
     "colAsset": "NFT 주소",
     "colOwner": "보유자",
     "colStatus": "상태",
-    "colIntake": "입고일"
+    "colIntake": "입고일",
+    "all": "전체",
+    "search": "일련번호, 카드명, NFT 주소, 보유자 검색",
+    "noResults": "조건에 맞는 카드가 없어요."
   },
   "Card": {
     "onchain": "온체인 데이터",
@@ -281,7 +305,10 @@
     "noneForSale": "판매 중인 카드 없음",
     "placeholderNote": "아직 스캔 이미지가 없는 카드는 대체 이미지로 표시됩니다. 스캔은 수집가 제보와 보관소 입고로 채워집니다.",
     "sampleNote": "샘플 도감: 그룹·멤버·앨범은 실제 정보이고, 버전 목록은 예시입니다.",
-    "mint": "이 카드 민팅하기"
+    "mint": "이 카드 민팅하기",
+    "search": "멤버, 앨범, 버전 검색",
+    "allTypes": "전체 종류",
+    "noResults": "조건에 맞는 카드가 없어요."
   },
   "Binder": {
     "title": "내 바인더",

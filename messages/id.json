@@ -39,8 +39,29 @@
   "Market": {
     "title": "Kartu populer",
     "subtitle": "Semua kartu sudah disimpan dan diautentikasi. Kepemilikan berpindah on-chain begitu transaksi selesai",
-    "all": "Semua",
-    "graded": "Sudah digrading"
+    "pageTitle": "Pasar",
+    "searchPlaceholder": "Cari grup, member, album, versi, atau nomor seri",
+    "filters": "Filter",
+    "sortLabel": "Urutkan",
+    "sort_trending": "Populer",
+    "sort_newest": "Terbaru",
+    "sort_priceAsc": "Harga terendah",
+    "sort_priceDesc": "Harga tertinggi",
+    "group": "Grup",
+    "allGroups": "Semua grup",
+    "member": "Member",
+    "allMembers": "Semua",
+    "type": "Jenis",
+    "price": "Harga (USDT)",
+    "min": "Min",
+    "max": "Maks",
+    "listedOnly": "Hanya yang dijual",
+    "clear": "Hapus filter",
+    "results": "{count} kartu",
+    "noResults": "Tidak ada kartu yang cocok. Coba kata kunci lain atau kurangi filter.",
+    "prev": "Sebelumnya",
+    "next": "Berikutnya",
+    "viewAll": "Lihat semua {count} kartu"
   },
   "Ticker": {
     "minutesAgo": "{minutes} menit lalu"
@@ -81,7 +102,10 @@
     "colAsset": "Alamat NFT",
     "colOwner": "Pemegang",
     "colStatus": "Status",
-    "colIntake": "Tanggal masuk"
+    "colIntake": "Tanggal masuk",
+    "all": "Semua",
+    "search": "Cari nomor seri, kartu, alamat NFT, atau pemegang",
+    "noResults": "Tidak ada kartu yang cocok."
   },
   "Card": {
     "onchain": "Data on-chain",
@@ -281,7 +305,10 @@
     "noneForSale": "Belum ada yang jual",
     "placeholderNote": "Kartu yang belum punya hasil pindai ditampilkan dengan gambar pengganti. Hasil pindai datang dari kolektor dan vault.",
     "sampleNote": "Katalog contoh: grup, member, dan album nyata; daftar versinya hanya ilustrasi.",
-    "mint": "Mint kartu ini"
+    "mint": "Mint kartu ini",
+    "search": "Cari member, album, atau versi",
+    "allTypes": "Semua jenis",
+    "noResults": "Tidak ada kartu yang cocok."
   },
   "Binder": {
     "title": "Binder saya",

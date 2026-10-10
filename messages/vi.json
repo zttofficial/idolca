@@ -39,8 +39,29 @@
   "Market": {
     "title": "Thẻ nổi bật",
     "subtitle": "Tất cả thẻ đã được lưu kho và xác thực. Quyền sở hữu chuyển on-chain ngay khi giao dịch hoàn tất",
-    "all": "Tất cả",
-    "graded": "Đã chấm điểm"
+    "pageTitle": "Chợ",
+    "searchPlaceholder": "Tìm nhóm, thành viên, album, phiên bản hoặc số sê-ri",
+    "filters": "Bộ lọc",
+    "sortLabel": "Sắp xếp",
+    "sort_trending": "Nổi bật",
+    "sort_newest": "Mới nhập kho",
+    "sort_priceAsc": "Giá thấp đến cao",
+    "sort_priceDesc": "Giá cao đến thấp",
+    "group": "Nhóm",
+    "allGroups": "Tất cả nhóm",
+    "member": "Thành viên",
+    "allMembers": "Tất cả",
+    "type": "Loại",
+    "price": "Giá (USDT)",
+    "min": "Tối thiểu",
+    "max": "Tối đa",
+    "listedOnly": "Chỉ thẻ đang bán",
+    "clear": "Xóa bộ lọc",
+    "results": "{count} thẻ",
+    "noResults": "Không có thẻ phù hợp. Hãy thử từ khóa khác hoặc bớt bộ lọc.",
+    "prev": "Trước",
+    "next": "Sau",
+    "viewAll": "Xem tất cả {count} thẻ"
   },
   "Ticker": {
     "minutesAgo": "{minutes} phút trước"
@@ -81,7 +102,10 @@
     "colAsset": "Địa chỉ NFT",
     "colOwner": "Người nắm giữ",
     "colStatus": "Trạng thái",
-    "colIntake": "Ngày nhập kho"
+    "colIntake": "Ngày nhập kho",
+    "all": "Tất cả",
+    "search": "Tìm số sê-ri, tên thẻ, địa chỉ NFT hoặc người nắm giữ",
+    "noResults": "Không có thẻ phù hợp."
   },
   "Card": {
     "onchain": "Dữ liệu on-chain",
@@ -281,7 +305,10 @@
     "noneForSale": "Chưa có ai bán",
     "placeholderNote": "Mẫu thẻ chưa có ảnh scan sẽ hiển thị ảnh thay thế. Ảnh scan đến từ người sưu tầm và kho lưu trữ.",
     "sampleNote": "Bách khoa mẫu: nhóm, thành viên và album là thật; danh sách phiên bản chỉ mang tính minh họa.",
-    "mint": "Mint thẻ này"
+    "mint": "Mint thẻ này",
+    "search": "Tìm thành viên, album hoặc phiên bản",
+    "allTypes": "Tất cả loại",
+    "noResults": "Không có mẫu thẻ phù hợp."
   },
   "Binder": {
     "title": "Album sưu tầm của tôi",

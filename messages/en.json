@@ -39,8 +39,29 @@
   "Market": {
     "title": "Trending cards",
     "subtitle": "All cards are vaulted and authenticated. Ownership transfers on-chain the moment a trade settles.",
-    "all": "All",
-    "graded": "Graded"
+    "pageTitle": "Market",
+    "searchPlaceholder": "Search group, member, album, version or serial",
+    "filters": "Filters",
+    "sortLabel": "Sort",
+    "sort_trending": "Trending",
+    "sort_newest": "Newest",
+    "sort_priceAsc": "Price: low to high",
+    "sort_priceDesc": "Price: high to low",
+    "group": "Group",
+    "allGroups": "All groups",
+    "member": "Member",
+    "allMembers": "All",
+    "type": "Type",
+    "price": "Price (USDT)",
+    "min": "Min",
+    "max": "Max",
+    "listedOnly": "Only cards for sale",
+    "clear": "Clear filters",
+    "results": "{count} cards",
+    "noResults": "No cards match. Try a different keyword or clear some filters.",
+    "prev": "Previous",
+    "next": "Next",
+    "viewAll": "View all {count} cards"
   },
   "Ticker": {
     "minutesAgo": "{minutes} min ago"
@@ -81,7 +102,10 @@
     "colAsset": "NFT address",
     "colOwner": "Holder",
     "colStatus": "Status",
-    "colIntake": "Vaulted on"
+    "colIntake": "Vaulted on",
+    "all": "All",
+    "search": "Search serial, card, NFT address or holder",
+    "noResults": "No cards match."
   },
   "Card": {
     "onchain": "On-chain data",
@@ -281,7 +305,10 @@
     "noneForSale": "None for sale",
     "placeholderNote": "Cards without a scan yet show a placeholder. Scans come from collectors and the vault.",
     "sampleNote": "Sample catalog: groups, members and albums are real; the version list is illustrative.",
-    "mint": "Mint this card"
+    "mint": "Mint this card",
+    "search": "Search member, album or version",
+    "allTypes": "All types",
+    "noResults": "No cards match."
   },
   "Binder": {
     "title": "My binder",

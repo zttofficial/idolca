@@ -39,8 +39,29 @@
   "Market": {
     "title": "人気のトレカ",
     "subtitle": "すべて保管・鑑定済み。取引成立と同時にオンチェーンで所有権が移転します",
-    "all": "すべて",
-    "graded": "グレーディング済み"
+    "pageTitle": "マーケット",
+    "searchPlaceholder": "グループ・メンバー・アルバム・バージョン・シリアルで検索",
+    "filters": "絞り込み",
+    "sortLabel": "並び替え",
+    "sort_trending": "人気",
+    "sort_newest": "新着",
+    "sort_priceAsc": "価格の安い順",
+    "sort_priceDesc": "価格の高い順",
+    "group": "グループ",
+    "allGroups": "すべてのグループ",
+    "member": "メンバー",
+    "allMembers": "すべて",
+    "type": "種類",
+    "price": "価格（USDT）",
+    "min": "下限",
+    "max": "上限",
+    "listedOnly": "出品中のみ",
+    "clear": "絞り込みをクリア",
+    "results": "{count} 枚",
+    "noResults": "該当するカードがありません。キーワードを変えるか、絞り込みを減らしてください。",
+    "prev": "前へ",
+    "next": "次へ",
+    "viewAll": "{count} 枚をすべて見る"
   },
   "Ticker": {
     "minutesAgo": "{minutes} 分前"
@@ -81,7 +102,10 @@
     "colAsset": "NFT アドレス",
     "colOwner": "保有者",
     "colStatus": "ステータス",
-    "colIntake": "保管開始日"
+    "colIntake": "保管開始日",
+    "all": "すべて",
+    "search": "シリアル・カード名・NFT アドレス・保有者で検索",
+    "noResults": "該当するカードがありません。"
   },
   "Card": {
     "onchain": "オンチェーンデータ",
@@ -281,7 +305,10 @@
     "noneForSale": "出品なし",
     "placeholderNote": "スキャン画像がまだないカードはプレースホルダーで表示しています。画像はコレクターの投稿と保管庫の入庫から集まります。",
     "sampleNote": "サンプル図鑑：グループ・メンバー・アルバムは実在のものですが、バージョン一覧は例示です。",
-    "mint": "このカードをミント"
+    "mint": "このカードをミント",
+    "search": "メンバー・アルバム・バージョンで検索",
+    "allTypes": "すべての種類",
+    "noResults": "該当するカードがありません。"
   },
   "Binder": {
     "title": "マイコレクション",

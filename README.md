@@ -30,7 +30,7 @@ npm run lint
 
 ## 卡樣圖片
 
-樣本卡的藝人資料寫在 `src/lib/mock-cards.ts`，照片是 `public/cards/samples/c1.jpg` 到 `c8.jpg`，來自維基共享資源，CC BY 授權。作者和授權記在 `src/lib/sample-credits.json`，網站的 `/credits` 頁公開署名；更換或新增照片時要同步更新這個檔案。
+樣本卡的藝人資料寫在 `src/lib/mock-cards.ts`，照片是 `public/cards/samples/c1.jpg` 到 `c19.jpg`，來自維基共享資源，CC BY 授權。作者和授權記在 `src/lib/sample-credits.json`，網站的 `/credits` 頁公開署名；更換或新增照片時要同步更新這個檔案。
 
 ## 平台端鏈上腳本
 
@@ -69,7 +69,8 @@ anchor test        # 本地驗證節點會從主網複製 Metaplex Core 程序
 src/
   app/[locale]/           所有頁面都在語言段下
     page.tsx              首頁
-    vault/                金庫頁：每張卡的 NFT 地址、持有人、狀態
+    market/               市場頁：搜尋、團體和成員、類型、價格、排序、分頁
+    vault/                金庫頁：每張卡的 NFT 地址、持有人、狀態，可按狀態篩選和搜尋
     card/[id]/            卡片內頁：看卡、購買、鑑定報告、價格走勢、同款在售、鏈上紀錄、費用與保障
     packs/                盲盒卡包列表和卡包頁（機率、卡池、開包）
     catalog/              圖鑑：團體列表、團體卡款（標記有 / 想要）
@@ -83,7 +84,8 @@ src/
     card/                 卡片內頁的看卡切換、購買面板、價格走勢圖
     packs/                卡包包裝、倒數、開包流程（撕包、翻卡、結果）
     binder/               圖鑑卡款、卡冊、上鏈對話框
-    market/               卡片列表、全息懸停卡（HoloTile）、鏈上成交跑馬燈
+    market/               市場瀏覽、卡片列表、全息懸停卡（HoloTile）、鏈上成交跑馬燈
+    vault/                金庫清單
     landing/              首頁說明區塊
     brand/                文字標誌
     layout/               導航列、語言選單、頁腳
@@ -95,11 +97,12 @@ src/
     card-detail.ts        卡片內頁的樣本資料：鑑定、成交、鏈上紀錄、同款在售、賣家
     packs.ts              盲盒卡包：卡池、按剩餘張數計算的機率、抽卡
     charts.ts             專輯銷量榜樣本數據
+    market.ts             市場的篩選、排序、分頁和網址參數
     sources.ts            小卡來源分類
     catalog.ts            圖鑑：團體、成員、專輯、版本和卡款
     binder.ts             收藏冊資料（目前存在瀏覽器 localStorage）
     fx.ts                 當地貨幣參考價
-    mock-cards.ts         樣本卡（真實藝人和專輯，示意價格，隨機生成的地址）
+    mock-cards.ts         19 張樣本卡（真實藝人和專輯，示意價格，隨機生成的地址）
     card-art.ts           canvas 生成的佔位卡面
 messages/                 八種語言的介面文字
 scripts/                  平台端 Metaplex Core 腳本：建集合、鑄造、提貨
