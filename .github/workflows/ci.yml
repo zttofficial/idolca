@@ -1,0 +1,22 @@
+# 每次推送和 PR：lint、型別檢查、單元測試、正式構建。端到端測試要連 devnet 和平台金鑰，在本機跑（見 README）
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npm run build
