@@ -7,7 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { binderActions, useBinder } from "@/lib/binder";
 import { templateCard, type Template } from "@/lib/catalog";
 import { formatUsdt } from "@/lib/fx";
-import { useChainState, useTemplateMarket } from "@/lib/chain-client";
+import { useTemplateMarket, useVaultCards } from "@/lib/chain-client";
 
 // 圖鑑裡的一個卡款：標記「有 / 想要」，看真實在售數量和最低價
 export default function CatalogTile({ template }: { template: Template }) {
@@ -16,9 +16,8 @@ export default function CatalogTile({ template }: { template: Template }) {
   const binder = useBinder();
   const entry = binder.have[template.id];
   const wanted = Boolean(binder.want[template.id]);
-  const base = templateCard(template);
+  const base = templateCard(template, useVaultCards());
   const card = entry?.photo ? { ...base, image: { front: entry.photo } } : base;
-  const chain = useChainState();
   const market = useTemplateMarket()(template);
 
   return (
@@ -37,8 +36,8 @@ export default function CatalogTile({ template }: { template: Template }) {
         {!market ? (
           <span className="text-ink-3">…</span>
         ) : market.forSale && market.fromUsdt !== null ? (
-          template.listingId && chain?.cards[template.listingId]?.listing ? (
-            <Link href={`/card/${template.listingId}`} className="text-accent-ink hover:underline">
+          market.vaultCardId ? (
+            <Link href={`/card/${market.vaultCardId}`} className="text-accent-ink hover:underline">
               {t("forSale", { count: market.forSale, price: formatUsdt(market.fromUsdt) })}
             </Link>
           ) : (

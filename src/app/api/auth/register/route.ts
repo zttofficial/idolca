@@ -2,10 +2,13 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/server/db";
 import { users } from "@/lib/server/schema";
 import { EMAIL_RE, MIN_PASSWORD, hashPassword, newUserId, startSession } from "@/lib/server/auth";
+import { allow, clientIp, tooMany } from "@/lib/server/rate-limit";
 
 export async function POST(request: Request) {
   const db = await getDb();
   if (!db) return Response.json({ error: "not_configured" }, { status: 503 });
+  // 擋批量註冊：每個 IP 每小時 10 個帳號
+  if (!(await allow(db, `register:${clientIp(request)}`, 10, 3600))) return tooMany();
 
   const body = (await request.json().catch(() => ({}))) as { email?: string; password?: string; displayName?: string };
   const email = body.email?.trim().toLowerCase() ?? "";
@@ -19,5 +22,5 @@ export async function POST(request: Request) {
   const user = { id: newUserId(), email, displayName: body.displayName?.trim().slice(0, 40) || email.split("@")[0] };
   await db.insert(users).values({ ...user, passwordHash: await hashPassword(password) });
   await startSession(db, user.id);
-  return Response.json({ user: { ...user, walletAddress: null } });
+  return Response.json({ user: { ...user, walletAddress: null, isAdmin: false, ageConfirmed: false } });
 }

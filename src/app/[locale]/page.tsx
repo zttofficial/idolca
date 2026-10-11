@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Hero from "@/components/hero/Hero";
 import MarketGrid from "@/components/market/MarketGrid";
@@ -12,7 +13,9 @@ export default function Home() {
       <Navbar />
       <main className="flex-1">
         <Hero />
-        <PackPromo />
+        <Suspense fallback={null}>
+          <PackPromo />
+        </Suspense>
         <MarketGrid />
         <BinderPromo />
         <HowItWorks />

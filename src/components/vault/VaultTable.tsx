@@ -3,35 +3,30 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import type { VaultStatus } from "@/lib/mock-cards";
-import { useChainState } from "@/lib/chain-client";
+import type { VaultStatus } from "@/lib/cards";
+import { useVaultCards } from "@/lib/chain-client";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 
-export type VaultRow = { serial: string; title: string; asset: string; owner: string; status: VaultStatus; intakeDate: string; cardId?: string };
+export type VaultRow = { serial: string; title: string; asset: string; owner: string; status: VaultStatus; intakeDate: string; cardId: string };
 
 const STATUS_STYLE: Record<VaultStatus, string> = {
   vaulted: "bg-up/10 text-up",
   listed: "bg-accent-soft text-accent-ink",
   redeeming: "bg-notice-bg text-notice-ink",
+  redeemed: "bg-surface-3 text-ink-3",
 };
-const STATUSES: VaultStatus[] = ["vaulted", "listed", "redeeming"];
+const STATUSES: VaultStatus[] = ["vaulted", "listed", "redeeming", "redeemed"];
 
-// 金庫清單：按狀態分頁籤，搜尋編號、卡名、NFT 地址或持有人
-// 鏈上已配置時，持有人和狀態用即時資料；已提貨銷毀的卡移出清單
-export function useLiveRows(rows: VaultRow[]) {
-  const chain = useChainState();
-  if (!chain?.ready) return rows;
-  return rows.flatMap((r) => {
-    const s = r.cardId ? chain.cards[r.cardId] : undefined;
-    if (!s) return [r];
-    if (s.burned) return [];
-    return [{ ...r, owner: s.listing?.seller ?? s.owner, status: (s.listing ? "listed" : s.redeeming ? "redeeming" : "vaulted") as VaultStatus }];
-  });
+// 金庫清單：資料庫裡的卡加上鏈上即時的持有人和狀態，包括已提貨銷毀的。還沒讀到時是 null
+function useRows(): VaultRow[] | null {
+  const cards = useVaultCards(true);
+  return cards?.map((c) => ({ serial: c.serial, title: `${c.group} ${c.member} · ${c.version}`, asset: c.asset, owner: c.owner, status: c.status, intakeDate: c.intakeDate, cardId: c.id })) ?? null;
 }
 
-export function VaultSummary({ rows }: { rows: VaultRow[] }) {
+export function VaultSummary() {
   const t = useTranslations("Vault");
-  const live = useLiveRows(rows);
+  // 金庫裡現有的 NFT 和實物不算已提貨的
+  const live = (useRows() ?? []).filter((r) => r.status !== "redeemed");
   const summary = [
     { label: t("nftCount"), value: live.length },
     { label: t("redeeming"), value: live.filter((e) => e.status === "redeeming").length },
@@ -49,9 +44,10 @@ export function VaultSummary({ rows }: { rows: VaultRow[] }) {
   );
 }
 
-export default function VaultTable({ rows: staticRows }: { rows: VaultRow[] }) {
+export default function VaultTable() {
   const t = useTranslations("Vault");
-  const rows = useLiveRows(staticRows);
+  const loaded = useRows();
+  const rows = loaded ?? [];
   const tStatus = useTranslations("Status");
   const [status, setStatus] = useState<VaultStatus | null>(null);
   const [q, setQ] = useState("");
@@ -103,13 +99,9 @@ export default function VaultTable({ rows: staticRows }: { rows: VaultRow[] }) {
             {shown.map((r) => (
               <tr key={r.asset} className="hover:bg-surface-2">
                 <td className="px-4 py-3 font-mono text-xs">
-                  {r.cardId ? (
-                    <Link href={`/card/${r.cardId}`} className="text-accent-ink hover:underline">
-                      {r.serial}
-                    </Link>
-                  ) : (
-                    r.serial
-                  )}
+                  <Link href={`/card/${r.cardId}`} className="text-accent-ink hover:underline">
+                    {r.serial}
+                  </Link>
                 </td>
                 <td className="px-4 py-3 text-ink">{r.title}</td>
                 <td className="px-4 py-3 font-mono text-xs">
@@ -127,7 +119,7 @@ export default function VaultTable({ rows: staticRows }: { rows: VaultRow[] }) {
             {shown.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-sm text-ink-3">
-                  {t("noResults")}
+                  {loaded ? t(rows.length ? "noResults" : "empty") : "…"}
                 </td>
               </tr>
             )}

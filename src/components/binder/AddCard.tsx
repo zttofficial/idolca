@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
+import { cropToCard } from "@/lib/crop-card";
 import { useAuth } from "@/components/auth/AuthContext";
 import { Link } from "@/i18n/navigation";
 import { GROUPS, TEMPLATES } from "@/lib/catalog";
 import { mintItem, type CollectorItem } from "@/lib/items";
-import { CHAIN } from "@/lib/chain";
 import { solscanUrl } from "@/lib/solana/config";
 import { CARD_SOURCES, type CardSource } from "@/lib/sources";
 
@@ -47,33 +47,6 @@ export function AddCardHost() {
 }
 
 const MAX_EXTRA = 6;
-const OUT_W = 660;
-const OUT_H = 1020;
-
-// 置中裁成 55:85 再上傳；伺服器端會再驗證、加浮水印
-async function cropToCard(file: File): Promise<string> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image();
-      el.onload = () => resolve(el);
-      el.onerror = reject;
-      el.src = url;
-    });
-    const ratio = OUT_W / OUT_H;
-    let sw = img.width;
-    let sh = img.height;
-    if (sw / sh > ratio) sw = sh * ratio;
-    else sh = sw / ratio;
-    const canvas = document.createElement("canvas");
-    canvas.width = OUT_W;
-    canvas.height = OUT_H;
-    canvas.getContext("2d")!.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, 0, 0, OUT_W, OUT_H);
-    return canvas.toDataURL("image/jpeg", 0.9);
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
 
 const unique = (xs: string[]) => [...new Set(xs)];
 
@@ -273,7 +246,7 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
                   {t("loginToMint")}
                 </button>
               )}
-              <p className="mt-3 text-[11px] text-ink-3">{t(CHAIN.collectorCollection ? "devnetNote" : "demoNote")}</p>
+              <p className="mt-3 text-[11px] text-ink-3">{t("mintNote")}</p>
             </div>
           )}
         </div>

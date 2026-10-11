@@ -1,5 +1,5 @@
 import "server-only";
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { TEMPLATES } from "@/lib/catalog";
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 import type { Db } from "./db";
@@ -34,6 +34,7 @@ export function publicItem(r: ItemRow) {
     verifiedAt: r.verifiedAt?.toISOString() ?? null,
     priceUsdt: r.priceCents === null ? null : r.priceCents / 100,
     listedAt: r.listedAt?.toISOString() ?? null,
+    vaultRequestedAt: r.vaultRequestedAt?.toISOString() ?? null,
     createdAt: r.createdAt.toISOString(),
   };
 }
@@ -62,13 +63,6 @@ export function matchTemplate(group: string, member: string, album?: string | nu
       (t) => norm(t.group) === norm(group) && norm(t.member) === norm(member) && norm(t.album) === norm(album) && norm(t.version) === norm(version),
     )?.id ?? null
   );
-}
-
-const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-
-// 鏈上未配置的環境（演示模式）用的假 NFT 地址
-export function demoAssetId() {
-  return Array.from(randomBytes(44), (b) => BASE58[b % 58]).join("");
 }
 
 export const newItemId = () => randomUUID();

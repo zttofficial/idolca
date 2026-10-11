@@ -21,6 +21,8 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/items/[id]
     const price = priceToCents(body.priceUsdt ?? null);
     if (price === undefined) return Response.json({ error: "invalid_price" }, { status: 400 });
     if (price !== null && current.verification === "fake") return Response.json({ error: "fake" }, { status: 409 });
+    // 已申請寄進金庫（或已轉成金庫卡）的不能再刊登
+    if (price !== null && (current.vaultRequestedAt || current.vaultCardId)) return Response.json({ error: "in_vault" }, { status: 409 });
     changes.priceCents = price;
     changes.listedAt = price === null ? null : (current.listedAt ?? new Date());
   }

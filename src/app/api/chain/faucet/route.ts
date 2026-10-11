@@ -4,11 +4,13 @@ import { faucetClaims } from "@/lib/server/schema";
 import { fail, requireWalletUser } from "@/lib/server/require-user";
 import { FAUCET_SOL, FAUCET_USDT, sendTestFunds } from "@/lib/server/funds";
 import { marketReady } from "@/lib/server/vault-chain";
+import { CLUSTER } from "@/lib/solana/config";
 
 const COOLDOWN_MS = 10 * 60_000;
 
-// devnet 測試幣：一點 SOL 付手續費和 500 測試 USDT，每個帳號 10 分鐘一次
+// devnet 測試幣：一點 SOL 付手續費和 500 測試 USDT，每個帳號 10 分鐘一次。主網沒有這個接口
 export async function POST() {
+  if (CLUSTER !== "devnet") return fail("not_found", 404);
   const a = await requireWalletUser();
   if ("error" in a) return a.error;
   if (!marketReady()) return fail("not_configured", 503);

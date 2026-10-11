@@ -1,12 +1,18 @@
-import { useTranslations } from "next-intl";
+import { connection } from "next/server";
+import { getTranslations } from "next-intl/server";
 import PackArt from "./PackArt";
 import { Link } from "@/i18n/navigation";
-import { PACKS, packStats } from "@/lib/packs";
+import { packStats } from "@/lib/packs";
+import { getDb } from "@/lib/server/db";
+import { featuredPack } from "@/lib/server/pack-pool";
 
-// 首頁的盲盒入口：只推正在售賣的第一個卡包
-export default function PackPromo() {
-  const t = useTranslations("Packs");
-  const pack = PACKS[0];
+// 首頁的盲盒入口：只推正在售賣、還有卡的第一個卡包；沒有就不顯示
+export default async function PackPromo() {
+  await connection();
+  const t = await getTranslations("Packs");
+  const db = await getDb();
+  const pack = db ? await featuredPack(db) : null;
+  if (!pack) return null;
   const { topValue } = packStats(pack);
   return (
     <section className="mx-auto max-w-7xl px-4 pt-16 sm:px-6">

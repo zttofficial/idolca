@@ -24,7 +24,7 @@ export type CollectorItem = {
   version: string | null;
   templateId: string | null;
   asset: string;
-  // 鏈上鑄造的交易；為 null 表示演示模式（鏈上未配置），asset 是假地址
+  // 鏈上鑄造的交易
   mintTx: string | null;
   // NFT 持有地址：自己的錢包，或平台代管錢包
   ownerAddress: string | null;
@@ -35,6 +35,8 @@ export type CollectorItem = {
   verifiedAt: string | null;
   priceUsdt: number | null;
   listedAt: string | null;
+  // 已申請寄進金庫、等實物寄到
+  vaultRequestedAt: string | null;
   createdAt: string;
 };
 
@@ -98,6 +100,16 @@ export async function setListing(id: string, priceUsdt: number | null) {
   const res = await fetch(`/api/items/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ priceUsdt }) });
   const data = (await res.json()) as { item?: CollectorItem; error?: string };
   if (!data.item) throw new Error(data.error ?? "listing_failed");
+  items = items.map((i) => (i.id === id ? data.item! : i));
+  emit();
+  return data.item;
+}
+
+// 申請寄進金庫（下架、等實物寄到），或取消申請
+export async function requestVault(id: string, cancel = false) {
+  const res = await fetch(`/api/items/${id}/vault`, { method: cancel ? "DELETE" : "POST" });
+  const data = (await res.json()) as { item?: CollectorItem; error?: string };
+  if (!data.item) throw new Error(data.error ?? "vault_failed");
   items = items.map((i) => (i.id === id ? data.item! : i));
   emit();
   return data.item;

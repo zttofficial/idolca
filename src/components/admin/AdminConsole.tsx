@@ -3,53 +3,84 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { findCard } from "@/lib/mock-cards";
+import { useAuth } from "@/components/auth/AuthContext";
+import { formatUsdt } from "@/lib/fx";
+import { formatAddress, type ShippingAddress } from "@/lib/shipping";
+import VaultIntake from "./VaultIntake";
+import AdminPacks from "./AdminPacks";
+import VaultConvert from "./VaultConvert";
 import { itemTitle } from "@/lib/item-title";
 import type { CollectorItem } from "@/lib/items";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 
-type Redemption = { cardId: string; wallet: string; requestTx: string; shipTx: string | null; createdAt: string; onChain: { redeeming: boolean; burned: boolean } | null };
+type Redemption = {
+  cardId: string;
+  card: string;
+  wallet: string;
+  requestTx: string;
+  shipTx: string | null;
+  shippingAddress: string | null;
+  feeCents: number;
+  feePaid: number;
+  cancelTx: string | null;
+  refundTx: string | null;
+  cancelledAt: string | null;
+  createdAt: string;
+  onChain: { redeeming: boolean; burned: boolean } | null;
+};
 
-const TOKEN_KEY = "idolca:admin-token";
+type Order = {
+  id: string;
+  status: string;
+  title: string;
+  photo: string | null;
+  priceUsdt: number;
+  payTx: string | null;
+  payoutTx: string | null;
+  transferTx: string | null;
+  refundTx: string | null;
+  disputeReason: string | null;
+  shipBy: string | null;
+  autoReleaseAt: string | null;
+};
 
-// 後台：令牌只存在這個分頁（sessionStorage），每個請求帶在 x-admin-token 頭裡
+// 後台：管理員帳號登入後使用，權限由伺服器按會話檢查
 export default function AdminConsole() {
   const t = useTranslations("Admin");
-  const [token, setToken] = useState("");
-  const [input, setInput] = useState("");
+  const tb = useTranslations("Binder");
+  const { ready, user, login } = useAuth();
   const [redemptions, setRedemptions] = useState<Redemption[] | null>(null);
   const [items, setItems] = useState<CollectorItem[] | null>(null);
+  const [orders, setOrders] = useState<Order[] | null>(null);
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();
 
-  useEffect(() => {
-    try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- 水合後才能讀 sessionStorage
-      setToken(sessionStorage.getItem(TOKEN_KEY) ?? "");
-    } catch {}
-  }, []);
-
   const call = useCallback(
     async <T,>(method: string, path: string, body?: unknown): Promise<T> => {
-      const res = await fetch(path, { method, headers: { "content-type": "application/json", "x-admin-token": token }, body: body ? JSON.stringify(body) : undefined });
+      const res = await fetch(path, { method, headers: { "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
       const data = (await res.json().catch(() => ({}))) as T & { error?: string };
       if (!res.ok) throw new Error(data.error ?? String(res.status));
       return data;
     },
-    [token],
+    [],
   );
 
   const load = useCallback(async () => {
-    if (!token) return;
+    if (!user?.isAdmin) return;
     try {
       setError(undefined);
-      const [r, i] = await Promise.all([call<{ redemptions: Redemption[] }>("GET", "/api/admin/redemptions"), call<{ items: CollectorItem[] }>("GET", "/api/admin/items")]);
+      const [r, i, o] = await Promise.all([
+        call<{ redemptions: Redemption[] }>("GET", "/api/admin/redemptions"),
+        call<{ items: CollectorItem[] }>("GET", "/api/admin/items"),
+        call<{ orders: Order[] }>("GET", "/api/admin/orders"),
+      ]);
       setRedemptions(r.redemptions);
       setItems(i.items);
+      setOrders(o.orders);
     } catch (e) {
       setError(e instanceof Error ? e.message : "error");
     }
-  }, [call, token]);
+  }, [call, user?.isAdmin]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 有令牌時讀資料
@@ -69,23 +100,15 @@ export default function AdminConsole() {
     }
   };
 
-  if (!token) {
+  if (!ready) return <div className="mt-8 h-32 animate-pulse rounded-2xl bg-surface-2" />;
+  if (!user) {
     return (
-      <form
-        className="mt-8 flex max-w-md gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          try {
-            sessionStorage.setItem(TOKEN_KEY, input);
-          } catch {}
-          setToken(input);
-        }}
-      >
-        <input type="password" value={input} onChange={(e) => setInput(e.target.value)} placeholder="ADMIN_TOKEN" className="flex-1 rounded-full border border-line bg-surface px-4 py-2.5 text-sm outline-none focus:border-ink" />
-        <button className="btn-primary rounded-full px-5 text-sm font-semibold">{t("unlock")}</button>
-      </form>
+      <button onClick={login} className="btn-primary mt-8 rounded-full px-6 py-2.5 text-sm font-semibold">
+        {t("login")}
+      </button>
     );
   }
+  if (!user.isAdmin) return <p className="mt-8 rounded-xl bg-surface-2 px-4 py-3 text-sm text-ink-2">{t("forbidden")}</p>;
 
   const tx = (label: string, sig: string | null) =>
     sig && (
@@ -98,6 +121,65 @@ export default function AdminConsole() {
     <div className="mt-8 space-y-10">
       {error && <p className="rounded-xl bg-down/10 px-4 py-2 text-sm text-down">{t("error", { error })}</p>}
 
+      <VaultIntake />
+
+      <AdminPacks call={call} />
+
+      <section>
+        <h2 className="text-lg font-semibold">{t("orders")}</h2>
+        <p className="mt-1 text-xs text-ink-3">{t("ordersHint")}</p>
+        {!orders?.length ? (
+          <p className="mt-4 text-sm text-ink-3">{orders ? t("none") : "…"}</p>
+        ) : (
+          <ul className="mt-4 divide-y divide-line rounded-2xl border border-line bg-surface">
+            {orders.map((o) => {
+              const open = o.status === "paid" || o.status === "shipped" || o.status === "disputed";
+              return (
+                <li key={o.id} className="flex flex-wrap items-center gap-4 px-4 py-3 text-sm">
+                  <div className="aspect-[55/85] w-10 shrink-0 overflow-hidden rounded-md bg-surface-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- 用戶上傳的照片 */}
+                    {o.photo && <img src={o.photo} alt="" className="h-full w-full object-cover" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">{o.title}</p>
+                    <p className="text-xs text-ink-3">
+                      {formatUsdt(o.priceUsdt)} · <span className={`font-medium ${o.status === "disputed" ? "text-notice-ink" : "text-ink-2"}`}>{tb(`orderStatus_${o.status}`)}</span>
+                      {o.disputeReason && <span> · {o.disputeReason}</span>}
+                    </p>
+                    <p className="mt-0.5 flex flex-wrap gap-3 text-xs text-ink-3">
+                      {tx(tb("txPayment"), o.payTx)}
+                      {tx(tb("txTransfer"), o.transferTx)}
+                      {tx(tb("txPayout"), o.payoutTx)}
+                      {tx(tb("txRefund"), o.refundTx)}
+                    </p>
+                  </div>
+                  {open && (
+                    <div className="flex gap-2">
+                      {o.status !== "paid" && (
+                        <button
+                          disabled={busy !== undefined}
+                          onClick={() => window.confirm(t("releaseConfirm")) && act(`${o.id}:release`, () => call("POST", `/api/admin/orders/${o.id}/release`))}
+                          className="btn-primary rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
+                        >
+                          {busy === `${o.id}:release` ? "…" : t("release")}
+                        </button>
+                      )}
+                      <button
+                        disabled={busy !== undefined}
+                        onClick={() => window.confirm(t("refundConfirm")) && act(`${o.id}:refund`, () => call("POST", `/api/admin/orders/${o.id}/refund`))}
+                        className="rounded-full border border-down px-4 py-1.5 text-xs font-semibold text-down hover:bg-down/10 disabled:opacity-50"
+                      >
+                        {busy === `${o.id}:refund` ? "…" : t("refund")}
+                      </button>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
       <section>
         <h2 className="text-lg font-semibold">{t("redemptions")}</h2>
         <p className="mt-1 text-xs text-ink-3">{t("redemptionsHint")}</p>
@@ -106,30 +188,45 @@ export default function AdminConsole() {
         ) : (
           <ul className="mt-4 divide-y divide-line rounded-2xl border border-line bg-surface">
             {redemptions.map((r) => {
-              const card = findCard(r.cardId);
               const shipped = r.shipTx || r.onChain?.burned;
+              const address = r.shippingAddress ? formatAddress(JSON.parse(r.shippingAddress) as ShippingAddress) : null;
               return (
                 <li key={r.cardId} className="flex flex-wrap items-center gap-4 px-4 py-3 text-sm">
                   <div className="min-w-0 flex-1">
                     <Link href={`/card/${r.cardId}`} className="font-semibold hover:underline">
-                      {card ? `${card.serial} · ${card.group} ${card.member}` : r.cardId}
+                      {r.card}
                     </Link>
                     <p className="mt-0.5 flex flex-wrap gap-3 text-xs text-ink-3">
                       <span className="font-mono">{shortAddress(r.wallet)}</span>
                       {tx(t("requestTx"), r.requestTx)}
                       {tx(t("shipTx"), r.shipTx)}
+                      {tx(t("cancelTx"), r.cancelTx)}
+                      {tx(t("refundTx"), r.refundTx)}
+                      {r.feeCents > 0 && <span className={r.feePaid ? "text-up" : "text-down"}>{t(r.feePaid ? "feePaid" : "feeUnpaid", { fee: formatUsdt(r.feeCents / 100, 2) })}</span>}
                     </p>
+                    {address && !shipped && <pre className="mt-2 rounded-lg bg-surface-2 px-3 py-2 font-sans text-xs whitespace-pre-wrap text-ink-2">{address}</pre>}
                   </div>
-                  {shipped ? (
+                  {r.cancelledAt ? (
+                    <span className="text-xs font-semibold text-ink-3">{t("redeemCancelled")}</span>
+                  ) : shipped ? (
                     <span className="text-xs font-semibold text-up">{t("shipped")}</span>
                   ) : (
-                    <button
-                      disabled={busy !== undefined}
-                      onClick={() => act(r.cardId, () => call("POST", `/api/admin/redemptions/${r.cardId}/ship`))}
-                      className="btn-primary rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
-                    >
-                      {busy === r.cardId ? "…" : t("ship")}
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        disabled={busy !== undefined || !address || !r.feePaid}
+                        onClick={() => act(r.cardId, () => call("POST", `/api/admin/redemptions/${r.cardId}/ship`))}
+                        className="btn-primary rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
+                      >
+                        {busy === r.cardId ? "…" : t("ship")}
+                      </button>
+                      <button
+                        disabled={busy !== undefined}
+                        onClick={() => window.confirm(t("redeemCancelConfirm")) && act(`${r.cardId}:cancel`, () => call("POST", `/api/admin/redemptions/${r.cardId}/cancel`))}
+                        className="rounded-full border border-line px-4 py-1.5 text-xs hover:bg-surface-2 disabled:opacity-50"
+                      >
+                        {busy === `${r.cardId}:cancel` ? "…" : t("redeemCancel")}
+                      </button>
+                    </div>
                   )}
                 </li>
               );
@@ -159,7 +256,7 @@ export default function AdminConsole() {
                         {shortAddress(i.asset)} ↗
                       </a>
                     ) : (
-                      <span>{t("demoItem")}</span>
+                      <span>{t("notOnChain")}</span>
                     )}
                     {tx(t("fakeTx"), i.fakeTx)}
                   </p>
@@ -174,6 +271,14 @@ export default function AdminConsole() {
                   >
                     {busy === i.id ? "…" : t("markFake")}
                   </button>
+                )}
+                {i.vaultRequestedAt && i.verification !== "fake" && (
+                  <VaultConvert
+                    item={i}
+                    busy={busy !== undefined}
+                    onConvert={(body) => act(`${i.id}:vault`, () => call("POST", `/api/admin/items/${i.id}/vault`, body))}
+                    onReturn={() => act(`${i.id}:vault`, () => call("DELETE", `/api/admin/items/${i.id}/vault`))}
+                  />
                 )}
               </li>
             ))}

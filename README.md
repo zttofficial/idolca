@@ -1,118 +1,97 @@
 # Idolca
 
-K-pop 小卡鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Solana 上對應一個 Metaplex Core NFT，以 USDT 結算，銷毀 NFT 即可提貨。
+**A vault and marketplace for K-pop photocards on Solana.** Every physical card that passes authentication is stored in the Idolca vault and gets its own Metaplex Core NFT. Trading moves the NFT and USDT in one transaction while the card stays put; burn the NFT and we ship the card to you.
 
-市場調研和競品分析見 [docs/research.md](docs/research.md)，技術選型見 [docs/tech-stack.md](docs/tech-stack.md)，命名方案見 [docs/naming.md](docs/naming.md)。
+Live on devnet: **https://idolca.vercel.app** · 中文說明：[README.zh-Hant.md](README.zh-Hant.md)
 
-## 開發
+## Why
 
-```bash
-npm install
-cp .env.example .env.local   # 按註釋填寫；全部留空也能跑，頁面用展示資料
-npm run dev     # http://localhost:3000
-npm run build   # 生產構建
-npm run lint
-```
+K-pop photocards are a large, mostly informal market. Fans trade on X and open chats, where "paid but never shipped" scams and fakes are routine, and every trade means mailing a fragile card across borders. Idolca keeps the card in one place, proves it is genuine once, and lets ownership move on-chain.
 
-環境變數的含義見 [.env.example](.env.example)。各項留空時的表現：
+Two lanes, like the leading Korean marketplaces:
 
-| 變數 | 留空時 |
+- **Vault cards**: authenticated and stored by Idolca. Bought and sold through our on-chain escrow program; the NFT and payment swap atomically. Redeem any time to have the card shipped.
+- **Free listings**: cards that stay with the seller, minted as unverified collector NFTs. Purchases go through platform escrow with ship and confirm deadlines, disputes and automatic refunds. A free-listed card can be sent to the vault and, once authenticated, converted into a vault card.
+
+## What's in it
+
+| Feature | How it works |
 |---|---|
-| `DATABASE_URL` | Vercel 接 Neon 時自動填入，帶前綴的 `xxx_DATABASE_URL` 也認得。本機開發自動用 PGlite，資料存在 `.data/`；線上環境沒配置時帳號功能顯示「未開通」 |
-| `ADMIN_TOKEN` | 管理接口（標記假卡）關閉 |
-| `PLATFORM_SECRET_KEY` 或 `PLATFORM_KEYPAIR` | 自由上鏈退回演示模式：不真的鑄造，NFT 地址是隨機字串 |
-| `HELIUS_API_KEY` | 金庫頁用樣本卡資料（NFT 地址是 devnet 上真實鑄造的），不即時讀鏈上持有人 |
-| `NEXT_PUBLIC_SOLANA_CLUSTER` | 默認 devnet |
+| Sign in | Email and password, or a Solana wallet signature (Wallet Standard: Phantom, Solflare, Backpack). Email users get custodied NFTs and can link a wallet later. |
+| Vault intake | Admins photograph the card front and back, record version, grade and shelf location, and mint a vault NFT to the depositor's wallet. |
+| Vault trading | Anchor escrow program: listing moves the NFT into a PDA, `buy` pays the seller and a 2.5% fee and transfers the NFT in the same transaction. |
+| Redemption | One signed transaction freezes the NFT, delegates burn authority to Idolca and pays the shipping fee. Shipping burns the NFT; cancelling unfreezes it and refunds the fee. Redeemed cards stay visible with their full on-chain history. |
+| Free listings and escrow | Buyer pays USDT into escrow. Seller has 7 days to ship or the buyer is refunded; the buyer has 14 days to confirm or report a problem, after which payment releases automatically. Disputes are settled by admins. |
+| Vault conversion | Owners send a self-minted card to the vault. If genuine, a vault NFT is minted to them and the old collector NFT is burned (recovered via the collection's PermanentTransferDelegate). |
+| Fake cards | Admins can mark a collector NFT as fake: renamed, relabelled and frozen on-chain, visible in every wallet and marketplace. |
+| Mystery packs | Every card in a pack is a real vault card. Odds are each tier's share of the cards left, updated live. Pulls transfer the existing vault NFT; instant buyback returns the card to the pool. |
+| Provably fair draws | Commit and reveal, no oracle needed: the SHA-256 of a secret seed is published before sales; each pull uses `HMAC-SHA256(seed, paymentSignature:index)`, where the signature comes from the buyer's wallet, so Idolca cannot predict it. The seed is revealed when the pack ends, and `/api/packs/{id}/draws` lets anyone recompute every pull. |
+| Catalog and binder | A catalog of every card version, a flip-page binder for your collection, wants, and collection progress. |
+| Album chart | This week's top 10 from Circle Chart, Korea's official album sales chart. |
 
-## 多語言
+No mock data: every price, owner and history entry comes from the chain or the database. Eight languages (English, Traditional and Simplified Chinese, Japanese, Korean, Thai, Indonesian, Vietnamese).
 
-英文是默認語言（`/`），其他語言帶前綴：`/zh-Hant`、`/zh-Hans`、`/ja`、`/ko`、`/th`、`/id`、`/vi`。介面文字在 [messages/](messages/)，每種語言一個 JSON，鍵必須一致；新增文字時八個文件都要補。
+## On-chain
 
-## 卡樣圖片
+Solana devnet, all exercised with real transactions:
 
-樣本卡的藝人資料寫在 `src/lib/mock-cards.ts`，照片來自維基共享資源，CC BY 授權，不放在倉庫裡：`src/lib/sample-credits.json` 記著每張的來源網址、裁切位置、作者和授權，第一次顯示時由伺服器抓圖、裁切、加浮水印後存進資料庫（`media` 表）。網站的 `/credits` 頁公開署名；更換或新增照片時改這個檔案即可。
+| | Address |
+|---|---|
+| Escrow program (Anchor) | [`4vQ6uRMFPRfU79JuwwriDVRoFsEZBCSW2FnsefwmtetD`](https://solscan.io/account/4vQ6uRMFPRfU79JuwwriDVRoFsEZBCSW2FnsefwmtetD?cluster=devnet) |
+| Vault collection (Metaplex Core) | [`9C5Sj6UHgqTqxaEp6uW18mDWPhCoYiX46mbw7CTzzt3H`](https://solscan.io/account/9C5Sj6UHgqTqxaEp6uW18mDWPhCoYiX46mbw7CTzzt3H?cluster=devnet) |
+| Collector collection | [`AJUuGEU343B48NtkLUa5MA9mRAY1Fa9iYRP9W322Xh8t`](https://solscan.io/account/AJUuGEU343B48NtkLUa5MA9mRAY1Fa9iYRP9W322Xh8t?cluster=devnet) |
+| Platform wallet | [`2iSmLoVcb9zNvBjdXAcN2duc1CY6Dar7vjsuPJDVa7FJ`](https://solscan.io/account/2iSmLoVcb9zNvBjdXAcN2duc1CY6Dar7vjsuPJDVa7FJ?cluster=devnet) |
+| Test USDT | [`E8cviabpxswY9ouL7CPNJhTs5wqChuF3XDUobYuoKqEK`](https://solscan.io/account/E8cviabpxswY9ouL7CPNJhTs5wqChuF3XDUobYuoKqEK?cluster=devnet) |
 
-## 平台端鏈上腳本
+To try it, sign in with a devnet wallet and use **Get devnet test funds** in the account menu (0.02 SOL and 500 test USDT).
 
-需要在 `.env.local` 設定 `PLATFORM_KEYPAIR`（Solana CLI 格式的金鑰檔路徑，不要放進倉庫），錢包裡要有 SOL 付手續費。devnet 的地址和交易記在 `src/lib/chain/devnet.json`，說明見技術選型的「devnet 部署」。
+Going to mainnet is configuration, not code: addresses live in `src/lib/chain/<cluster>.json` and `NEXT_PUBLIC_SOLANA_CLUSTER` picks one. The steps are in [docs/tech-stack.md](docs/tech-stack.md#上線主網).
+
+## Stack
+
+Next.js 16 (App Router, Cache Components), React 19, TypeScript, Tailwind CSS 4, three.js for the 3D card · Solana, Metaplex Core, Anchor 1.2, Wallet Standard, USDT (SPL) · PostgreSQL (Neon) with Drizzle; embedded PGlite for local development · Vercel with a daily cron · next-intl.
+
+Few third-party services by design: accounts, photo storage, rate limiting and pack randomness are all built in.
+
+## Run locally
 
 ```bash
-# devnet 建置，兩步都可以重複執行
-npm run chain:setup-devnet     # 兩個集合 + 19 張樣本金庫卡
-npm run chain:devnet-market    # 初始化託管程序、掛單、示範成交（要先部署程序，見下節）
-
-# 入庫鑑定通過後鑄造 NFT；卡片資料格式見 scripts/cards/IC-000128.json，估值低於 10 USDT 的卡會被拒絕
-npm run chain:mint-card -- --card scripts/cards/IC-000128.json --owner <寄存人錢包> --uri https://.../IC-000128.json
-
-# 提貨：request 由持有人簽名（腳本僅供 devnet 模擬），ship 寄出時解凍並銷毀，cancel 取消申請
-npm run chain:redeem -- request --asset <NFT 地址> --owner-keypair <持有人金鑰檔>
-npm run chain:redeem -- ship --asset <NFT 地址>
-npm run chain:redeem -- cancel --asset <NFT 地址>
-```
-
-## 掛單託管程序
-
-[onchain/](onchain/) 是獨立的 Anchor 工作區，有自己的依賴。需要 Rust、Solana CLI 和 Anchor 1.2.1，在 WSL 或 Linux 裡建置。在 WSL 裡要把工作區放在 Linux 檔案系統（例如 `~/idolca-onchain`）再編譯，直接在 `/mnt/c` 上編譯會因記憶體錯誤失敗。
-
-```bash
-cd onchain
 npm install
-anchor keys sync          # 生成程序地址並寫進 lib.rs 和 Anchor.toml
-anchor build --arch v0    # devnet 還沒啟用 Anchor 1.2.1 預設的 SBF v3
-anchor test               # 本地驗證節點會從主網複製 Metaplex Core 程序
-solana program deploy target/deploy/idolca_market.so --program-id target/deploy/idolca_market-keypair.json --url devnet
+cp .env.example .env.local   # every variable is explained there
+npm run dev                  # http://localhost:3000
 ```
 
-程序地址預設從 `src/lib/chain/devnet.json` 讀取，也可以用 `NEXT_PUBLIC_MARKET_PROGRAM_ID` 覆蓋。
+With no `DATABASE_URL`, local development uses PGlite in `.data/` and seeds the 19 sample vault cards already minted on devnet. Minting and payments need a platform keypair (`PLATFORM_KEYPAIR`). Admin access: put your wallet in `ADMIN_WALLETS`, or run `npm run admin:grant -- <email or wallet>`.
 
-## 目錄
+## Tests
+
+```bash
+npm run lint && npx next typegen && npx tsc --noEmit
+npm test                     # unit: odds, fair-draw verification, address validation, translation consistency
+```
+
+End-to-end suites run against a live site and devnet with real transactions. Start the site on a separate test database first (`PGLITE_DIR=.data/pglite-e2e npm run dev`):
+
+```bash
+npm run test:e2e:vault       # intake, packs, fairness check, buyback, redemption and cancel, vault conversion
+npm run test:e2e:ui          # headless Chrome with an injected Wallet Standard test wallet, clicking through every flow
+E2E_CRON_SECRET=testcron npm run test:e2e:escrow   # needs shortened deadlines, see README.zh-Hant.md
+```
+
+GitHub Actions runs lint, type checking, unit tests and a production build on every push.
+
+## Repository
 
 ```
-src/
-  app/[locale]/           所有頁面都在語言段下
-    page.tsx              首頁
-    market/               市場頁：金庫卡和自由刊登兩個頁籤，搜尋、團體和成員、類型、價格、排序、分頁
-    vault/                金庫頁：每張卡的 NFT 地址、持有人、狀態，可按狀態篩選和搜尋
-    card/[id]/            金庫卡內頁：看卡、用錢包購買／掛單／提貨、卡片資訊、即時鏈上紀錄
-    listing/[id]/         自由刊登商品頁：賣家照片、價格、免責聲明、擔保交易購買
-    admin/                後台：提貨出貨、標記假卡（ADMIN_TOKEN）
-    charts/               Circle Chart 週專輯榜前 10 名
-    packs/                盲盒卡包列表和卡包頁（機率、卡池、開包）
-    catalog/              圖鑑：團體列表、團體卡款（標記有 / 想要）
-    binder/               收藏冊：卡冊、鏈上卡、擔保交易訂單、收集進度、想要清單、上鏈、刊登
-  app/api/                帳號（郵箱、錢包登入與綁定）、收藏冊同步、自由上鏈與刊登、擔保交易訂單、開卡包與回購、金庫卡交易、鏈上狀態與測試幣、卡片照片、NFT 元數據、後台
-  i18n/                   next-intl 路由、導航、請求配置
-  proxy.ts                語言前綴路由
-  components/
-    hero/                 首頁主視覺：3D 旋轉小卡（HoloCard3D）
-    card/                 卡片內頁的看卡切換、購買面板、鏈上紀錄
-    packs/                卡包包裝、倒數、開包流程（撕包、翻卡、結果）
-    binder/               圖鑑卡款、可翻頁的活頁卡冊（BinderBook）、上鏈對話框
-    market/               市場瀏覽、金庫卡全息懸停卡（HoloTile）、自由刊登卡、照片圖庫
-    vault/                金庫清單
-    landing/              首頁說明區塊
-    brand/                文字標誌
-    layout/               導航列、語言選單、頁腳
-    web3/                 帳號 Provider、USDT 價格、On Solana 徽章
-  lib/
-    server/               資料庫連線（Neon / PGlite）、表結構、密碼與會話、錢包簽名驗證、照片處理與浮水印、鏈上鑄造與標假卡、金庫卡交易組裝、收付款對帳、擔保訂單、卡包
-    solana/               網路與地址配置、瀏覽器錢包偵測、簽名登入、簽名送出交易、Helius DAS、掛單 PDA
-    vault.ts              金庫資料：有 Helius 配置時讀鏈上集合，否則用展示資料
-    packs.ts              盲盒卡包：卡池、按剩餘張數計算的機率、抽卡
-    market.ts             市場兩條線的篩選、排序、分頁和網址參數
-    chain-client.ts       瀏覽器端的鏈上即時狀態、錢包餘額、交易流程
-    chain/                devnet 上的地址和交易紀錄（devnet.json）、託管程序 IDL
-    sources.ts            小卡來源分類
-    catalog.ts            圖鑑：團體、成員、專輯、版本和卡款
-    binder.ts             收藏冊資料（目前存在瀏覽器 localStorage）
-    fx.ts                 USDT 金額格式
-    mock-cards.ts         19 張樣本金庫卡的卡片資料（已在 devnet 鑄造，地址見 chain/devnet.json）
-    card-art.ts           canvas 生成的佔位卡面
-messages/                 八種語言的介面文字
-scripts/                  平台端 Metaplex Core 腳本：建集合、鑄造、提貨
-onchain/                  Anchor 工作區：idolca-market 掛單託管程序和測試
-docs/
-  research.md             市場調研與競品分析
-  tech-stack.md           技術選型
-  naming.md               命名方案
+src/app/[locale]/   pages: market, vault, card, listing, packs, catalog, binder, charts, admin, terms, privacy
+src/app/api/        accounts, items, escrow orders, packs, vault trading and redemption, admin, cron
+src/lib/server/     database, auth, chain actions, payments, escrow, packs, vault cards
+onchain/            Anchor workspace for the escrow program
+tests/  e2e/        unit and end-to-end tests
+docs/               research and competitor analysis, technical design (Chinese)
 ```
+
+## Notes
+
+- Sample card photos on devnet are CC BY images from Wikimedia Commons, credited at `/credits`. They are demonstration material only and are not sold.
+- Album chart data is read from Circle Chart's public pages with attribution; a licensed source will replace it before commercial launch.

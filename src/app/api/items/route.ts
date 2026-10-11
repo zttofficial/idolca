@@ -1,7 +1,8 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { requireUser } from "@/lib/server/require-user";
+import { allow, tooMany } from "@/lib/server/rate-limit";
 import { collectorItems } from "@/lib/server/schema";
-import { MAX_DESCRIPTION, MAX_PHOTOS, demoAssetId, matchTemplate, newItemId, priceToCents, publicItem } from "@/lib/server/items";
+import { MAX_DESCRIPTION, MAX_PHOTOS, matchTemplate, newItemId, priceToCents, publicItem } from "@/lib/server/items";
 import { saveUploads } from "@/lib/server/media";
 import { chainEnabled, mintCollectorNft } from "@/lib/server/chain";
 import { isCardSource } from "@/lib/sources";
@@ -9,7 +10,11 @@ import { isCardSource } from "@/lib/sources";
 export async function GET() {
   const a = await requireUser();
   if ("error" in a) return a.error;
-  const rows = await a.db.select().from(collectorItems).where(eq(collectorItems.userId, a.user.id)).orderBy(desc(collectorItems.createdAt));
+  const rows = await a.db
+    .select()
+    .from(collectorItems)
+    .where(and(eq(collectorItems.userId, a.user.id), isNull(collectorItems.vaultCardId)))
+    .orderBy(desc(collectorItems.createdAt));
   return Response.json({ items: rows.map(publicItem) });
 }
 
@@ -20,6 +25,8 @@ const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slic
 export async function POST(request: Request) {
   const a = await requireUser();
   if ("error" in a) return a.error;
+  // 每張卡平台都要付鑄造費，限制每個帳號每小時 30 張
+  if (!(await allow(a.db, `mint:${a.user.id}`, 30, 3600))) return tooMany();
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const group = text(body.group, 60);
   const member = text(body.member, 60);
@@ -30,6 +37,8 @@ export async function POST(request: Request) {
   const quantity = Number.isInteger(body.quantity) && (body.quantity as number) >= 1 && (body.quantity as number) <= 99 ? (body.quantity as number) : 1;
   const source = isCardSource(body.source) ? body.source : "album";
   if (!group || !member) return Response.json({ error: "missing_name" }, { status: 400 });
+  // 沒有平台金鑰或收藏集合的環境不收新卡，不寫假的 NFT 地址
+  if (!chainEnabled()) return Response.json({ error: "not_configured" }, { status: 503 });
   const price = body.priceUsdt === undefined || body.priceUsdt === null ? null : priceToCents(body.priceUsdt);
   if (price === undefined) return Response.json({ error: "invalid_price" }, { status: 400 });
 
@@ -41,14 +50,14 @@ export async function POST(request: Request) {
   const [photo, photoBack, ...extra] = urls;
 
   const id = newItemId();
-  let minted: Awaited<ReturnType<typeof mintCollectorNft>> = null;
-  if (chainEnabled()) {
-    try {
-      minted = await mintCollectorNft(id, { title: title || [group, member, version].filter(Boolean).join(" "), group, member, source, quantity, album, version }, a.user.walletAddress);
-    } catch (err) {
-      console.error("mint failed", err);
-      return Response.json({ error: "mint_failed" }, { status: 502 });
-    }
+  let minted: NonNullable<Awaited<ReturnType<typeof mintCollectorNft>>>;
+  try {
+    const result = await mintCollectorNft(id, { title: title || [group, member, version].filter(Boolean).join(" "), group, member, source, quantity, album, version }, a.user.walletAddress);
+    if (!result) throw new Error("chain not configured");
+    minted = result;
+  } catch (err) {
+    console.error("mint failed", err);
+    return Response.json({ error: "mint_failed" }, { status: 502 });
   }
 
   const [row] = await a.db
@@ -68,9 +77,9 @@ export async function POST(request: Request) {
       album,
       version,
       templateId: quantity === 1 ? matchTemplate(group, member, album, version) : null,
-      asset: minted?.asset ?? demoAssetId(),
-      mintTx: minted?.tx ?? null,
-      ownerAddress: minted?.owner ?? null,
+      asset: minted.asset,
+      mintTx: minted.tx,
+      ownerAddress: minted.owner,
       priceCents: price,
       listedAt: price === null ? null : new Date(),
     })

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { generateSigner, keypairIdentity, publicKey, type Umi } from "@metaplex-foundation/umi";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { base58 } from "@metaplex-foundation/umi/serializers";
-import { create, fetchAsset, fetchCollection, mplCore, update, updatePlugin } from "@metaplex-foundation/mpl-core";
+import { burn, create, fetchAsset, fetchCollection, mplCore, transfer, update, updatePlugin } from "@metaplex-foundation/mpl-core";
 import { CHAIN } from "@/lib/chain";
 import { CLUSTER } from "@/lib/solana/config";
 
@@ -29,7 +29,7 @@ export function platformUmi() {
   return (cached = umi);
 }
 
-// 有平台金鑰和收藏集合時才真的上鏈；否則（例如還沒建置的環境）呼叫方退回演示資料
+// 有平台金鑰和收藏集合時才能上鏈；沒有時（例如還沒建置的環境）鑄造類接口回「未開通」
 export const chainEnabled = () => platformUmi() !== null;
 export const platformAddress = () => platformUmi()?.identity.publicKey.toString() ?? null;
 
@@ -83,5 +83,54 @@ export async function markFakeOnChain(assetAddress: string, attrs: CollectorAttr
     .add(updatePlugin(umi, { asset: asset.publicKey, collection: collection.publicKey, plugin: { type: "Attributes", attributeList: attributeList(attrs, "fake") } }))
     .add(updatePlugin(umi, { asset: asset.publicKey, collection: collection.publicKey, plugin: { type: "PermanentFreezeDelegate", frozen: true } }))
     .sendAndConfirm(umi, { confirm: { commitment: "confirmed" } });
+  return base58.deserialize(signature)[0];
+}
+
+export type VaultAttributes = { serial: string; group: string; member: string; album: string; version: string; rarity: string; grade: number | null; location: string; intakeDate: string };
+
+// 實物入庫鑑定通過後鑄造金庫 NFT：持有人是寄存人的錢包，平台自有庫存（卡包卡池）鑄給平台錢包。
+// 屬性寫進 Attributes 插件，元數據指向 /api/meta/card/{id}
+export async function mintVaultNft(cardId: string, card: VaultAttributes, owner: string | null) {
+  const umi = platformUmi();
+  if (!umi || !CHAIN.vaultCollection) throw new Error("not_configured");
+  const collection = await fetchCollection(umi, publicKey(CHAIN.vaultCollection));
+  const asset = generateSigner(umi);
+  const attributeList = [
+    ["serial", card.serial],
+    ["group", card.group],
+    ["member", card.member],
+    ["album", card.album],
+    ["version", card.version],
+    ["rarity", card.rarity],
+    ["grade", card.grade ? String(card.grade) : ""],
+    ["location", card.location],
+    ["intake_date", card.intakeDate],
+    ["custody", "vault"],
+    ["verification", "authentic"],
+  ]
+    .filter(([, v]) => v)
+    .map(([key, value]) => ({ key, value }));
+  const { signature } = await create(umi, {
+    asset,
+    collection,
+    owner: owner ? publicKey(owner) : umi.identity.publicKey,
+    name: `${card.member} ${card.version}`.slice(0, 22) + ` #${card.serial}`,
+    uri: `${SITE_URL}/api/meta/card/${cardId}`,
+    plugins: [{ type: "Attributes", attributeList }],
+  }).sendAndConfirm(umi, { confirm: { commitment: "confirmed" } });
+  return { asset: asset.publicKey.toString(), tx: base58.deserialize(signature)[0] };
+}
+
+// 收藏卡轉成金庫卡後銷毀原本的收藏 NFT：持有人不是平台時，先用集合的 PermanentTransferDelegate 收回，同一筆交易裡再銷毀
+export async function burnCollectorNft(assetAddress: string) {
+  const umi = platformUmi();
+  if (!umi) throw new Error("not_configured");
+  const asset = await fetchAsset(umi, publicKey(assetAddress));
+  const collection = await fetchCollection(umi, publicKey(CHAIN.collectorCollection));
+  let builder = burn(umi, { asset, collection, authority: umi.identity });
+  if (asset.owner.toString() !== umi.identity.publicKey.toString()) {
+    builder = transfer(umi, { asset, collection, newOwner: umi.identity.publicKey, authority: umi.identity }).add(builder);
+  }
+  const { signature } = await builder.sendAndConfirm(umi, { confirm: { commitment: "confirmed" } });
   return base58.deserialize(signature)[0];
 }

@@ -1,11 +1,14 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/server/db";
 import { users } from "@/lib/server/schema";
-import { startSession, verifyPassword } from "@/lib/server/auth";
+import { publicUser, startSession, verifyPassword } from "@/lib/server/auth";
+import { allow, clientIp, tooMany } from "@/lib/server/rate-limit";
 
 export async function POST(request: Request) {
   const db = await getDb();
   if (!db) return Response.json({ error: "not_configured" }, { status: 503 });
+  // 擋暴力猜密碼：每個 IP 15 分鐘 20 次
+  if (!(await allow(db, `login:${clientIp(request)}`, 20, 900))) return tooMany();
 
   const body = (await request.json().catch(() => ({}))) as { email?: string; password?: string };
   const email = body.email?.trim().toLowerCase() ?? "";
@@ -17,5 +20,5 @@ export async function POST(request: Request) {
     return Response.json({ error: "invalid_credentials" }, { status: 401 });
   }
   await startSession(db, row.id);
-  return Response.json({ user: { id: row.id, email: row.email, displayName: row.displayName, walletAddress: row.walletAddress } });
+  return Response.json({ user: publicUser(row) });
 }

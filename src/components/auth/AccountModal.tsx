@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import type { Wallet } from "@wallet-standard/base";
 import type { AuthUser } from "./AuthContext";
 import Wordmark from "@/components/brand/Wordmark";
+import { Link } from "@/i18n/navigation";
 import { WalletError, signInWithWallet, useWallets } from "@/lib/solana/wallets";
 
 type Mode = "signup" | "login";
@@ -188,6 +189,20 @@ export default function AccountModal({ configured, onClose, onSignedIn }: { conf
               </p>
             </>
           )}
+          <p className="mt-5 text-center text-[11px] leading-relaxed text-ink-3">
+            {t.rich("agree", {
+              terms: (chunks) => (
+                <Link href="/terms" className="underline hover:text-ink">
+                  {chunks}
+                </Link>
+              ),
+              privacy: (chunks) => (
+                <Link href="/privacy" className="underline hover:text-ink">
+                  {chunks}
+                </Link>
+              ),
+            })}
+          </p>
         </div>
       </div>
     </div>

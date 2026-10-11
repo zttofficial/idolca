@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Anchor 工作區有自己的依賴和工具鏈
     "onchain/**",
+    // 本機資料和私人腳本（不進倉庫）
+    ".data/**",
   ]),
 ]);
 

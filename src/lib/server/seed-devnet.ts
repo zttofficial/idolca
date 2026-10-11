@@ -1,38 +1,28 @@
-// 首頁展示用的樣本卡。團體、成員和照片對應 src/lib/sample-credits.json 裡的維基共享資源照片；
-// 版本、價格、評級是示意值。devnet 建置前 NFT 地址和持有人是隨機字串，建置後換成鏈上真實地址（見下方 CARDS）。
+import "server-only";
+import { count } from "drizzle-orm";
+import { CHAIN } from "@/lib/chain";
+import { CLUSTER } from "@/lib/solana/config";
+import { sampleImage } from "@/lib/sample-image";
+import type { Db } from "./db";
+import { vaultCards } from "./schema";
 
-import { CHAIN } from "./chain";
-import { sampleImage } from "./sample-image";
-
-export type Rarity = "album" | "pob" | "luckydraw" | "fansign";
-
-// vaulted：在庫；listed：在託管程序裡掛單；redeeming：已申請提貨，NFT 凍結中
-export type VaultStatus = "vaulted" | "listed" | "redeeming";
-
-
-export type Card = {
+// devnet 的初始金庫：2026-10 在 devnet 鑄造的 19 張樣本卡（照片是維基共享資源的 CC BY 照片，見 /credits）。
+// 只在 devnet、金庫表還是空的時候寫入一次；主網的金庫從空的開始，實物入庫後由後台建立
+type Sample = {
   id: string;
   serial: string;
   group: string;
   member: string;
   album: string;
   version: string;
-  rarity: Rarity;
+  rarity: string;
   grade?: number;
-  priceUsdt: number;
-  palette: [string, string, string];
-  // NFT 地址和持有人：來自 devnet 建置結果（src/lib/chain/devnet.json），持有人由鏈上即時狀態覆蓋
-  asset: string;
-  owner: string;
-  status: VaultStatus;
   intakeDate: string;
   location: string;
-  // 入庫時拍攝的正反面。圖片載入失敗時退回 canvas 佔位圖
-  image?: { front: string; back?: string };
+  image: { front: string };
 };
 
-
-const SAMPLES: Omit<Card, "asset" | "owner">[] = [
+const SAMPLES: Sample[] = [
   {
     id: "c1",
     serial: "IC-000128",
@@ -42,9 +32,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     version: "Fansign Event",
     rarity: "fansign",
     grade: 10,
-    priceUsdt: 1280,
-    palette: ["#ff6ad5", "#8c5cff", "#2de2e6"],
-    status: "listed",
     intakeDate: "2026-07-14",
     location: "SEL-A03-12",
     image: { front: sampleImage("c1") },
@@ -58,9 +45,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     version: "Ktown4u POB",
     rarity: "pob",
     grade: 9,
-    priceUsdt: 214,
-    palette: ["#ffd36e", "#ff7a59", "#ff3d7f"],
-    status: "listed",
     intakeDate: "2026-07-21",
     location: "SEL-A03-18",
     image: { front: sampleImage("c2") },
@@ -73,9 +57,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     album: "Get Up",
     version: "Lucky Draw Round 1",
     rarity: "luckydraw",
-    priceUsdt: 96,
-    palette: ["#5ef2c2", "#2a9dff", "#6a4cff"],
-    status: "vaulted",
     intakeDate: "2026-08-02",
     location: "SEL-B01-04",
     image: { front: sampleImage("c3") },
@@ -88,9 +69,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     album: "EASY",
     version: "Compact Ver.",
     rarity: "album",
-    priceUsdt: 18,
-    palette: ["#ffb3e6", "#c9a7ff", "#8fd3ff"],
-    status: "listed",
     intakeDate: "2026-08-02",
     location: "SEL-B01-05",
     image: { front: sampleImage("c4") },
@@ -104,9 +82,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     version: "Soundwave POB",
     rarity: "pob",
     grade: 10,
-    priceUsdt: 342,
-    palette: ["#a1ffce", "#faffd1", "#7ee8fa"],
-    status: "vaulted",
     intakeDate: "2026-08-19",
     location: "SEL-A07-22",
     image: { front: sampleImage("c5") },
@@ -119,9 +94,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     album: "ME",
     version: "Fansign Event",
     rarity: "fansign",
-    priceUsdt: 760,
-    palette: ["#ff9a8b", "#ff6a88", "#ff99ac"],
-    status: "redeeming",
     intakeDate: "2026-09-03",
     location: "SEL-C02-09",
     image: { front: sampleImage("c6") },
@@ -134,9 +106,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     album: "ATE",
     version: "Photobook Ver.",
     rarity: "album",
-    priceUsdt: 24,
-    palette: ["#c2ffd8", "#465efb", "#9a4dff"],
-    status: "listed",
     intakeDate: "2026-09-11",
     location: "SEL-B04-31",
     image: { front: sampleImage("c7") },
@@ -150,9 +119,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     version: "Lucky Draw Round 2",
     rarity: "luckydraw",
     grade: 9,
-    priceUsdt: 138,
-    palette: ["#fddb92", "#d1fdff", "#f6a5ff"],
-    status: "vaulted",
     intakeDate: "2026-09-26",
     location: "SEL-C05-02",
     image: { front: sampleImage("c8") },
@@ -165,9 +131,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     album: "Armageddon",
     version: "Lucky Draw Round 1",
     rarity: "luckydraw",
-    priceUsdt: 72,
-    palette: ["#ffd36e", "#ff7a59", "#ff3d7f"],
-    status: "listed",
     intakeDate: "2026-09-14",
     location: "SEL-B02-11",
     image: { front: sampleImage("c9") },
@@ -181,9 +144,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     version: "Fansign Event",
     rarity: "fansign",
     grade: 10,
-    priceUsdt: 940,
-    palette: ["#ffd36e", "#ff7a59", "#ff3d7f"],
-    status: "listed",
     intakeDate: "2026-09-15",
     location: "SEL-A01-03",
     image: { front: sampleImage("c10") },
@@ -197,9 +157,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     version: "Soundwave POB",
     rarity: "pob",
     grade: 9,
-    priceUsdt: 46,
-    palette: ["#fddb92", "#d1fdff", "#f6a5ff"],
-    status: "listed",
     intakeDate: "2026-09-18",
     location: "SEL-C01-07",
     image: { front: sampleImage("c11") },
@@ -212,9 +169,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     album: "BORN TO BE",
     version: "Album Ver.",
     rarity: "album",
-    priceUsdt: 9,
-    palette: ["#fddb92", "#d1fdff", "#f6a5ff"],
-    status: "vaulted",
     intakeDate: "2026-09-20",
     location: "SEL-C01-12",
     image: { front: sampleImage("c12") },
@@ -228,9 +182,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     version: "Ktown4u POB",
     rarity: "pob",
     grade: 10,
-    priceUsdt: 188,
-    palette: ["#ff6ad5", "#8c5cff", "#2de2e6"],
-    status: "listed",
     intakeDate: "2026-09-22",
     location: "SEL-A04-02",
     image: { front: sampleImage("c13") },
@@ -244,9 +195,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     version: "Lucky Draw Round 2",
     rarity: "luckydraw",
     grade: 9,
-    priceUsdt: 126,
-    palette: ["#ffb3e6", "#c9a7ff", "#8fd3ff"],
-    status: "listed",
     intakeDate: "2026-09-25",
     location: "SEL-B03-19",
     image: { front: sampleImage("c14") },
@@ -259,9 +207,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     album: "EASY",
     version: "Jewel Case Ver.",
     rarity: "album",
-    priceUsdt: 14,
-    palette: ["#ffb3e6", "#c9a7ff", "#8fd3ff"],
-    status: "listed",
     intakeDate: "2026-09-27",
     location: "SEL-B03-22",
     image: { front: sampleImage("c15") },
@@ -275,9 +220,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     version: "Fansign Event",
     rarity: "fansign",
     grade: 10,
-    priceUsdt: 1120,
-    palette: ["#5ef2c2", "#2a9dff", "#6a4cff"],
-    status: "vaulted",
     intakeDate: "2026-09-29",
     location: "SEL-A02-08",
     image: { front: sampleImage("c16") },
@@ -291,9 +233,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     version: "Photobook Ver.",
     rarity: "album",
     grade: 9,
-    priceUsdt: 22,
-    palette: ["#5ef2c2", "#2a9dff", "#6a4cff"],
-    status: "listed",
     intakeDate: "2026-10-01",
     location: "SEL-A02-14",
     image: { front: sampleImage("c17") },
@@ -306,9 +245,6 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     album: "ATE",
     version: "Soundwave POB",
     rarity: "pob",
-    priceUsdt: 38,
-    palette: ["#c2ffd8", "#465efb", "#9a4dff"],
-    status: "redeeming",
     intakeDate: "2026-10-03",
     location: "SEL-C04-05",
     image: { front: sampleImage("c18") },
@@ -322,32 +258,53 @@ const SAMPLES: Omit<Card, "asset" | "owner">[] = [
     version: "Lucky Draw Round 2",
     rarity: "luckydraw",
     grade: 10,
-    priceUsdt: 214,
-    palette: ["#c2ffd8", "#465efb", "#9a4dff"],
-    status: "listed",
     intakeDate: "2026-10-06",
     location: "SEL-C04-09",
     image: { front: sampleImage("c19") },
   },
 ];
 
-// devnet 建置後，樣本卡換成鏈上的真實狀態：NFT 地址、持有人（平台錢包，或示範成交的買家），
-// 掛單狀態以託管程序裡實際的掛單為準
-function onChain(sample: Omit<Card, "asset" | "owner">): Card {
-  const c: Card = { ...sample, asset: CHAIN.cards[sample.id] ?? "", owner: CHAIN.platform };
-  const asset = CHAIN.cards[c.id];
-  if (!asset) return c;
-  const trade = CHAIN.market?.demoTrade;
-  if (trade?.card === c.id) return { ...c, asset, owner: trade.buyer, status: "vaulted" };
-  const listed = Boolean(CHAIN.market?.listings[c.id]);
-  return { ...c, asset, owner: CHAIN.platform, status: listed ? "listed" : c.status === "listed" ? "vaulted" : c.status };
-}
+// 每張樣本卡在 devnet 上的 NFT 地址
+const ASSETS: Record<string, string> = {
+  "c1": "6TMfZMPMM9CGEDzUrEFTYK25X1ZeaN3zwoj17kYNpNxr",
+  "c2": "9c25RRaC5rXbBr1LYpbB6jyD3MoHFTRzkhWQNmbHw5JP",
+  "c3": "Bqp54esuJcR4TkCKYnpE5h6miHrdTokRpQyFksAdGNr6",
+  "c4": "A5s5k3SfoTL19ddW3J1puMZVYBzyNKPLqc9KM6gnsRqe",
+  "c5": "3QU2cUMAEwcwvfq4T99TFPeT17x9uvii3XeLAv2NmX52",
+  "c6": "2sCAJjjsTaKvRCBgk7Mxn8YjA4zqtv7FuF9pqFBbq6fk",
+  "c7": "6R4xDdTAR573LZ7UdtVfm2jmDnoSUB55m6JMfNDDfeQ",
+  "c8": "2vbVXMfHo2E9sYgznpQzroyvoXfgWfDfHJ9aiJhzVJ7x",
+  "c9": "XQ32y55UYmjVLsbrjmpanAjTitBpbpmn888pUXWEGgk",
+  "c10": "38ept1UfQC2nMLL6g735wsygZdabhcD8AQ9RKJwV1H3i",
+  "c11": "9e8ez4MFYyu1J8DodAgce7zV36se4meVyBrNV1n32tDr",
+  "c12": "4btuFva7a6mv971XCV4ia8KRSNnviCtSNBMnDsCTBDUF",
+  "c13": "EUo6H3c4HgZ6WM22JPuiCXkPctijroBTePfuDtY3WJ3D",
+  "c14": "GRTwq9DfS683ts8TQszkqGnjGsGNDu5vvbDZf9vHRePb",
+  "c15": "9ovaVpbfRP93vLo5KTbMiPAvFPfHnpf5aHfpxoaysZsh",
+  "c16": "GDZzHKo6aS5iUjMA7XDaCjiAzKaNbb1HSb7vKF6BpLAn",
+  "c17": "98DUKXjpwst5wW4qJJX2fiJjybmQHxdxakFAGNygBpzq",
+  "c18": "4xBsuQ73CpqS2FMCSCT49ojh5GWWXi131mvUat8KfgAC",
+  "c19": "BL1TYM3cU3uvppmTFrBEdAbGZHg89EpMs1dyDCUumt9S"
+};
 
-export const CARDS: Card[] = SAMPLES.map(onChain);
-
-export const HERO_CARDS = [CARDS[0], CARDS[4], CARDS[5]];
-
-
-export function findCard(id: string) {
-  return CARDS.find((c) => c.id === id);
+export async function seedDevnetVault(db: Db) {
+  if (CLUSTER !== "devnet" || !CHAIN.vaultCollection) return;
+  const [{ n }] = await db.select({ n: count() }).from(vaultCards);
+  if (n > 0) return;
+  await db.insert(vaultCards).values(
+    SAMPLES.filter((c) => ASSETS[c.id]).map((c) => ({
+      id: c.id,
+      serial: c.serial,
+      groupName: c.group,
+      member: c.member,
+      album: c.album,
+      version: c.version,
+      rarity: c.rarity,
+      grade: c.grade ?? null,
+      imageFront: c.image.front,
+      location: c.location,
+      intakeDate: c.intakeDate,
+      asset: ASSETS[c.id],
+    })),
+  );
 }

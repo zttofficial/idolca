@@ -2,50 +2,10 @@
   "platform": "2iSmLoVcb9zNvBjdXAcN2duc1CY6Dar7vjsuPJDVa7FJ",
   "vaultCollection": "9C5Sj6UHgqTqxaEp6uW18mDWPhCoYiX46mbw7CTzzt3H",
   "collectorCollection": "AJUuGEU343B48NtkLUa5MA9mRAY1Fa9iYRP9W322Xh8t",
-  "cards": {
-    "c1": "6TMfZMPMM9CGEDzUrEFTYK25X1ZeaN3zwoj17kYNpNxr",
-    "c2": "9c25RRaC5rXbBr1LYpbB6jyD3MoHFTRzkhWQNmbHw5JP",
-    "c3": "Bqp54esuJcR4TkCKYnpE5h6miHrdTokRpQyFksAdGNr6",
-    "c4": "A5s5k3SfoTL19ddW3J1puMZVYBzyNKPLqc9KM6gnsRqe",
-    "c5": "3QU2cUMAEwcwvfq4T99TFPeT17x9uvii3XeLAv2NmX52",
-    "c6": "2sCAJjjsTaKvRCBgk7Mxn8YjA4zqtv7FuF9pqFBbq6fk",
-    "c7": "6R4xDdTAR573LZ7UdtVfm2jmDnoSUB55m6JMfNDDfeQ",
-    "c8": "2vbVXMfHo2E9sYgznpQzroyvoXfgWfDfHJ9aiJhzVJ7x",
-    "c9": "XQ32y55UYmjVLsbrjmpanAjTitBpbpmn888pUXWEGgk",
-    "c10": "38ept1UfQC2nMLL6g735wsygZdabhcD8AQ9RKJwV1H3i",
-    "c11": "9e8ez4MFYyu1J8DodAgce7zV36se4meVyBrNV1n32tDr",
-    "c12": "4btuFva7a6mv971XCV4ia8KRSNnviCtSNBMnDsCTBDUF",
-    "c13": "EUo6H3c4HgZ6WM22JPuiCXkPctijroBTePfuDtY3WJ3D",
-    "c14": "GRTwq9DfS683ts8TQszkqGnjGsGNDu5vvbDZf9vHRePb",
-    "c15": "9ovaVpbfRP93vLo5KTbMiPAvFPfHnpf5aHfpxoaysZsh",
-    "c16": "GDZzHKo6aS5iUjMA7XDaCjiAzKaNbb1HSb7vKF6BpLAn",
-    "c17": "98DUKXjpwst5wW4qJJX2fiJjybmQHxdxakFAGNygBpzq",
-    "c18": "4xBsuQ73CpqS2FMCSCT49ojh5GWWXi131mvUat8KfgAC",
-    "c19": "BL1TYM3cU3uvppmTFrBEdAbGZHg89EpMs1dyDCUumt9S"
-  },
   "market": {
     "programId": "4vQ6uRMFPRfU79JuwwriDVRoFsEZBCSW2FnsefwmtetD",
     "config": "FLzcvCZcGr8rMNij2d7geBhYpttaXRxgoDyxQip2PkqB",
     "treasury": "6CvNNxtfbZvf2N7EWi14PHpg8vwhrq1GZGhVAiBzLixL",
-    "usdtMint": "E8cviabpxswY9ouL7CPNJhTs5wqChuF3XDUobYuoKqEK",
-    "listings": {
-      "c1": "4qhGm8Q81CrAvhkhKShJczT7RdrTqDiyNnchy3A7r8adNnesqbTYrGCLiVESdCDKzKvbjxouVJ4jh2XiAsbmZsEB",
-      "c2": "4vKk9eT8woXCxvZLidtMdkFciAzg3tezEJKSQDLoNfYrokptZNej7JHg5Rmxt9krp5DsHosTm35pr1a6BzJHJ3F5",
-      "c4": "3hxrgDJRm2V4ivrU46EnGbhUYz9fiZpDErdtZ3csQWYtjSS43Mm3n8mWyMth3SWUVq8Ssy281VTiPEGUY3Z6QmNr",
-      "c7": "2DvPY1LsmUouds8KPNAsQk7bcChUkCTZ1G8RXir9EFSWS8Afrh9U7wVRdjv47fxEnnRUNyNUzcTmT9iefdmASa2o",
-      "c9": "3A6BLzhUdJyZrCZR1uS3BWuQgKX9zKYvjp7nobtQuKqPaJD5AJUv6YS6PjcLFPEHZPNqAZJCEnXNPeXfnEYJNVtB",
-      "c10": "4DPBDpheoTczMnejR6QxaMjjo8mh8Ch99JvCy7CUUV2fG8kTxeesV1wFTLAz9GhPkgBwCB32GrEWhcpsFGaeNJHK",
-      "c11": "J8tvq9UURrMzunWJFW5ePBiNNVTYnj5iX93999FPL1fadniXKstJ1brAVcrxtWgm12a5cu8in6Q8kdxQQ6ZGYuq",
-      "c13": "3NL3uKHcRBKYhUp8VtFpz2y29BdEcKsezWAVrzTpBe4NXjfcqKsScgc7BKVRBi5s1ni39eyjQMt1pdXHkEBahw66",
-      "c14": "5qE4Tr8FcS8xPYQRUudRUU6G5cZ6VZeYKuXKShCJUMoocw4FBsEMHS4VHHyBwEiPWEoDHMjRrTbp3Y8bHbX394Nz",
-      "c17": "2Wdy3KAaB1bCT4bTz4yMKfrzbpPqrxRAPo5djg1xK9ymFKXS5e55WYtAKv5wMv6tXnEfE98CWZm3y1kCYqJ2VtnK",
-      "c19": "T51kTcU1a81TYtmD7duS8P4G7KfUA7877di2qT4rSaAsVC9MMfdH52nshzW7ZtdbwNka9cGSwZRL4DMyMdrC1b9"
-    },
-    "demoTrade": {
-      "card": "c15",
-      "buyer": "2gkU7FSrBDfRPfDDgoveZjLkdCjwoLXU7FnpMFGPK2hA",
-      "listTx": "5d21FaZtXNsHRhATKQQxUDpS6MQD2fD2XjFerYioF6HHBZHVqsEpGiucqUpQURC2Cq1aC2QJs6boPimMstDvENoB",
-      "buyTx": "4Qfd5yn8V8CS7ypPjA5SXATRxy5kW4spxr7Yrct6eSo5RTQh9cEtFqHzrufKvPRxwsyLaK6cEEtEDCFELhd5gD16"
-    }
+    "usdtMint": "E8cviabpxswY9ouL7CPNJhTs5wqChuF3XDUobYuoKqEK"
   }
 }

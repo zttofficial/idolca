@@ -7,7 +7,7 @@ import { usePackPhase } from "./Countdown";
 import { HoloCardFace } from "@/components/market/HoloTile";
 import { CardBackArt } from "@/components/market/CardArt";
 import { formatUsdt } from "@/lib/fx";
-import { BUYBACK_RATE, TIER_COLOR, drawFromPool, entryCard, type Pack, type PoolEntry } from "@/lib/packs";
+import { BUYBACK_RATE, TIER_COLOR, entryCard, type Pack, type PoolEntry } from "@/lib/packs";
 import { useAuth } from "@/components/auth/AuthContext";
 import { payAndConfirm, postAction, useChainState } from "@/lib/chain-client";
 import { signAndSend } from "@/lib/solana/wallets";
@@ -15,29 +15,31 @@ import { solscanUrl } from "@/lib/solana/config";
 
 const QUANTITIES = [1, 5, 10] as const;
 type Stage = "closed" | "pack" | "tearing" | "reveal" | "results";
-type Choice = "kept" | "listed" | "sold";
-// 鏈上開包時每張抽到的卡：NFT 地址、鑄造交易，賣回後的交易
-type Minted = { asset: string; tx: string; buybackTx?: string };
+type Choice = "kept" | "sold";
+// 每張抽到的卡：金庫卡 id、NFT 地址、從平台轉給我的交易，賣回後的交易
+type Minted = { cardId: string; asset: string; tx: string | null; buybackTx?: string | null };
 
-const cryptoRandom = () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-// 鏈上已配置時是真實流程：用錢包付測試 USDT → 伺服器對帳後抽卡 → 抽到的卡鑄成 NFT 進錢包，可以即時賣回。
-// 未配置時退回本機演示
-export default function PackOpener({ pack }: { pack: Pack }) {
+// 用錢包付 USDT → 伺服器對帳後按承諾的種子抽卡 → 抽到的金庫卡 NFT 轉進錢包，可以即時賣回。
+// 卡池不夠時沒交付的張數自動退款
+export default function PackOpener({ pack, regionBlocked }: { pack: Pack; regionBlocked: boolean }) {
   const t = useTranslations("Packs");
   const { phase } = usePackPhase(pack.startsAt, pack.endsAt);
   const [qty, setQty] = useState<(typeof QUANTITIES)[number]>(1);
   const [stage, setStage] = useState<Stage>("closed");
   const chain = useChainState();
   const live = Boolean(chain?.ready);
-  const { user, login } = useAuth();
+  const { user, login, updateUser } = useAuth();
+  const [ageAsk, setAgeAsk] = useState(false);
+  const [ageChecked, setAgeChecked] = useState(false);
   const wallet = user?.walletAddress;
   const [pool, setPool] = useState(pack.pool);
   const [minted, setMinted] = useState<Minted[]>([]);
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string>();
   const [paySig, setPaySig] = useState<string>();
+  const [refundTx, setRefundTx] = useState<string | null>(null);
 
   // 卡池剩餘張數以伺服器為準（扣掉所有人已開出的）；關掉開包畫面時重新讀
   const closed = stage === "closed";
@@ -45,7 +47,7 @@ export default function PackOpener({ pack }: { pack: Pack }) {
     if (!live) return;
     fetch(`/api/packs/${pack.id}/pool`)
       .then((r) => r.json())
-      .then((d: { pool?: PoolEntry[] }) => d.pool && setPool(d.pool))
+      .then((d: { pack?: Pack }) => d.pack && setPool(d.pack.pool))
       .catch(() => {});
   }, [live, pack.id, closed]);
   const [pulls, setPulls] = useState<PoolEntry[]>([]);
@@ -53,7 +55,7 @@ export default function PackOpener({ pack }: { pack: Pack }) {
   const [choices, setChoices] = useState<Record<number, Choice>>({});
 
   const left = pool.reduce((n, e) => n + e.remaining, 0);
-  const canOpen = phase === "live" && left >= qty;
+  const canOpen = phase === "live" && left >= qty && !regionBlocked;
 
   const reveal = (drawn: PoolEntry[]) => {
     setPulls(drawn);
@@ -63,27 +65,24 @@ export default function PackOpener({ pack }: { pack: Pack }) {
   };
 
   const open = async () => {
-    if (!live) {
-      const drawn = drawFromPool(pool, qty, cryptoRandom);
-      setPool((prev) => prev.map((e) => ({ ...e, remaining: e.remaining - drawn.filter((d) => d.id === e.id).length })));
-      setMinted([]);
-      reveal(drawn);
-      return;
-    }
+    if (!live) return;
     if (!user) return login();
     if (!wallet) return;
+    // 第一次開包要確認已滿 18 歲
+    if (!user.ageConfirmed) return setAgeAsk(true);
     setPaying(true);
     setPayError(undefined);
     try {
-      const { signature, result } = await payAndConfirm<{ pulls: (Minted & { entryId: string })[] }>(
+      const { signature, result } = await payAndConfirm<{ pulls: Minted[]; refundTx: string | null }>(
         `/api/packs/${pack.id}/order`,
         { qty },
         (id) => `/api/packs/orders/${id}/confirm`,
         wallet,
       );
       setPaySig(signature);
-      setMinted(result.pulls.map(({ asset, tx }) => ({ asset, tx })));
-      reveal(result.pulls.map((p) => pack.pool.find((e) => e.id === p.entryId)!).filter(Boolean));
+      setMinted(result.pulls.map(({ cardId, asset, tx }) => ({ cardId, asset, tx })));
+      setRefundTx(result.refundTx);
+      reveal(result.pulls.map((p) => pool.find((e) => e.id === p.cardId) ?? pack.pool.find((e) => e.id === p.cardId)).filter((e): e is PoolEntry => Boolean(e)));
     } catch (e) {
       setPayError(e instanceof Error ? e.message : "network");
     } finally {
@@ -95,9 +94,9 @@ export default function PackOpener({ pack }: { pack: Pack }) {
   const sellBack = async (i: number) => {
     const m = minted[i];
     if (!m || !wallet) return;
-    const { tx } = await postAction<{ tx: string }>("/api/packs/buyback", { asset: m.asset });
+    const { tx } = await postAction<{ tx: string }>("/api/packs/buyback", { cardId: m.cardId });
     const signature = await signAndSend(tx, wallet);
-    await postAction("/api/packs/buyback/confirm", { asset: m.asset, signature });
+    await postAction("/api/packs/buyback/confirm", { cardId: m.cardId, signature });
     setMinted((prev) => prev.map((x, j) => (j === i ? { ...x, buybackTx: signature } : x)));
     setChoices((prev) => ({ ...prev, [i]: "sold" }));
   };
@@ -115,9 +114,19 @@ export default function PackOpener({ pack }: { pack: Pack }) {
 
   const close = () => setStage("closed");
 
+  const confirmAge = async () => {
+    const { user: updated } = await postAction<{ user: NonNullable<typeof user> }>("/api/account/age");
+    updateUser(updated);
+    setAgeAsk(false);
+  };
+
   const label = paying
     ? t("paying")
-    : live && !user
+    : regionBlocked
+      ? t("regionBlocked")
+    : !live
+      ? t("unavailable")
+      : !user
       ? t("loginToOpen")
       : phase === "upcoming"
       ? t("notStarted")
@@ -152,9 +161,20 @@ export default function PackOpener({ pack }: { pack: Pack }) {
         {label}
       </button>
       {live && user && !wallet && <p className="mt-2 text-center text-xs text-ink-2">{t("linkWalletToOpen")}</p>}
+      {ageAsk && (
+        <div className="mt-3 rounded-xl border border-line bg-surface-2 p-4 text-sm">
+          <label className="flex items-start gap-2">
+            <input type="checkbox" checked={ageChecked} onChange={(e) => setAgeChecked(e.target.checked)} className="mt-1" />
+            <span>{t("ageConfirm")}</span>
+          </label>
+          <button disabled={!ageChecked} onClick={confirmAge} className="btn-primary mt-3 rounded-full px-5 py-2 text-sm font-semibold disabled:opacity-50">
+            {t("ageContinue")}
+          </button>
+        </div>
+      )}
       {payError && <p className="mt-2 text-center text-xs text-down">{t.has(`error_${payError}`) ? t(`error_${payError}`) : t("error_generic")}</p>}
       <p className="mt-3 rounded-lg border border-notice-line bg-notice-bg px-3 py-2 text-[11px] leading-relaxed text-notice-ink">
-        {t(live ? "chainNote" : "demoNote")}
+        {t("chainNote")}
       </p>
 
       {stage !== "closed" && (
@@ -171,7 +191,8 @@ export default function PackOpener({ pack }: { pack: Pack }) {
           onChoose={(i, c) => setChoices((prev) => ({ ...prev, [i]: c }))}
           minted={minted}
           paySig={paySig}
-          onSellBack={live ? sellBack : undefined}
+          refundTx={refundTx}
+          onSellBack={sellBack}
           onAgain={canOpen ? open : undefined}
           onClose={close}
         />
@@ -195,6 +216,7 @@ function OpeningModal({
   onClose,
   minted,
   paySig,
+  refundTx,
   onSellBack,
 }: {
   pack: Pack;
@@ -211,7 +233,8 @@ function OpeningModal({
   onClose: () => void;
   minted: Minted[];
   paySig?: string;
-  onSellBack?: (i: number) => Promise<void>;
+  refundTx: string | null;
+  onSellBack: (i: number) => Promise<void>;
 }) {
   const t = useTranslations("Packs");
   const primary = useRef<HTMLButtonElement>(null);
@@ -232,6 +255,7 @@ function OpeningModal({
 
   const allFlipped = flipped.every(Boolean);
   const spent = round2(pulls.length * pack.priceUsdt);
+  const refunded = minted.length > 0 && refundTx !== null;
   const pulledValue = round2(pulls.reduce((v, e) => v + e.valueUsdt, 0));
   const cardWidth = pulls.length === 1 ? "w-56 sm:w-64" : "w-28 sm:w-36";
 
@@ -306,12 +330,18 @@ function OpeningModal({
               </div>
             </dl>
             {paySig && (
-              <p className="mt-3 text-center text-xs text-ink-3">
+              <p className="mt-3 flex justify-center gap-4 text-xs text-ink-3">
                 <a href={solscanUrl("tx", paySig)} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
                   {t("paymentTx")} ↗
                 </a>
+                {refundTx && (
+                  <a href={solscanUrl("tx", refundTx)} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
+                    {t("refundTx")} ↗
+                  </a>
+                )}
               </p>
             )}
+            {refunded && <p className="mt-2 text-center text-xs text-notice-ink">{t("partialRefund")}</p>}
             <ul className="mt-5 divide-y divide-line rounded-2xl border border-line bg-surface">
               {pulls.map((entry, i) => {
                 const card = entryCard(entry);
@@ -333,6 +363,11 @@ function OpeningModal({
                           <a href={solscanUrl("account", nft.asset)} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
                             NFT ↗
                           </a>
+                          {nft.tx && (
+                            <a href={solscanUrl("tx", nft.tx)} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
+                              {t("transferTx")} ↗
+                            </a>
+                          )}
                           {nft.buybackTx && (
                             <a href={solscanUrl("tx", nft.buybackTx)} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
                               {t("buybackTx")} ↗
@@ -343,14 +378,13 @@ function OpeningModal({
                     </div>
                     {choice ? (
                       <span className="text-xs text-up">
-                        {choice === "kept" ? t("kept") : choice === "listed" ? t("listed") : t("soldBack")}
+                        {choice === "kept" ? t("kept") : t("soldBack")}
                       </span>
                     ) : (
                       <ChoiceButtons
                         buybackLabel={t("buyback", { value: buyback })}
                         onKeep={() => onChoose(i, "kept")}
-                        onList={onSellBack ? undefined : () => onChoose(i, "listed")}
-                        onSell={onSellBack ? () => onSellBack(i) : async () => onChoose(i, "sold")}
+                        onSell={() => onSellBack(i)}
                       />
                     )}
                   </li>
@@ -431,8 +465,8 @@ export function TierPill({ tier }: { tier: PoolEntry["tier"] }) {
   );
 }
 
-// 結果頁每張卡的選擇：留著、（演示模式）掛單、賣回；賣回在鏈上執行時顯示處理中
-function ChoiceButtons({ buybackLabel, onKeep, onList, onSell }: { buybackLabel: string; onKeep: () => void; onList?: () => void; onSell: () => Promise<void> }) {
+// 結果頁每張卡的選擇：留著或賣回；賣回在鏈上執行時顯示處理中
+function ChoiceButtons({ buybackLabel, onKeep, onSell }: { buybackLabel: string; onKeep: () => void; onSell: () => Promise<void> }) {
   const t = useTranslations("Packs");
   const [selling, setSelling] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -442,11 +476,6 @@ function ChoiceButtons({ buybackLabel, onKeep, onList, onSell }: { buybackLabel:
       <button onClick={onKeep} disabled={selling} className={btn}>
         {t("keep")}
       </button>
-      {onList && (
-        <button onClick={onList} className={btn}>
-          {t("list")}
-        </button>
-      )}
       <button
         disabled={selling}
         onClick={async () => {

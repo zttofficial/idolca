@@ -1,14 +1,19 @@
+"use client";
+
 import { useTranslations } from "next-intl";
 import HoloTile from "./HoloTile";
 import { Link } from "@/i18n/navigation";
-import { CARDS } from "@/lib/mock-cards";
+import { useVaultCards } from "@/lib/chain-client";
 import { RARITIES } from "@/lib/market";
 
 // 首頁：放最新入庫的 8 張，完整瀏覽去市場頁。不放漲跌、成交跑馬燈這類行情元素，學 Courtyard 讓商品本身當主角
 export default function MarketGrid() {
   const t = useTranslations("Market");
   const tRarity = useTranslations("Rarity");
-  const newest = [...CARDS].sort((a, b) => b.intakeDate.localeCompare(a.intakeDate)).slice(0, 8);
+  const vault = useVaultCards();
+  // 金庫還沒有卡時整段不顯示
+  if (vault && !vault.length) return null;
+  const newest = vault?.slice(0, 8);
 
   return (
     <section id="market" className="mx-auto max-w-7xl scroll-mt-20 px-4 py-20 sm:px-6">
@@ -26,13 +31,13 @@ export default function MarketGrid() {
         </div>
       </div>
       <div className="mt-10 grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">
-        {newest.map((c) => (
-          <HoloTile key={c.id} card={c} />
-        ))}
+        {newest
+          ? newest.map((c) => <HoloTile key={c.id} card={c} />)
+          : Array.from({ length: 8 }, (_, i) => <div key={i} className="aspect-[55/85] animate-pulse rounded-2xl bg-surface-2" />)}
       </div>
       <div className="mt-12 text-center">
         <Link href="/market" className="inline-block rounded-full border border-line px-6 py-2.5 text-sm font-semibold hover:bg-surface-2">
-          {t("viewAll", { count: CARDS.length })}
+          {t("viewAll", { count: vault?.length ?? 0 })}
         </Link>
       </div>
     </section>

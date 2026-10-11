@@ -3,9 +3,7 @@ import { getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import VaultTable, { VaultSummary } from "@/components/vault/VaultTable";
-import { CARDS } from "@/lib/mock-cards";
 import { CARD_COLLECTION, shortAddress, solscanUrl } from "@/lib/solana/config";
-import { getVaultSnapshot } from "@/lib/vault";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Meta");
@@ -15,9 +13,6 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function VaultPage() {
   const t = await getTranslations("Vault");
   const tMeta = await getTranslations("Meta");
-  const { source, entries } = await getVaultSnapshot();
-  const cardIdBySerial = new Map(CARDS.map((c) => [c.serial, c.id]));
-  const rows = entries.map((e) => ({ ...e, cardId: cardIdBySerial.get(e.serial) }));
 
   return (
     <>
@@ -36,16 +31,10 @@ export default async function VaultPage() {
             </>
           )}
         </p>
-        {source === "demo" && (
-          <p className="mt-4 inline-block rounded-lg border border-notice-line bg-notice-bg px-3 py-1.5 text-xs text-notice-ink">
-            {t("demo")}
-          </p>
-        )}
-
-        <VaultSummary rows={rows} />
+        <VaultSummary />
 
         <div className="mt-10">
-          <VaultTable rows={rows} />
+          <VaultTable />
         </div>
       </main>
       <Footer />

@@ -1,15 +1,15 @@
 import "server-only";
 import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction, TransactionInstruction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { createAssociatedTokenAccountIdempotentInstruction, createMintToInstruction, createTransferCheckedInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { generateSigner, publicKey } from "@metaplex-foundation/umi";
+import { publicKey } from "@metaplex-foundation/umi";
 import { base58 } from "@metaplex-foundation/umi/serializers";
-import { create, fetchAsset, fetchCollection, transfer } from "@metaplex-foundation/mpl-core";
+import { fetchAsset, fetchCollection, transfer } from "@metaplex-foundation/mpl-core";
 import { toWeb3JsInstruction } from "@metaplex-foundation/umi-web3js-adapters";
 import { CHAIN } from "@/lib/chain";
-import { SITE_URL, platformUmi } from "./chain";
+import { platformUmi } from "./chain";
 import { USDT_DECIMALS, connection, platform, usdtMint } from "./vault-chain";
 
-// 平台在 devnet 上的資金動作：發測試幣、收款（進平台託管錢包）並驗證、放款、轉移 NFT、開卡包鑄卡
+// 平台的資金動作：發測試幣（只有 devnet）、收款（進平台託管錢包）並驗證、放款、轉移 NFT
 const MEMO_PROGRAM = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
 const units = (usdt: number) => BigInt(Math.round(usdt * 10 ** USDT_DECIMALS));
 
@@ -89,35 +89,13 @@ export async function transferCollectorNft(asset: string, to: string) {
   return base58.deserialize(signature)[0];
 }
 
-// 開卡包抽到的卡：在金庫集合鑄一張鑑定過的 NFT 給買家（卡池裡的實物由平台入庫）
-export async function mintPackCard(to: string, card: { id: string; serial: string; group: string; member: string; album: string; version: string; rarity: string }) {
+// 開卡包抽到的卡：平台錢包把那張金庫卡的 NFT 轉給買家（平台是持有人，直接簽名）
+export async function transferVaultNft(asset: string, to: string) {
   const umi = platformUmi()!;
+  const a = await fetchAsset(umi, publicKey(asset));
   const collection = await fetchCollection(umi, publicKey(CHAIN.vaultCollection));
-  const asset = generateSigner(umi);
-  const { signature } = await create(umi, {
-    asset,
-    collection,
-    owner: publicKey(to),
-    name: `${card.member} ${card.version}`.slice(0, 22) + ` #${card.serial}`,
-    uri: `${SITE_URL}/api/meta/card/${card.id}`,
-    plugins: [
-      {
-        type: "Attributes",
-        attributeList: [
-          { key: "serial", value: card.serial },
-          { key: "group", value: card.group },
-          { key: "member", value: card.member },
-          { key: "album", value: card.album },
-          { key: "version", value: card.version },
-          { key: "rarity", value: card.rarity },
-          { key: "custody", value: "vault" },
-          { key: "verification", value: "authentic" },
-          { key: "source", value: "mystery_pack" },
-        ],
-      },
-    ],
-  }).sendAndConfirm(umi, { confirm: { commitment: "confirmed" } });
-  return { asset: asset.publicKey.toString(), tx: base58.deserialize(signature)[0] };
+  const { signature } = await transfer(umi, { asset: a, collection, newOwner: publicKey(to), authority: umi.identity }).sendAndConfirm(umi, { confirm: { commitment: "confirmed" } });
+  return base58.deserialize(signature)[0];
 }
 
 // 回購交易：持有人把金庫 NFT 轉給平台（持有人簽），平台把 USDT 轉給持有人（平台先簽）。手續費由持有人付

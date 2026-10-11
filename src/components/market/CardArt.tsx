@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ART_H, ART_W, drawCardBack, drawCardFront } from "@/lib/card-art";
-import type { Card } from "@/lib/mock-cards";
+import type { Card } from "@/lib/cards";
 
 // 有實拍圖用實拍圖，沒有或載入失敗時畫 canvas 佔位圖
 export default function CardArt({ card, rarityLabel, className }: { card: Card; rarityLabel: string; className?: string }) {

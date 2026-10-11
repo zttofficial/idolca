@@ -1,14 +1,12 @@
 import { connection } from "next/server";
 import { getDb } from "@/lib/server/db";
-import { livePool } from "@/lib/server/pack-pool";
-import { PACKS } from "@/lib/packs";
+import { getPack } from "@/lib/server/pack-pool";
 
-// 卡池即時剩餘張數（扣掉已開出的），卡包頁用它算機率
+// 卡包和卡池的即時狀態（剩餘、機率、種子承諾），卡包頁關掉開包畫面時重讀
 export async function GET(_request: Request, ctx: RouteContext<"/api/packs/[id]/pool">) {
   await connection();
-  const { id } = await ctx.params;
-  const pack = PACKS.find((p) => p.id === id);
-  if (!pack) return Response.json({ error: "not_found" }, { status: 404 });
   const db = await getDb();
-  return Response.json({ pool: db ? await livePool(db, pack) : pack.pool });
+  const pack = db ? await getPack(db, (await ctx.params).id) : null;
+  if (!pack) return Response.json({ error: "not_found" }, { status: 404 });
+  return Response.json({ pack });
 }

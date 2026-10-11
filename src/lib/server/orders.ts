@@ -1,6 +1,7 @@
 import "server-only";
+import { ESCROW_CONFIRM_DAYS, ESCROW_SHIP_DAYS, FEE_BPS } from "@/lib/policy";
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, isNotNull, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, or } from "drizzle-orm";
 import { PublicKey } from "@solana/web3.js";
 import type { Db } from "./db";
 import { collectorItems, orders, users, type OrderStatus } from "./schema";
@@ -9,7 +10,7 @@ import { itemTitle } from "@/lib/item-title";
 
 // 自由刊登的擔保交易。貨款先進平台錢包，買家確認收貨後才放給賣家，NFT 同時由平台轉給買家。
 // 平台抽成和金庫卡一樣是 2.5%
-export const FEE_BPS = 250;
+export { FEE_BPS };
 const memoOf = (orderId: string) => `idolca:order:${orderId}`;
 
 export type OrderRow = typeof orders.$inferSelect;
@@ -26,6 +27,18 @@ export async function createOrder(db: Db, buyerId: string, buyerWallet: string, 
   return { id, tx };
 }
 
+// 期限：付款後 SHIP_DAYS 天內賣家要標記寄出，否則買家可以取消並退款；
+// 寄出後 CONFIRM_DAYS 天內買家沒確認也沒申訴，自動放款。測試時可以用環境變數縮短（單位：天，可用小數）
+const DAY = 86_400_000;
+const days = (name: string, fallback: number) => {
+  const v = Number(process.env[name]);
+  return Number.isFinite(v) && v > 0 ? v : fallback;
+};
+export const SHIP_DAYS = days("ESCROW_SHIP_DAYS", ESCROW_SHIP_DAYS);
+export const CONFIRM_DAYS = days("ESCROW_CONFIRM_DAYS", ESCROW_CONFIRM_DAYS);
+const shipDeadline = (o: OrderRow) => (o.paidAt ? new Date(o.paidAt.getTime() + SHIP_DAYS * DAY) : null);
+const releaseAt = (o: OrderRow) => (o.shippedAt ? new Date(o.shippedAt.getTime() + CONFIRM_DAYS * DAY) : null);
+
 // 付款交易確認：對帳成功就下架商品、訂單變成已付款。商品已被別人先買走時退款並取消
 export async function confirmOrderPayment(db: Db, buyerId: string, orderId: string, signature: string) {
   const [order] = await db.select().from(orders).where(and(eq(orders.id, orderId), eq(orders.buyerId, buyerId)));
@@ -40,38 +53,122 @@ export async function confirmOrderPayment(db: Db, buyerId: string, orderId: stri
     .returning();
   if (!item) {
     const refund = await payout(new PublicKey(order.buyerWallet), order.priceCents / 100);
-    await db.update(orders).set({ status: "cancelled", payTx: signature, payoutTx: refund, updatedAt: new Date() }).where(eq(orders.id, orderId));
+    await db.update(orders).set({ status: "cancelled", payTx: signature, refundTx: refund, updatedAt: new Date() }).where(eq(orders.id, orderId));
     return { error: "sold_out_refunded" as const };
   }
-  await db.update(orders).set({ status: "paid", payTx: signature, updatedAt: new Date() }).where(eq(orders.id, orderId));
+  const now = new Date();
+  await db.update(orders).set({ status: "paid", payTx: signature, paidAt: now, updatedAt: now }).where(eq(orders.id, orderId));
   return { ok: true as const };
 }
 
 export async function markShipped(db: Db, sellerId: string, orderId: string) {
+  const now = new Date();
   const [row] = await db
     .update(orders)
-    .set({ status: "shipped", updatedAt: new Date() })
+    .set({ status: "shipped", shippedAt: now, updatedAt: now })
     .where(and(eq(orders.id, orderId), eq(orders.sellerId, sellerId), eq(orders.status, "paid")))
     .returning();
   return row ?? null;
 }
 
-// 買家確認收貨：NFT 轉給買家、貨款扣除抽成後放給賣家（賣家沒綁錢包時先暫存）、收藏品過戶給買家
+// 把訂單從允許的狀態鎖成處理中；拿不到鎖表示別人已經在處理或狀態不對
+async function lock(db: Db, orderId: string, from: OrderStatus[], to: "refunding" | "releasing") {
+  const [row] = await db
+    .update(orders)
+    .set({ status: to, updatedAt: new Date() })
+    .where(and(eq(orders.id, orderId), inArray(orders.status, from)))
+    .returning();
+  return row ?? null;
+}
+const unlock = (db: Db, order: OrderRow) => db.update(orders).set({ status: order.status, updatedAt: new Date() }).where(eq(orders.id, order.id));
+
+// 退款給買家：全額退回，商品按原價重新上架（還是賣家的、也沒被標成假卡時）。NFT 一直在賣家手上，不用動
+export async function refundOrder(db: Db, orderId: string, from: OrderStatus[] = ["paid", "shipped", "disputed"]) {
+  const [before] = await db.select().from(orders).where(eq(orders.id, orderId));
+  if (!before) return { error: "not_found" as const };
+  const order = await lock(db, orderId, from, "refunding");
+  if (!order) return { error: "not_refundable" as const };
+  let refundTx: string;
+  try {
+    refundTx = await payout(new PublicKey(order.buyerWallet), order.priceCents / 100);
+  } catch (err) {
+    await unlock(db, before);
+    throw err;
+  }
+  await db.update(orders).set({ status: "refunded", refundTx, updatedAt: new Date() }).where(eq(orders.id, orderId));
+  await db
+    .update(collectorItems)
+    .set({ priceCents: order.priceCents, listedAt: new Date() })
+    .where(and(eq(collectorItems.id, order.itemId), eq(collectorItems.userId, order.sellerId), eq(collectorItems.verification, "unverified")));
+  return { ok: true as const, refundTx };
+}
+
+// 放款給賣家：NFT 轉給買家、貨款扣除抽成後放給賣家（賣家沒綁錢包時先暫存）、收藏品過戶給買家
+export async function releaseOrder(db: Db, orderId: string, from: OrderStatus[] = ["shipped", "disputed"]) {
+  const [before] = await db.select().from(orders).where(eq(orders.id, orderId));
+  if (!before) return { error: "not_found" as const };
+  const order = await lock(db, orderId, from, "releasing");
+  if (!order) return { error: "not_releasable" as const };
+  try {
+    const [item] = await db.select().from(collectorItems).where(eq(collectorItems.id, order.itemId));
+    const [seller] = await db.select({ wallet: users.walletAddress }).from(users).where(eq(users.id, order.sellerId));
+    const transferTx = item?.mintTx ? await transferCollectorNft(item.asset, order.buyerWallet) : null;
+    const payoutTx = seller?.wallet ? await payout(new PublicKey(seller.wallet), (order.priceCents - order.feeCents) / 100) : null;
+    await db
+      .update(orders)
+      .set({ status: "completed", transferTx, payoutTx, payoutHeld: payoutTx ? 0 : 1, updatedAt: new Date() })
+      .where(eq(orders.id, orderId));
+    if (item) await db.update(collectorItems).set({ userId: order.buyerId, ownerAddress: transferTx ? order.buyerWallet : item.ownerAddress }).where(eq(collectorItems.id, item.id));
+    return { ok: true as const, transferTx, payoutTx };
+  } catch (err) {
+    await unlock(db, before);
+    throw err;
+  }
+}
+
+// 買家確認收貨
 export async function confirmReceived(db: Db, buyerId: string, orderId: string) {
   const [order] = await db.select().from(orders).where(and(eq(orders.id, orderId), eq(orders.buyerId, buyerId)));
   if (!order || order.status !== "shipped") return { error: "not_shipped" as const };
-  const [item] = await db.select().from(collectorItems).where(eq(collectorItems.id, order.itemId));
-  const [seller] = await db.select({ wallet: users.walletAddress }).from(users).where(eq(users.id, order.sellerId));
+  return releaseOrder(db, orderId, ["shipped"]);
+}
 
-  const transferTx = item?.mintTx ? await transferCollectorNft(item.asset, order.buyerWallet) : null;
-  const sellerAmount = (order.priceCents - order.feeCents) / 100;
-  const payoutTx = seller?.wallet ? await payout(new PublicKey(seller.wallet), sellerAmount) : null;
-  await db
+// 買家取消：賣家過了寄出期限還沒寄，全額退款
+export async function cancelUnshipped(db: Db, buyerId: string, orderId: string) {
+  const [order] = await db.select().from(orders).where(and(eq(orders.id, orderId), eq(orders.buyerId, buyerId)));
+  const deadline = order && shipDeadline(order);
+  if (!order || order.status !== "paid" || !deadline) return { error: "not_paid" as const };
+  if (Date.now() < deadline.getTime()) return { error: "too_early" as const };
+  return refundOrder(db, orderId, ["paid"]);
+}
+
+// 買家申訴：收到的卡有問題，暫停自動放款，交給後台
+export async function disputeOrder(db: Db, buyerId: string, orderId: string, reason: string) {
+  const [row] = await db
     .update(orders)
-    .set({ status: "completed", transferTx, payoutTx, payoutHeld: payoutTx ? 0 : 1, updatedAt: new Date() })
-    .where(eq(orders.id, orderId));
-  if (item) await db.update(collectorItems).set({ userId: buyerId, ownerAddress: transferTx ? order.buyerWallet : item.ownerAddress }).where(eq(collectorItems.id, item.id));
-  return { ok: true as const, transferTx, payoutTx };
+    .set({ status: "disputed", disputeReason: reason.trim().slice(0, 500) || null, updatedAt: new Date() })
+    .where(and(eq(orders.id, orderId), eq(orders.buyerId, buyerId), eq(orders.status, "shipped")))
+    .returning();
+  return row ?? null;
+}
+
+// 處理逾時：賣家逾時未寄的退款，買家逾時未確認（也沒申訴）的放款。打開訂單頁時和每天的排程都會跑
+export async function sweepOrders(db: Db) {
+  const now = Date.now();
+  const open = await db.select().from(orders).where(inArray(orders.status, ["paid", "shipped"]));
+  let refunded = 0;
+  let released = 0;
+  for (const o of open) {
+    try {
+      const ship = shipDeadline(o);
+      const release = releaseAt(o);
+      if (o.status === "paid" && ship && now >= ship.getTime() && "ok" in (await refundOrder(db, o.id, ["paid"]))) refunded++;
+      if (o.status === "shipped" && release && now >= release.getTime() && "ok" in (await releaseOrder(db, o.id, ["shipped"]))) released++;
+    } catch (err) {
+      console.error("sweep failed", o.id, err);
+    }
+  }
+  return { refunded, released };
 }
 
 // 賣家綁定錢包後，補發之前暫存在平台的貨款
@@ -96,8 +193,33 @@ export type PublicOrder = {
   payoutTx: string | null;
   payoutHeld: boolean;
   transferTx: string | null;
+  refundTx: string | null;
+  disputeReason: string | null;
+  // 賣家寄出期限、自動放款時間（ISO）
+  shipBy: string | null;
+  autoReleaseAt: string | null;
   updatedAt: string;
 };
+
+const toPublic = (o: OrderRow, item: typeof collectorItems.$inferSelect | null, role: "buyer" | "seller"): PublicOrder => ({
+  id: o.id,
+  role,
+  status: o.status,
+  itemId: o.itemId,
+  title: item ? itemTitle({ title: item.title, group: item.groupName, member: item.member, version: item.version }) : "",
+  photo: item?.photo ?? null,
+  priceUsdt: o.priceCents / 100,
+  feeUsdt: o.feeCents / 100,
+  payTx: o.payTx,
+  payoutTx: o.payoutTx,
+  payoutHeld: o.payoutHeld === 1,
+  transferTx: o.transferTx,
+  refundTx: o.refundTx,
+  disputeReason: o.disputeReason,
+  shipBy: shipDeadline(o)?.toISOString() ?? null,
+  autoReleaseAt: releaseAt(o)?.toISOString() ?? null,
+  updatedAt: o.updatedAt.toISOString(),
+});
 
 // 我買的和我賣的訂單（不含沒付款就放棄的）
 export async function myOrders(db: Db, userId: string): Promise<PublicOrder[]> {
@@ -107,21 +229,18 @@ export async function myOrders(db: Db, userId: string): Promise<PublicOrder[]> {
     .leftJoin(collectorItems, eq(collectorItems.id, orders.itemId))
     .where(or(eq(orders.buyerId, userId), eq(orders.sellerId, userId)))
     .orderBy(desc(orders.updatedAt));
-  return rows
-    .filter((r) => r.order.status !== "pending")
-    .map(({ order: o, item }) => ({
-      id: o.id,
-      role: o.buyerId === userId ? "buyer" : "seller",
-      status: o.status,
-      itemId: o.itemId,
-      title: item ? itemTitle({ title: item.title, group: item.groupName, member: item.member, version: item.version }) : "",
-      photo: item?.photo ?? null,
-      priceUsdt: o.priceCents / 100,
-      feeUsdt: o.feeCents / 100,
-      payTx: o.payTx,
-      payoutTx: o.payoutTx,
-      payoutHeld: o.payoutHeld === 1,
-      transferTx: o.transferTx,
-      updatedAt: o.updatedAt.toISOString(),
-    }));
+  return rows.filter((r) => r.order.status !== "pending").map(({ order, item }) => toPublic(order, item, order.buyerId === userId ? "buyer" : "seller"));
+}
+
+// 後台：所有付過款的訂單，進行中和申訴中的排前面
+export async function adminOrders(db: Db) {
+  const rows = await db
+    .select({ order: orders, item: collectorItems })
+    .from(orders)
+    .leftJoin(collectorItems, eq(collectorItems.id, orders.itemId))
+    .where(inArray(orders.status, ["paid", "shipped", "disputed", "refunding", "releasing", "completed", "refunded", "cancelled"]))
+    .orderBy(desc(orders.updatedAt))
+    .limit(100);
+  const rank = (s: OrderStatus) => (s === "disputed" ? 0 : s === "paid" || s === "shipped" ? 1 : 2);
+  return rows.map(({ order, item }) => toPublic(order, item, "buyer")).sort((a, b) => rank(a.status) - rank(b.status));
 }

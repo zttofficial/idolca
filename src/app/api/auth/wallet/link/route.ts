@@ -1,6 +1,7 @@
 import { and, eq, gt } from "drizzle-orm";
 import { loginNonces, users } from "@/lib/server/schema";
 import { fail, requireUser } from "@/lib/server/require-user";
+import { publicUser } from "@/lib/server/auth";
 import { addressBytes, verifySignature } from "@/lib/server/wallet-auth";
 import { releaseHeldPayouts } from "@/lib/server/orders";
 
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
 
   const [taken] = await a.db.select({ id: users.id }).from(users).where(eq(users.walletAddress, body.address!)).limit(1);
   if (taken) return fail("wallet_taken", 409);
-  await a.db.update(users).set({ walletAddress: body.address! }).where(eq(users.id, a.user.id));
+  const [updated] = await a.db.update(users).set({ walletAddress: body.address! }).where(eq(users.id, a.user.id)).returning();
   await releaseHeldPayouts(a.db, a.user.id, body.address!).catch((err) => console.error("release payouts failed", err));
-  return Response.json({ user: { ...a.user, walletAddress: body.address! } });
+  return Response.json({ user: publicUser(updated) });
 }

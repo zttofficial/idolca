@@ -1,6 +1,6 @@
 // 沒有實拍圖的卡，用 canvas 程序化生成正反面佔位圖。3D 卡（貼圖）和列表卡（<canvas>）共用。
 
-import type { Card } from "./mock-cards";
+import type { Card } from "./cards";
 import { seeded } from "./seeded";
 
 // 小卡實物尺寸 55 × 85 mm

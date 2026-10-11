@@ -1,7 +1,7 @@
 import { fail, requireUser } from "@/lib/server/require-user";
 import { confirmPackOrder } from "@/lib/server/packs";
 
-// 開卡包第二步：付款交易送出後回報簽名，伺服器對帳、抽卡、鑄造，回傳抽到的卡和 NFT
+// 開卡包第二步：付款交易送出後回報簽名，伺服器對帳、抽卡、把抽到的金庫卡轉進買家錢包，回傳抽到的卡
 export const maxDuration = 120;
 
 export async function POST(request: Request, ctx: RouteContext<"/api/packs/orders/[id]/confirm">) {
@@ -14,7 +14,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/packs/order
     if ("error" in result) return fail(result.error ?? "payment_not_found", 409);
     return Response.json(result);
   } catch (err) {
-    console.error("pack mint failed", err);
+    console.error("pack draw failed", err);
     return fail("chain_failed", 502);
   }
 }

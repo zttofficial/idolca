@@ -6,7 +6,7 @@ import CatalogTile from "./CatalogTile";
 import { useBinder } from "@/lib/binder";
 import type { Template } from "@/lib/catalog";
 import { RARITIES } from "@/lib/market";
-import type { Rarity } from "@/lib/mock-cards";
+import type { Rarity } from "@/lib/cards";
 
 // 團體圖鑑：按成員、類型篩選，可搜尋版本名稱，按專輯分組
 export default function CatalogGrid({ members, templates }: { members: string[]; templates: Template[] }) {

@@ -7,9 +7,9 @@ import Footer from "@/components/layout/Footer";
 import PackArt from "@/components/packs/PackArt";
 import Countdown from "@/components/packs/Countdown";
 import { Link } from "@/i18n/navigation";
-import { PACKS, packStats } from "@/lib/packs";
+import { packStats } from "@/lib/packs";
 import { getDb } from "@/lib/server/db";
-import { livePool } from "@/lib/server/pack-pool";
+import { listPacks } from "@/lib/server/pack-pool";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Meta");
@@ -51,12 +51,13 @@ export default async function PacksPage() {
   );
 }
 
-// 剩餘張數扣掉真實開出的卡，每次請求讀資料庫
+// 卡包和卡池存在資料庫，剩餘張數是真實庫存，每次請求讀
 async function PackList() {
   await connection();
   const t = await getTranslations("Packs");
   const db = await getDb();
-  const packs = db ? await Promise.all(PACKS.map(async (p) => ({ ...p, pool: await livePool(db, p) }))) : PACKS;
+  const packs = db ? await listPacks(db) : [];
+  if (!packs.length) return <p className="mt-10 rounded-2xl border border-dashed border-line px-6 py-12 text-center text-sm text-ink-2">{t("noPacks")}</p>;
   return (
     <div className="mt-10 grid gap-6 md:grid-cols-2">
       {packs.map((pack) => {
@@ -73,7 +74,7 @@ async function PackList() {
               <p className="mt-1 text-sm text-ink-2">{t("chance", { price: pack.priceUsdt, top: s.topValue.toLocaleString("en-US") })}</p>
               <div className="mt-4">
                 <div className="h-1.5 overflow-hidden rounded-full bg-accent-soft">
-                  <div className="h-full rounded-full bg-accent" style={{ width: `${(s.remaining / s.total) * 100}%` }} />
+                  <div className="h-full rounded-full bg-accent" style={{ width: `${s.total ? (s.remaining / s.total) * 100 : 0}%` }} />
                 </div>
                 <p className="mt-1.5 text-[11px] text-ink-3">
                   {t("left", { remaining: s.remaining.toLocaleString("en-US"), total: s.total.toLocaleString("en-US") })}

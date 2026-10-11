@@ -9,7 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("title"), robots: { index: false } };
 }
 
-// 平台後台（演示版）：處理提貨出貨、把自由上鏈的卡標成假卡。用 ADMIN_TOKEN 驗證
+// 平台後台：入庫、卡包、擔保交易、提貨、假卡。只給管理員帳號（見 src/lib/server/auth.ts 的 isAdmin）
 export default async function AdminPage() {
   const t = await getTranslations("Admin");
   return (

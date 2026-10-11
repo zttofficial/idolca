@@ -5,10 +5,10 @@ import { confirmBuyback } from "@/lib/server/packs";
 export async function POST(request: Request) {
   const a = await requireUser();
   if (a.error) return a.error;
-  const body = (await request.json().catch(() => ({}))) as { asset?: string; signature?: string };
-  if (typeof body.asset !== "string" || typeof body.signature !== "string") return fail("invalid_request");
+  const body = (await request.json().catch(() => ({}))) as { cardId?: string; signature?: string };
+  if (typeof body.cardId !== "string" || typeof body.signature !== "string") return fail("invalid_request");
   try {
-    const result = await confirmBuyback(a.db, a.user.id, body.asset, body.signature);
+    const result = await confirmBuyback(a.db, a.user.id, body.cardId, body.signature);
     if ("error" in result) return fail(result.error ?? "not_found", 409);
     return Response.json(result);
   } catch (err) {

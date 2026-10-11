@@ -2,6 +2,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "./schema";
+import { seedDevnetVault } from "./seed-devnet";
 
 // 資料庫連線：有 DATABASE_URL 用 Neon（線上），本機開發沒有時用 PGlite（嵌入式 Postgres，資料存在 .data/）。
 // 線上環境沒配置資料庫時回傳 null，帳號功能顯示「未開通」，不偷偷寫進會丟失的臨時目錄
@@ -29,12 +30,15 @@ async function connect(): Promise<Db | null> {
     const { mkdirSync } = await import("node:fs");
     const { PGlite } = await import("@electric-sql/pglite");
     const { drizzle } = await import("drizzle-orm/pglite");
-    mkdirSync(".data", { recursive: true });
-    db = drizzle(new PGlite(".data/pglite"), { schema }) as unknown as Db;
+    // PGLITE_DIR 換資料目錄：端到端測試用獨立的庫，不弄亂日常開發的資料
+    const dir = process.env.PGLITE_DIR || ".data/pglite";
+    mkdirSync(dir, { recursive: true });
+    db = drizzle(new PGlite(dir), { schema }) as unknown as Db;
   } else {
     return null;
   }
   for (const stmt of schema.BOOTSTRAP_SQL) await db.execute(sql.raw(stmt));
+  await seedDevnetVault(db);
   return db;
 }
 

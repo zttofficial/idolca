@@ -10,6 +10,10 @@ export type AuthUser = {
   displayName: string;
   // 用錢包登入時是那個錢包的地址；郵箱帳號為 null，上鏈的卡由平台代管
   walletAddress: string | null;
+  // 管理員才看得到後台入口；後台接口在伺服器端另外檢查
+  isAdmin: boolean;
+  // 已確認滿 18 歲（開卡包要）
+  ageConfirmed: boolean;
 };
 
 export type AuthState = {

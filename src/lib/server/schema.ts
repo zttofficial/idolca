@@ -9,6 +9,10 @@ export const users = pgTable("users", {
   // 用錢包登入的帳號：Solana 地址（base58）
   walletAddress: text("wallet_address").unique(),
   displayName: text("display_name").notNull(),
+  // admin：可以進後台（退款放款、入庫、提貨出貨、標假卡）。用 npm run admin:grant 授予
+  role: text("role").$type<"user" | "admin">().notNull().default("user"),
+  // 開卡包前確認已滿 18 歲的時間
+  ageConfirmedAt: timestamp("age_confirmed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -82,7 +86,7 @@ export const collectorItems = pgTable("collector_items", {
   version: text("version"),
   // 和圖鑑卡款對得上時記下，方便收集進度和行情；對不上就留空
   templateId: text("template_id"),
-  // NFT 地址。鏈上未配置的環境（演示模式）是隨機字串，mint_tx 為空
+  // NFT 地址和鑄造交易
   asset: text("asset").notNull(),
   mintTx: text("mint_tx"),
   // NFT 的持有地址：錢包登入的用戶是自己的錢包，郵箱帳號是平台代管錢包
@@ -95,6 +99,78 @@ export const collectorItems = pgTable("collector_items", {
   // 自由刊登：有價格就是刊登中（USDT，存到分）
   priceCents: integer("price_cents"),
   listedAt: timestamp("listed_at", { withTimezone: true }),
+  // 寄進金庫：持有人申請的時間（申請後下架，等實物寄到）；鑑定為真後轉成的金庫卡，和銷毀這張收藏 NFT 的交易
+  vaultRequestedAt: timestamp("vault_requested_at", { withTimezone: true }),
+  vaultCardId: text("vault_card_id"),
+  vaultBurnTx: text("vault_burn_tx"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 金庫卡：實物寄進金庫、鑑定通過後由後台建立並鑄成金庫 NFT。持有人、掛單和提貨狀態以鏈上為準（vault-chain.ts 讀鏈），
+// 這張表只存實物資料和 NFT 地址。編號（serial）印在卡套標籤上，和 NFT 屬性一致
+export const vaultCards = pgTable("vault_cards", {
+  id: text("id").primaryKey(),
+  serial: text("serial").notNull().unique(),
+  groupName: text("group_name").notNull(),
+  member: text("member").notNull(),
+  album: text("album").notNull(),
+  version: text("version").notNull(),
+  // album / pob / luckydraw / fansign（見 src/lib/cards.ts）
+  rarity: text("rarity").notNull(),
+  // 鑑定評級（1–10），沒有送評的卡為空
+  grade: integer("grade"),
+  // 入庫時記錄的品相說明
+  condition: text("condition"),
+  // 入庫時拍的正反面，/api/media 的網址
+  imageFront: text("image_front"),
+  imageBack: text("image_back"),
+  // 倉位編號
+  location: text("location").notNull(),
+  intakeDate: text("intake_date").notNull(),
+  asset: text("asset").notNull().unique(),
+  mintTx: text("mint_tx"),
+  // 寄存人：NFT 鑄給他的錢包；平台自有庫存（卡包卡池）為空
+  depositorId: text("depositor_id").references(() => users.id, { onDelete: "set null" }),
+  // 已提貨寄出、NFT 已銷毀
+  burnedAt: timestamp("burned_at", { withTimezone: true }),
+  // 放進卡包卡池的平台自有卡：卡包、等級、價值（期望價值和回購價按它算）。
+  // pack_order 是抽到它的開包訂單；為空表示還在卡池裡（被賣回平台後清空，回到卡池）
+  packId: text("pack_id"),
+  packTier: text("pack_tier"),
+  packValueCents: integer("pack_value_cents"),
+  packOrder: text("pack_order"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 盲盒卡包。卡池是放進這個卡包的金庫卡（vault_cards.pack_id），抽一張少一張。
+// 公平性用承諾—揭示：建立卡包時生成隨機種子，只公開它的 SHA-256；每次抽卡的隨機數 = HMAC-SHA256(種子, 付款交易簽名:序號)，
+// 付款簽名由買家錢包產生，平台事先算不出來。卡包結束或抽完後公開種子，任何人都能重算每一抽
+export const packs = pgTable("packs", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  priceCents: integer("price_cents").notNull(),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  // 包裝的兩個顏色，JSON 陣列
+  palette: text("palette").notNull(),
+  seed: text("seed").notNull(),
+  seedHash: text("seed_hash").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 每一抽：從當時卡池（按編號排序）的第 pick 張，pool_size 是當時剩幾張，r 是 HMAC 算出的隨機數（十六進位）。
+// 抽到的卡由平台錢包轉給買家；賣回時記下回購交易
+export const packPulls = pgTable("pack_pulls", {
+  id: text("id").primaryKey(),
+  orderId: text("order_id").notNull(),
+  packId: text("pack_id").notNull(),
+  cardId: text("card_id").notNull(),
+  idx: integer("idx").notNull(),
+  poolSize: integer("pool_size").notNull(),
+  pick: integer("pick").notNull(),
+  r: text("r").notNull(),
+  transferTx: text("transfer_tx"),
+  buybackTx: text("buyback_tx"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -110,8 +186,10 @@ export const media = pgTable("media", {
 });
 
 // 自由刊登的擔保交易：買家付款進平台錢包（pending → paid），賣家寄出（shipped），買家確認收貨後平台放款並轉移 NFT（completed）。
-// 賣家沒有綁定錢包時貨款先留在平台（payout_held），綁定後補發
-export const ORDER_STATUS = ["pending", "paid", "shipped", "completed", "cancelled"] as const;
+// 賣家逾時未寄，買家可以取消並全額退款（refunded）；買家逾時未確認自動放款；買家申訴（disputed）時暫停自動放款，交給後台處理。
+// refunding / releasing 是轉帳進行中的鎖，防止同一筆被處理兩次。
+// 賣家沒有綁定錢包時貨款先留在平台（payout_held），綁定後補發；cancelled 是兩人同時付款時後到的那筆（已自動退款）
+export const ORDER_STATUS = ["pending", "paid", "shipped", "disputed", "refunding", "releasing", "completed", "refunded", "cancelled"] as const;
 export type OrderStatus = (typeof ORDER_STATUS)[number];
 export const orders = pgTable("orders", {
   id: text("id").primaryKey(),
@@ -130,11 +208,17 @@ export const orders = pgTable("orders", {
   payoutTx: text("payout_tx"),
   payoutHeld: integer("payout_held").notNull().default(0),
   transferTx: text("transfer_tx"),
+  refundTx: text("refund_tx"),
+  disputeReason: text("dispute_reason"),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
+  shippedAt: timestamp("shipped_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// 開卡包：先建待付款訂單，付款交易確認後抽卡並把抽到的卡鑄成 NFT。pulls 是 JSON：[{ entryId, cardId, asset, tx }]
+// 開卡包訂單：pending（待付款）→ drawing（已對帳、抽卡和轉移中）→ drawn。
+// 卡池不夠或轉移失敗時沒交付的張數自動退款（refund_tx）。pulls 欄位是舊版鑄卡流程留下的紀錄（status 為 legacy），新流程不再寫入
+export const PACK_ORDER_STATUS = ["pending", "drawing", "drawn", "legacy"] as const;
 export const packOrders = pgTable("pack_orders", {
   id: text("id").primaryKey(),
   userId: text("user_id")
@@ -146,16 +230,28 @@ export const packOrders = pgTable("pack_orders", {
   wallet: text("wallet").notNull(),
   payTx: text("pay_tx").unique(),
   pulls: text("pulls"),
+  status: text("status").$type<(typeof PACK_ORDER_STATUS)[number]>().notNull().default("pending"),
+  refundTx: text("refund_tx"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// 金庫卡提貨申請：持有人簽名凍結 NFT（requested），平台寄出時銷毀（shipped）
+// 金庫卡提貨申請：持有人簽名凍結 NFT 並在同一筆交易付運費（requested），平台寄出時銷毀（shipped）。
+// 後台也可以取消：解凍、收回委託、退運費。收件地址寄出 90 天後清除（排程執行）
 export const redemptions = pgTable("redemptions", {
   cardId: text("card_id").primaryKey(),
   userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
   wallet: text("wallet").notNull(),
   requestTx: text("request_tx").notNull(),
   shipTx: text("ship_tx"),
+  // 收件地址 JSON（見 src/lib/shipping.ts）
+  shippingAddress: text("shipping_address"),
+  feeCents: integer("fee_cents").notNull().default(0),
+  // 運費已在申請交易裡對帳成功
+  feePaid: integer("fee_paid").notNull().default(0),
+  shippedAt: timestamp("shipped_at", { withTimezone: true }),
+  cancelTx: text("cancel_tx"),
+  refundTx: text("refund_tx"),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -164,6 +260,13 @@ export const faucetClaims = pgTable("faucet_claims", {
   userId: text("user_id").primaryKey(),
   wallet: text("wallet").notNull(),
   claimedAt: timestamp("claimed_at", { withTimezone: true }).notNull(),
+});
+
+// 頻率限制的計數（見 rate-limit.ts）
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+  count: integer("count").notNull(),
 });
 
 // 建表語句：資料庫第一次連上時執行，全部可重複執行
@@ -219,6 +322,9 @@ export const BOOTSTRAP_SQL = [
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS owner_address text`,
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS fake_tx text`,
   `UPDATE collector_items SET verification = 'unverified' WHERE verification NOT IN ('unverified', 'fake')`,
+  `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS vault_requested_at timestamptz`,
+  `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS vault_card_id text`,
+  `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS vault_burn_tx text`,
   `CREATE INDEX IF NOT EXISTS collector_items_listed_idx ON collector_items(listed_at) WHERE price_cents IS NOT NULL`,
   `CREATE TABLE IF NOT EXISTS binder_wants (
     user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -228,6 +334,8 @@ export const BOOTSTRAP_SQL = [
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_address text UNIQUE`,
   `ALTER TABLE users ALTER COLUMN email DROP NOT NULL`,
   `ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS role text NOT NULL DEFAULT 'user'`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS age_confirmed_at timestamptz`,
   `CREATE TABLE IF NOT EXISTS login_nonces (
     nonce text PRIMARY KEY,
     address text NOT NULL,
@@ -250,6 +358,10 @@ export const BOOTSTRAP_SQL = [
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
   )`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS refund_tx text`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS dispute_reason text`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid_at timestamptz`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipped_at timestamptz`,
   `CREATE TABLE IF NOT EXISTS pack_orders (
     id text PRIMARY KEY,
     user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -269,10 +381,74 @@ export const BOOTSTRAP_SQL = [
     ship_tx text,
     created_at timestamptz NOT NULL DEFAULT now()
   )`,
+  `ALTER TABLE redemptions ADD COLUMN IF NOT EXISTS shipping_address text`,
+  `ALTER TABLE redemptions ADD COLUMN IF NOT EXISTS fee_cents integer NOT NULL DEFAULT 0`,
+  `ALTER TABLE redemptions ADD COLUMN IF NOT EXISTS fee_paid integer NOT NULL DEFAULT 0`,
+  `ALTER TABLE redemptions ADD COLUMN IF NOT EXISTS shipped_at timestamptz`,
+  `ALTER TABLE redemptions ADD COLUMN IF NOT EXISTS cancel_tx text`,
+  `ALTER TABLE redemptions ADD COLUMN IF NOT EXISTS refund_tx text`,
+  `ALTER TABLE redemptions ADD COLUMN IF NOT EXISTS cancelled_at timestamptz`,
   `CREATE TABLE IF NOT EXISTS faucet_claims (
     user_id text PRIMARY KEY,
     wallet text NOT NULL,
     claimed_at timestamptz NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS vault_cards (
+    id text PRIMARY KEY,
+    serial text NOT NULL UNIQUE,
+    group_name text NOT NULL,
+    member text NOT NULL,
+    album text NOT NULL,
+    version text NOT NULL,
+    rarity text NOT NULL,
+    grade integer,
+    condition text,
+    image_front text,
+    image_back text,
+    location text NOT NULL,
+    intake_date text NOT NULL,
+    asset text NOT NULL UNIQUE,
+    mint_tx text,
+    depositor_id text REFERENCES users(id) ON DELETE SET NULL,
+    burned_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `ALTER TABLE vault_cards ADD COLUMN IF NOT EXISTS pack_id text`,
+  `ALTER TABLE vault_cards ADD COLUMN IF NOT EXISTS pack_tier text`,
+  `ALTER TABLE vault_cards ADD COLUMN IF NOT EXISTS pack_value_cents integer`,
+  `ALTER TABLE vault_cards ADD COLUMN IF NOT EXISTS pack_order text`,
+  `CREATE TABLE IF NOT EXISTS packs (
+    id text PRIMARY KEY,
+    name text NOT NULL,
+    price_cents integer NOT NULL,
+    starts_at timestamptz NOT NULL,
+    ends_at timestamptz NOT NULL,
+    palette text NOT NULL,
+    seed text NOT NULL,
+    seed_hash text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS pack_pulls (
+    id text PRIMARY KEY,
+    order_id text NOT NULL,
+    pack_id text NOT NULL,
+    card_id text NOT NULL,
+    idx integer NOT NULL,
+    pool_size integer NOT NULL,
+    pick integer NOT NULL,
+    r text NOT NULL,
+    transfer_tx text,
+    buyback_tx text,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS pack_pulls_pack_idx ON pack_pulls(pack_id, created_at)`,
+  `ALTER TABLE pack_orders ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'pending'`,
+  `ALTER TABLE pack_orders ADD COLUMN IF NOT EXISTS refund_tx text`,
+  `UPDATE pack_orders SET status = 'legacy' WHERE pulls IS NOT NULL AND status = 'pending'`,
+  `CREATE TABLE IF NOT EXISTS rate_limits (
+    key text PRIMARY KEY,
+    window_start timestamptz NOT NULL,
+    count integer NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS media (
     id text PRIMARY KEY,

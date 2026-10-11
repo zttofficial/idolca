@@ -3,7 +3,7 @@
 // 兩條交易線：vault 是金庫鑑定過的卡（對應 Pocamarket 的 Official），free 是賣家自由刊登、卡在賣家手上（對應 Used 和 KOCA）
 
 import type { Listing } from "./items";
-import type { Card, Rarity } from "./mock-cards";
+import type { Card, Rarity } from "./cards";
 
 export const PAGE_SIZE = 12;
 export const SORTS = ["newest", "priceAsc", "priceDesc"] as const;

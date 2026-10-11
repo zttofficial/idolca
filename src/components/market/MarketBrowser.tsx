@@ -7,8 +7,7 @@ import HoloTile from "./HoloTile";
 import ListingTile from "./ListingTile";
 import { openAddCard } from "@/components/binder/AddCard";
 import type { Listing } from "@/lib/items";
-import { useChainState, withLive } from "@/lib/chain-client";
-import { CARDS } from "@/lib/mock-cards";
+import { useVaultCards } from "@/lib/chain-client";
 import { LANES, RARITIES, SORTS, applyListingQuery, applyQuery, facetCounts, parseQuery, toSearch, type MarketQuery } from "@/lib/market";
 
 // 市場頁：金庫卡 / 自由刊登兩條線；搜尋、團體 → 成員、類型、價格、只看在售、排序、分頁，狀態全在網址裡
@@ -28,8 +27,8 @@ export default function MarketBrowser() {
       .then((d: { listings: Listing[] }) => setListings(d.listings))
       .catch(() => setListings([]));
   }, []);
-  const chain = useChainState();
-  const cards = useMemo(() => withLive(CARDS, chain), [chain]);
+  const vault = useVaultCards();
+  const cards = useMemo(() => vault ?? [], [vault]);
   const vaultResult = useMemo(() => applyQuery(cards, q), [cards, q]);
   const freeResult = useMemo(() => applyListingQuery(listings ?? [], q), [listings, q]);
   const result = free ? freeResult : vaultResult;
@@ -58,10 +57,10 @@ export default function MarketBrowser() {
   }, [text]);
 
   const byName = (a: string, b: string) => a.localeCompare(b, "en", { sensitivity: "base" });
-  const groups = free ? [...new Set((listings ?? []).map((l) => l.group))].sort(byName) : [...new Set(CARDS.map((c) => c.group))].sort(byName);
+  const groups = free ? [...new Set((listings ?? []).map((l) => l.group))].sort(byName) : [...new Set(cards.map((c) => c.group))].sort(byName);
   const groupCount = (g: string | null) =>
     free ? (listings ?? []).filter((l) => !g || l.group === g).length : g ? (facets.groups.get(g) ?? 0) : [...facets.groups.values()].reduce((a, b) => a + b, 0);
-  const members = q.group && !free ? [...new Set(CARDS.filter((c) => c.group === q.group).map((c) => c.member))].sort(byName) : [];
+  const members = q.group && !free ? [...new Set(cards.filter((c) => c.group === q.group).map((c) => c.member))].sort(byName) : [];
   const activeCount = (q.group ? 1 : 0) + (q.member ? 1 : 0) + q.types.length + (q.min !== null || q.max !== null ? 1 : 0) + (q.listedOnly ? 1 : 0);
 
   const chip = (active: boolean) =>
@@ -150,7 +149,7 @@ export default function MarketBrowser() {
             className={`rounded-2xl border px-4 py-2.5 text-left transition ${q.lane === lane ? "border-ink bg-surface" : "border-line text-ink-2 hover:border-line-strong"}`}
           >
             <span className="block text-sm font-semibold">
-              {t(`lane_${lane}`)} <span className="font-normal text-ink-3 tabular-nums">{lane === "vault" ? CARDS.length : (listings?.length ?? "…")}</span>
+              {t(`lane_${lane}`)} <span className="font-normal text-ink-3 tabular-nums">{lane === "vault" ? (vault?.length ?? "…") : (listings?.length ?? "…")}</span>
             </span>
             <span className="block text-[11px] text-ink-3">{t(`laneHint_${lane}`)}</span>
           </button>
@@ -193,7 +192,7 @@ export default function MarketBrowser() {
         <div>
           {free && <p className="mb-4 rounded-xl bg-notice-bg px-4 py-3 text-xs leading-relaxed text-notice-ink">{tListing("disclaimerShort")}</p>}
           <p className="text-sm text-ink-2">{t("results", { count: result.total })}</p>
-          {free && listings === null ? (
+          {(free ? listings === null : vault === null) ? (
             <div className="mt-4 h-64 animate-pulse rounded-2xl bg-surface-2" />
           ) : result.items.length ? (
             <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 xl:grid-cols-4">

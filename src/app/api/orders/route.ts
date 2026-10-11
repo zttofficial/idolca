@@ -1,11 +1,12 @@
 import { fail, requireUser, requireWalletUser } from "@/lib/server/require-user";
-import { createOrder, myOrders } from "@/lib/server/orders";
+import { createOrder, myOrders, sweepOrders } from "@/lib/server/orders";
 import { marketReady } from "@/lib/server/vault-chain";
 
-// 我買的和我賣的擔保交易訂單
+// 我買的和我賣的擔保交易訂單。先處理已逾時的訂單，排程沒跑到時看到的狀態也是對的
 export async function GET() {
   const a = await requireUser();
   if (a.error) return a.error;
+  await sweepOrders(a.db);
   return Response.json({ orders: await myOrders(a.db, a.user.id) });
 }
 

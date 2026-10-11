@@ -1,7 +1,7 @@
 import { and, eq, gt } from "drizzle-orm";
 import { getDb } from "@/lib/server/db";
 import { loginNonces, users } from "@/lib/server/schema";
-import { newUserId, startSession } from "@/lib/server/auth";
+import { newUserId, publicUser, startSession } from "@/lib/server/auth";
 import { addressBytes, verifySignature } from "@/lib/server/wallet-auth";
 import { shortAddress } from "@/lib/solana/config";
 
@@ -26,5 +26,5 @@ export async function POST(request: Request) {
     [user] = await db.insert(users).values({ id: newUserId(), walletAddress: body.address!, displayName: shortAddress(body.address!) }).returning();
   }
   await startSession(db, user.id);
-  return Response.json({ user: { id: user.id, email: user.email, displayName: user.displayName, walletAddress: user.walletAddress } });
+  return Response.json({ user: publicUser(user) });
 }

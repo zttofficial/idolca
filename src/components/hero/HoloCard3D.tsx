@@ -5,7 +5,7 @@ import { ContactShadows, Float, Sparkles } from "@react-three/drei";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { CARD_ASPECT, drawCardBack, drawCardFront, renderToCanvas } from "@/lib/card-art";
-import type { Card, Rarity } from "@/lib/mock-cards";
+import type { Card, Rarity } from "@/lib/cards";
 
 const H = 1.7;
 const W = H * CARD_ASPECT;

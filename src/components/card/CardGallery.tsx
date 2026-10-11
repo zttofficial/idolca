@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { HoloCardFace } from "@/components/market/HoloTile";
 import { CardBackArt } from "@/components/market/CardArt";
-import type { Card } from "@/lib/mock-cards";
+import type { Card } from "@/lib/cards";
 
 const HoloCard3D = dynamic(() => import("@/components/hero/HoloCard3D"), {
   ssr: false,

@@ -8,10 +8,18 @@ export default function Footer() {
   return (
     <footer className="border-t border-line py-10 text-center text-xs text-ink-3">
       <Wordmark className="mb-4 text-xl" />
-      <p>{t("text", { cluster: CLUSTER === "devnet" ? "Devnet" : "Mainnet" })}</p>
-      <Link href="/credits" className="mt-2 inline-block hover:text-ink">
-        {t("credits")}
-      </Link>
+      <p>{t(CLUSTER === "devnet" ? "textDevnet" : "textMainnet")}</p>
+      <nav className="mt-2 flex justify-center gap-4">
+        <Link href="/terms" className="hover:text-ink">
+          {t("terms")}
+        </Link>
+        <Link href="/privacy" className="hover:text-ink">
+          {t("privacy")}
+        </Link>
+        <Link href="/credits" className="hover:text-ink">
+          {t("credits")}
+        </Link>
+      </nav>
     </footer>
   );
 }

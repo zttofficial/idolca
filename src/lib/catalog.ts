@@ -1,7 +1,7 @@
 // 小卡圖鑑：團體 → 專輯 → 成員 × 版本，每個組合是一個「卡款」（不是某一張實物）。
 // 團體、成員、專輯是真實資料；版本清單是示意的通用版本，正式版從官方資料和用戶投稿建立。
 
-import { CARDS, type Card, type Rarity } from "./mock-cards";
+import type { Card, Rarity } from "./cards";
 
 export type Version = { label: string; rarity: Rarity };
 
@@ -50,8 +50,6 @@ export type Template = {
   album: string;
   version: string;
   rarity: Rarity;
-  // 有對應的金庫卡時，連到它的內頁；在售數量和價格由瀏覽器讀鏈上和刊登資料算（useTemplateMarket）
-  listingId?: string;
 };
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -63,7 +61,6 @@ function buildTemplates(): Template[] {
       for (const member of a.members) {
         for (const v of VERSIONS) {
           const id = `${g.id}--${slug(member)}--${a.id}--${slug(v.label)}`;
-          const listing = CARDS.find((c) => c.group === g.name && c.member === member && c.album === a.title && c.version === v.label);
           out.push({
             id,
             groupId: g.id,
@@ -73,7 +70,6 @@ function buildTemplates(): Template[] {
             album: a.title,
             version: v.label,
             rarity: v.rarity,
-            listingId: listing?.id,
           });
         }
       }
@@ -92,10 +88,15 @@ export const templatesOf = (groupId: string) => TEMPLATES.filter((t) => t.groupI
 // 還沒有掃描圖的卡款用中性灰的佔位卡面，一眼看得出「缺圖」，也不和照片搶顏色
 const PLACEHOLDER: Card["palette"] = ["#ececf1", "#dedee6", "#cfcfd9"];
 
-// 卡款渲染成卡片：有樣本卡就用樣本卡（帶照片），否則畫佔位卡面
-export function templateCard(t: Template): Card {
-  const listing = t.listingId ? CARDS.find((c) => c.id === t.listingId) : undefined;
-  if (listing) return listing;
+// 一張金庫卡是不是這個卡款（團體、成員、專輯、版本都對得上，不分大小寫）
+const norm = (s: string) => s.trim().toLowerCase();
+export const isTemplateOf = (c: Pick<Card, "group" | "member" | "album" | "version">, t: Template) =>
+  norm(c.group) === norm(t.group) && norm(c.member) === norm(t.member) && norm(c.album) === norm(t.album) && norm(c.version) === norm(t.version);
+
+// 卡款渲染成卡片：金庫裡有這個卡款就用那張卡（帶實拍照片），否則畫佔位卡面
+export function templateCard(t: Template, vault?: Card[] | null): Card {
+  const match = vault?.find((c) => c.image && isTemplateOf(c, t)) ?? vault?.find((c) => isTemplateOf(c, t));
+  if (match) return match;
   return {
     id: t.id,
     serial: "",

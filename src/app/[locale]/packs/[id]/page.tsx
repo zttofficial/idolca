@@ -11,17 +11,21 @@ import PackOpener, { TierPill } from "@/components/packs/PackOpener";
 import { Link } from "@/i18n/navigation";
 import { formatUsdt } from "@/lib/fx";
 import { connection } from "next/server";
-import { BUYBACK_RATE, PACKS, TIERS, TIER_COLOR, entryCard, findPack, packStats } from "@/lib/packs";
+import { headers } from "next/headers";
+import { packsBlockedIn } from "@/lib/server/region";
+import { BUYBACK_RATE, TIERS, TIER_COLOR, entryCard, packStats } from "@/lib/packs";
 import { getDb } from "@/lib/server/db";
-import { livePool, poolCommitment, recentPackPulls } from "@/lib/server/pack-pool";
+import { getPack, recentPackPulls } from "@/lib/server/pack-pool";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 
-export function generateStaticParams() {
-  return PACKS.map((p) => ({ id: p.id }));
+async function findPack(id: string) {
+  await connection();
+  const db = await getDb();
+  return db ? getPack(db, id) : null;
 }
 
 export async function generateMetadata(props: PageProps<"/[locale]/packs/[id]">): Promise<Metadata> {
-  const pack = findPack((await props.params).id);
+  const pack = await findPack((await props.params).id);
   return pack ? { title: `${pack.name} · Mystery Pack` } : {};
 }
 
@@ -44,13 +48,11 @@ export default function PackPage(props: PageProps<"/[locale]/packs/[id]">) {
 }
 
 async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]">["params"] }) {
-  const found = findPack((await params).id);
-  if (!found) notFound();
   // 卡池剩餘張數和最近開卡都是真實紀錄，每次請求讀資料庫
-  await connection();
-  const db = await getDb();
-  const pack = db ? { ...found, pool: await livePool(db, found) } : found;
-  const pulls = db ? await recentPackPulls(db, pack) : [];
+  const pack = await findPack((await params).id);
+  if (!pack) notFound();
+  const db = (await getDb())!;
+  const pulls = await recentPackPulls(db, pack);
   const t = await getTranslations("Packs");
   const s = packStats(pack);
   const pct = (n: number) => `${(n * 100).toFixed(n < 0.01 ? 2 : 1)}%`;
@@ -77,7 +79,7 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <div className="rounded-xl bg-surface-2 px-4 py-3">
               <div className="h-1.5 overflow-hidden rounded-full bg-accent-soft">
-                <div className="h-full rounded-full bg-accent" style={{ width: `${(s.remaining / s.total) * 100}%` }} />
+                <div className="h-full rounded-full bg-accent" style={{ width: `${s.total ? (s.remaining / s.total) * 100 : 0}%` }} />
               </div>
               <p className="mt-2 text-xs text-ink-2">{t("left", { remaining: usdt(s.remaining), total: usdt(s.total) })}</p>
               <Countdown startsAt={pack.startsAt} endsAt={pack.endsAt} className="mt-1 block text-xs text-ink" />
@@ -92,7 +94,7 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
           </div>
 
           <div className="mt-5">
-            <PackOpener pack={pack} />
+            <PackOpener pack={pack} regionBlocked={packsBlockedIn(await headers())} />
           </div>
         </div>
       </div>
@@ -143,7 +145,7 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
       {/* 卡池 */}
       <section className="mt-12">
         <h2 className="text-xl font-bold tracking-tight">{t("poolTitle")}</h2>
-        {TIERS.filter((tier) => tier !== "N").map((tier) => (
+        {TIERS.filter((tier) => pack.pool.some((e) => e.tier === tier)).map((tier) => (
           <div key={tier} className="mt-6">
             <TierPill tier={tier} />
             <div className="mt-3 grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-6">
@@ -153,7 +155,7 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
                   const card = entryCard(e);
                   const gone = e.remaining === 0;
                   return (
-                    <div key={e.id} className={gone ? "opacity-40 grayscale" : ""}>
+                    <Link key={e.id} href={`/card/${e.id}`} className={`block ${gone ? "opacity-40 grayscale" : ""}`}>
                       <div
                         className="aspect-[55/85] overflow-hidden rounded-xl"
                         style={tier === "SSR" && !gone ? { boxShadow: `0 0 0 2px ${TIER_COLOR.SSR}, 0 0 24px ${TIER_COLOR.SSR}66` } : undefined}
@@ -166,17 +168,14 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
                       <p className="truncate text-[11px] text-ink-3">{card.version}</p>
                       <p className="mt-0.5 flex justify-between text-[11px]">
                         <span className="text-ink tabular-nums">{formatUsdt(e.valueUsdt, e.valueUsdt < 10 ? 1 : 0)}</span>
-                        <span className="text-ink-3">{gone ? t("allPulled") : `${e.remaining}/${e.total}`}</span>
+                        <span className="text-ink-3">{gone ? t("pulled") : card.serial}</span>
                       </p>
-                    </div>
+                    </Link>
                   );
                 })}
             </div>
           </div>
         ))}
-        <p className="mt-6 text-xs text-ink-3">
-          <TierPill tier="N" /> <span className="ml-1">{t("nTier", { count: usdt(s.tiers[3].remaining) })}</span>
-        </p>
       </section>
 
       <div className="mt-12 grid gap-6 lg:grid-cols-[1fr_1fr]">
@@ -196,9 +195,13 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
                         {card.group} {card.member} · {card.version}
                       </span>
                     </span>
-                    <a href={solscanUrl("account", p.asset)} target="_blank" rel="noreferrer" className="shrink-0 text-ink-3 hover:text-ink">
-                      {t("minutesAgo", { minutes: p.minutesAgo })} ↗
-                    </a>
+                    {p.tx ? (
+                      <a href={solscanUrl("tx", p.tx)} target="_blank" rel="noreferrer" className="shrink-0 text-ink-3 hover:text-ink">
+                        {t("minutesAgo", { minutes: p.minutesAgo })} ↗
+                      </a>
+                    ) : (
+                      <span className="shrink-0 text-ink-3">{t("minutesAgo", { minutes: p.minutesAgo })}</span>
+                    )}
                   </li>
                 );
               })}
@@ -213,15 +216,20 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
           <section className={SECTION}>
             <h2 className="text-base font-semibold">{t("fairTitle")}</h2>
             <ul className="mt-3 space-y-2 text-xs leading-relaxed text-ink-2">
-              {[t("fairCommit"), t("fairVrf"), t("fairNft")].map((line) => (
+              {[t("fairCommit"), t("fairDraw"), t("fairNft")].map((line) => (
                 <li key={line} className="flex gap-2">
                   <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-accent" />
                   {line}
                 </li>
               ))}
             </ul>
-            <p className="mt-4 text-[11px] text-ink-3">{t("commitment")}</p>
-            <p className="mt-1 font-mono text-[11px] break-all text-ink-2">{poolCommitment(found)}</p>
+            <p className="mt-4 text-[11px] text-ink-3">{t("seedHash")}</p>
+            <p className="mt-1 font-mono text-[11px] break-all text-ink-2">{pack.seedHash}</p>
+            <p className="mt-3 text-[11px] text-ink-3">{t("seed")}</p>
+            <p className="mt-1 font-mono text-[11px] break-all text-ink-2">{pack.seed ?? t("seedHidden")}</p>
+            <a href={`/api/packs/${pack.id}/draws`} target="_blank" rel="noreferrer" className="mt-3 inline-block text-[11px] font-semibold text-accent-ink hover:underline">
+              {t("drawLog")} ↗
+            </a>
           </section>
 
           {/* 規則 */}

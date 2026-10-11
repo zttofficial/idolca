@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -10,15 +11,19 @@ import ChainActivity from "@/components/card/ChainActivity";
 import OnSolanaBadge from "@/components/web3/OnSolanaBadge";
 import { Link } from "@/i18n/navigation";
 import { CHAIN } from "@/lib/chain";
-import { CARDS, findCard } from "@/lib/mock-cards";
+import { getDb } from "@/lib/server/db";
+import { getVaultRow, toCard } from "@/lib/server/vault-cards";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 
-export function generateStaticParams() {
-  return CARDS.map((c) => ({ id: c.id }));
+async function findCard(id: string) {
+  await connection();
+  const db = await getDb();
+  const row = db ? await getVaultRow(db, id) : null;
+  return row ? toCard(row) : null;
 }
 
 export async function generateMetadata(props: PageProps<"/[locale]/card/[id]">): Promise<Metadata> {
-  const card = findCard((await props.params).id);
+  const card = await findCard((await props.params).id);
   return card ? { title: `${card.group} ${card.member} ${card.version}` } : {};
 }
 
@@ -40,7 +45,7 @@ export default function CardPage(props: PageProps<"/[locale]/card/[id]">) {
 }
 
 async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]">["params"] }) {
-  const card = findCard((await params).id);
+  const card = await findCard((await params).id);
   if (!card) notFound();
   const t = await getTranslations("Detail");
   const tCard = await getTranslations("Card");
@@ -55,6 +60,7 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
     [tCard("version"), card.version],
     [tCard("type"), tRarity(card.rarity)],
     ...(card.grade ? [[tCard("grade"), String(card.grade)]] : []),
+    ...(card.condition ? [[tCard("condition"), card.condition]] : []),
     [tCard("intakeDate"), card.intakeDate],
     [t("custodyLocation"), card.location],
   ];

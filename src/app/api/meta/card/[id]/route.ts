@@ -1,9 +1,12 @@
-import { findCard } from "@/lib/mock-cards";
 import { SITE_URL } from "@/lib/server/chain";
+import { getDb } from "@/lib/server/db";
+import { getVaultRow, toCard } from "@/lib/server/vault-cards";
 
 // 金庫卡 NFT 的元數據 JSON（Metaplex 標準），錢包和外部市場讀它顯示名稱、圖片和屬性
 export async function GET(_request: Request, ctx: RouteContext<"/api/meta/card/[id]">) {
-  const card = findCard((await ctx.params).id);
+  const db = await getDb();
+  const row = db ? await getVaultRow(db, (await ctx.params).id) : null;
+  const card = row ? toCard(row) : null;
   if (!card) return Response.json({ error: "not_found" }, { status: 404 });
   const image = card.image?.front ? `${SITE_URL}${card.image.front}` : undefined;
   return Response.json({
@@ -18,6 +21,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/meta/card/[
       { trait_type: "Member", value: card.member },
       { trait_type: "Album", value: card.album },
       { trait_type: "Version", value: card.version },
+      ...(card.grade ? [{ trait_type: "Grade", value: String(card.grade) }] : []),
       { trait_type: "Custody", value: "vault" },
       { trait_type: "Verification", value: "authentic" },
     ],

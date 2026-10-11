@@ -32,12 +32,12 @@ const STABLES: Record<Cluster, { usdt: string; usdc: string }> = {
   },
 };
 
-// devnet 上預設用 onchain/scripts/devnet-market.mts 建的測試 USDT（託管程序登記的結算代幣）
-export const USDT_MINT = process.env.NEXT_PUBLIC_USDT_MINT || (CLUSTER === "devnet" && CHAIN.market?.usdtMint) || STABLES[CLUSTER].usdt;
+// 結算用託管程序登記的代幣：devnet 是平台自己鑄的測試 USDT，主網是 Tether 的官方 USDT
+export const USDT_MINT = process.env.NEXT_PUBLIC_USDT_MINT || CHAIN.market?.usdtMint || STABLES[CLUSTER].usdt;
 export const USDC_MINT = STABLES[CLUSTER].usdc;
 export const STABLE_DECIMALS = 6;
 
-// 金庫卡 NFT 所屬的 Metaplex Core 集合；預設用 scripts/setup-devnet.ts 建好的那個
+// 金庫卡 NFT 所屬的 Metaplex Core 集合；預設用 scripts/setup-chain.ts 建好的那個
 export const CARD_COLLECTION = process.env.NEXT_PUBLIC_CARD_COLLECTION || CHAIN.vaultCollection;
 
 // 掛單託管程序（onchain/programs/idolca-market）

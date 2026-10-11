@@ -6,7 +6,7 @@ import { Link } from "@/i18n/navigation";
 import CardArt from "./CardArt";
 import OnSolanaBadge from "@/components/web3/OnSolanaBadge";
 import UsdtPrice from "@/components/web3/UsdtPrice";
-import type { Card } from "@/lib/mock-cards";
+import type { Card } from "@/lib/cards";
 import { useChainState } from "@/lib/chain-client";
 
 // 全息卡面：滑鼠位置驅動 CSS 3D 傾斜、彩虹箔和高光（樣式見 globals.css 的 .holo-tile）

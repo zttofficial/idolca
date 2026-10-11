@@ -1,11 +1,10 @@
 import "server-only";
-import { getDb } from "./db";
+import { requireUser } from "./require-user";
 
-// 管理接口共用：請求頭的 x-admin-token 要等於 ADMIN_TOKEN。正式版換成後台帳號權限
-export async function requireAdmin(request: Request) {
-  const token = process.env.ADMIN_TOKEN;
-  if (!token || request.headers.get("x-admin-token") !== token) return { error: Response.json({ error: "forbidden" }, { status: 403 }) };
-  const db = await getDb();
-  if (!db) return { error: Response.json({ error: "not_configured" }, { status: 503 }) };
-  return { db };
+// 管理接口共用：要登入，而且是管理員（見 auth.ts 的 isAdmin）
+export async function requireAdmin() {
+  const a = await requireUser();
+  if (a.error) return { error: a.error };
+  if (!a.user.isAdmin) return { error: Response.json({ error: "forbidden" }, { status: 403 }) };
+  return { db: a.db, user: a.user };
 }

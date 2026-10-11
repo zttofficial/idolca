@@ -1,14 +1,18 @@
+"use client";
+
 import { useTranslations } from "next-intl";
 import CardArt from "@/components/market/CardArt";
 import { Link } from "@/i18n/navigation";
 import { AddCardButton } from "./AddCard";
-import { CARDS } from "@/lib/mock-cards";
+import { useVaultCards } from "@/lib/chain-client";
 
 // 首頁的收藏冊入口：不交易的粉絲也有理由來
 export default function BinderPromo() {
   const t = useTranslations("Binder");
   const tRarity = useTranslations("Rarity");
-  const fan = CARDS.slice(0, 9);
+  // 卡冊示意：放金庫裡有實拍照的卡，不足九張的格子留空卡套
+  const photos = (useVaultCards() ?? []).filter((c) => c.image).slice(0, 9);
+  const fan = Array.from({ length: 9 }, (_, i) => photos[i] ?? null);
   return (
     <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
       <div className="grid items-center gap-10 rounded-3xl border border-line bg-surface-2 p-6 sm:p-10 lg:grid-cols-[1fr_1.1fr]">
@@ -25,9 +29,9 @@ export default function BinderPromo() {
         </div>
         {/* 一頁 3×3 的卡冊 */}
         <div className="mx-auto grid w-full max-w-md grid-cols-3 gap-2 rounded-2xl bg-surface p-3 shadow-sm">
-          {fan.map((c) => (
-            <div key={c.id} className="relative aspect-[55/85] overflow-hidden rounded-lg">
-              <CardArt card={c} rarityLabel={tRarity(c.rarity)} className="block h-full w-full" />
+          {fan.map((c, i) => (
+            <div key={c?.id ?? i} className="relative aspect-[55/85] overflow-hidden rounded-lg bg-surface-2">
+              {c && <CardArt card={c} rarityLabel={tRarity(c.rarity)} className="block h-full w-full" />}
               <span className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/25 via-transparent to-transparent" />
             </div>
           ))}

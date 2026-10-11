@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import RedeemDialog from "./RedeemDialog";
+import type { ShippingAddress } from "@/lib/shipping";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/auth/AuthContext";
 import UsdtPrice from "@/components/web3/UsdtPrice";
 import { formatUsdt } from "@/lib/fx";
-import type { Card } from "@/lib/mock-cards";
+import type { Card } from "@/lib/cards";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 import { useChainState, vaultAction, type VaultAction, type VaultCardState } from "@/lib/chain-client";
 
@@ -16,12 +18,15 @@ const SECONDARY =
 // 價格只在鏈上真的有掛單時顯示，是託管程序裡的掛單價
 export default function BuyPanel({ card }: { card: Card }) {
   const t = useTranslations("Detail");
+  const tStatus = useTranslations("Status");
   const chain = useChainState();
   const live = chain?.ready ? chain.cards[card.id] : undefined;
 
   return (
     <div className="rounded-2xl border border-line bg-surface p-5">
-      {!chain ? (
+      {card.status === "redeemed" ? (
+        <p className="text-xl font-semibold text-ink-2">{tStatus("redeemed")}</p>
+      ) : !chain ? (
         <div className="h-9 w-40 animate-pulse rounded-lg bg-surface-2" />
       ) : live?.listing ? (
         <UsdtPrice amount={live.listing.priceUsdt} className="text-3xl font-bold tabular-nums" />
@@ -29,7 +34,7 @@ export default function BuyPanel({ card }: { card: Card }) {
         <p className="text-xl font-semibold text-ink-2">{t("notForSale")}</p>
       )}
 
-      <div className="mt-5">{chain?.ready && live ? <ChainActions card={card} live={live} /> : <StaticActions card={card} />}</div>
+      <div className="mt-5">{card.status !== "redeemed" && chain?.ready && live ? <ChainActions card={card} live={live} /> : <StaticActions card={card} />}</div>
 
       <p className="mt-4 text-xs leading-relaxed text-ink-3">{t("settle")}</p>
       <ShareRow cardId={card.id} />
@@ -42,7 +47,9 @@ function StaticActions({ card }: { card: Card }) {
   const t = useTranslations("Detail");
   return (
     <p className="rounded-xl bg-surface-2 px-4 py-3 text-center text-sm text-ink-2">
-      {t(card.status === "redeeming" ? "redeemingNote" : card.status === "listed" ? "comingSoon" : "notListed")}
+      {card.status === "redeemed"
+        ? t("redeemedOn", { date: card.redeemedAt!.slice(0, 10) })
+        : t(card.status === "redeeming" ? "redeemingNote" : card.status === "listed" ? "comingSoon" : "notListed")}
     </p>
   );
 }
@@ -57,15 +64,17 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<string>();
   const [done, setDone] = useState<{ action: VaultAction; signature: string }>();
-  const [price, setPrice] = useState(String(card.priceUsdt));
+  const [price, setPrice] = useState(card.priceUsdt ? String(card.priceUsdt) : "");
+  const [redeeming, setRedeeming] = useState(false);
 
-  const run = async (action: VaultAction, priceUsdt?: number) => {
+  const run = async (action: VaultAction, priceUsdt?: number, address?: ShippingAddress) => {
     if (!me) return;
     setBusy(action);
     setError(undefined);
     setDone(undefined);
     try {
-      setDone({ action, signature: await vaultAction(action, card.id, me, priceUsdt) });
+      setDone({ action, signature: await vaultAction(action, card.id, me, priceUsdt, address) });
+      setRedeeming(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "network");
     } finally {
@@ -118,9 +127,10 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
             {busy === "list" ? t("confirmInWallet") : t("listForSale")}
           </button>
         </div>
-        <button className={SECONDARY + " w-full"} disabled={busy !== null} onClick={() => window.confirm(t("redeemConfirm")) && run("redeem")}>
-          {busy === "redeem" ? t("confirmInWallet") : t("requestRedeem")}
+        <button className={SECONDARY + " w-full"} disabled={busy !== null} onClick={() => setRedeeming(true)}>
+          {t("requestRedeem")}
         </button>
+        {redeeming && <RedeemDialog busy={busy === "redeem"} onSubmit={(address) => run("redeem", undefined, address)} onClose={() => setRedeeming(false)} />}
       </div>
     );
   } else body = note("notListed");

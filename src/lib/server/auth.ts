@@ -52,18 +52,33 @@ export async function endSession(db: Db) {
   jar.delete(COOKIE);
 }
 
-export type PublicUser = { id: string; email: string | null; displayName: string; walletAddress: string | null };
+export type PublicUser = { id: string; email: string | null; displayName: string; walletAddress: string | null; isAdmin: boolean; ageConfirmed: boolean };
+
+// 管理員：資料庫裡 role 是 admin 的帳號，或錢包在 ADMIN_WALLETS（逗號分隔）裡的帳號。
+// 環境變數只認錢包，因為錢包登入要簽名證明持有；郵箱沒有驗證，不能靠郵箱授權
+const adminWallets = () => new Set((process.env.ADMIN_WALLETS ?? "").split(",").map((s) => s.trim()).filter(Boolean));
+export const isAdmin = (u: { role: string; walletAddress: string | null }) => u.role === "admin" || (u.walletAddress !== null && adminWallets().has(u.walletAddress));
+
+// 回給前端的帳號資料
+export const publicUser = (u: typeof users.$inferSelect): PublicUser => ({
+  id: u.id,
+  email: u.email,
+  displayName: u.displayName,
+  walletAddress: u.walletAddress,
+  isAdmin: isAdmin(u),
+  ageConfirmed: u.ageConfirmedAt !== null,
+});
 
 export async function currentUser(db: Db): Promise<PublicUser | null> {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   const rows = await db
-    .select({ id: users.id, email: users.email, displayName: users.displayName, walletAddress: users.walletAddress })
+    .select({ user: users })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
     .where(and(eq(sessions.id, sha256(token)), gt(sessions.expiresAt, new Date())))
     .limit(1);
-  return rows[0] ?? null;
+  return rows[0] ? publicUser(rows[0].user) : null;
 }
 
 export const newUserId = () => randomUUID();

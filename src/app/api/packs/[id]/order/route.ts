@@ -1,12 +1,15 @@
 import { fail, requireWalletUser } from "@/lib/server/require-user";
 import { createPackOrder } from "@/lib/server/packs";
 import { marketReady } from "@/lib/server/vault-chain";
+import { packsBlockedIn } from "@/lib/server/region";
 
 // 開卡包第一步：建訂單、回傳要錢包簽名的付款交易
 export async function POST(request: Request, ctx: RouteContext<"/api/packs/[id]/order">) {
   const a = await requireWalletUser();
   if ("error" in a) return a.error;
   if (!marketReady()) return fail("not_configured", 503);
+  if (packsBlockedIn(request)) return fail("region_blocked", 451);
+  if (!a.user.ageConfirmed) return fail("age_required", 403);
   const body = (await request.json().catch(() => ({}))) as { qty?: number };
   const result = await createPackOrder(a.db, a.user.id, a.wallet, (await ctx.params).id, Number(body.qty));
   if ("error" in result) return fail(result.error ?? "invalid_request", 409);

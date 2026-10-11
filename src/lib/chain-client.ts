@@ -1,7 +1,9 @@
 "use client";
 
 // 瀏覽器端的鏈上狀態：金庫卡的即時持有人和掛單、錢包餘額，以及「伺服器組交易 → 錢包簽名 → 回報確認」的共用流程
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import type { Card } from "./cards";
+import { isTemplateOf, type Template } from "./catalog";
 import { signAndSend } from "./solana/wallets";
 
 export type VaultCardState = {
@@ -45,6 +47,41 @@ export const useChainState = () =>
     () => null,
   );
 
+// 金庫裡的卡（資料庫的實物資料），整站共用一份；入庫或提貨後呼叫 refreshVaultCards 重讀
+let vaultCards: Card[] | null = null;
+let vaultLoading: Promise<void> | null = null;
+const vaultListeners = new Set<() => void>();
+export function refreshVaultCards() {
+  vaultLoading ??= fetch("/api/vault/cards")
+    .then((r) => (r.ok ? r.json() : { cards: [] }))
+    .then((d: { cards: Card[] }) => {
+      vaultCards = d.cards;
+      vaultListeners.forEach((l) => l());
+    })
+    .catch(() => {})
+    .finally(() => {
+      vaultLoading = null;
+    });
+  return vaultLoading;
+}
+function subscribeVault(l: () => void) {
+  vaultListeners.add(l);
+  if (!vaultCards) refreshVaultCards();
+  return () => vaultListeners.delete(l);
+}
+
+// 金庫卡加上鏈上即時狀態（持有人、掛單價、提貨中）。預設只有還在金庫裡的；includeRedeemed 連已提貨銷毀的也給。
+// 還沒讀到時是 null
+export function useVaultCards(includeRedeemed = false): Card[] | null {
+  const cards = useSyncExternalStore(
+    subscribeVault,
+    () => vaultCards,
+    () => null,
+  );
+  const chain = useChainState();
+  return useMemo(() => (cards ? withLive(cards, chain).filter((c) => includeRedeemed || c.status !== "redeemed") : null), [cards, chain, includeRedeemed]);
+}
+
 export class ChainError extends Error {}
 
 async function postJson<T>(url: string, body?: unknown): Promise<T> {
@@ -57,10 +94,11 @@ async function postJson<T>(url: string, body?: unknown): Promise<T> {
 export type VaultAction = "buy" | "list" | "cancel" | "redeem";
 
 // 金庫卡的動作：伺服器組交易 → 錢包簽名送出 → 伺服器等確認、刷新狀態。回傳交易簽名
-export async function vaultAction(action: VaultAction, cardId: string, wallet: string, priceUsdt?: number) {
-  const { tx } = await postJson<{ tx: string }>("/api/chain/vault/tx", { action, cardId, priceUsdt });
+// 提貨（redeem）要帶收件地址
+export async function vaultAction(action: VaultAction, cardId: string, wallet: string, priceUsdt?: number, address?: unknown) {
+  const { tx } = await postJson<{ tx: string }>("/api/chain/vault/tx", { action, cardId, priceUsdt, address });
   const signature = await signAndSend(tx, wallet);
-  await postJson("/api/chain/vault/confirm", { action, cardId, signature });
+  await postJson("/api/chain/vault/confirm", { action, cardId, signature, address });
   await refreshChainState();
   return signature;
 }
@@ -90,17 +128,17 @@ export function useBalance(wallet: string | null | undefined) {
   return { balance: wallet ? balance : null, refresh };
 }
 
-type CardLike = { id: string; priceUsdt: number; owner: string; status: "vaulted" | "listed" | "redeeming" };
+type CardLike = { id: string; priceUsdt: number; owner: string; status: "vaulted" | "listed" | "redeeming" | "redeemed" };
 
-// 把鏈上即時狀態疊到卡片資料上：持有人、掛單價、狀態；已提貨銷毀的卡不再出現在金庫和市場
+// 把鏈上即時狀態疊到卡片資料上：持有人、掛單價、狀態；鏈上已銷毀的標成已提貨
 export function withLive<T extends CardLike>(cards: T[], chain: ChainState | null): T[] {
   if (!chain?.ready) return cards;
-  return cards.flatMap((c) => {
+  return cards.map((c) => {
     const s = chain.cards[c.id];
-    if (!s) return [c];
-    if (s.burned) return [];
+    if (!s || c.status === "redeemed") return c;
+    if (s.burned) return { ...c, owner: "", status: "redeemed" };
     const status = s.listing ? "listed" : s.redeeming ? "redeeming" : "vaulted";
-    return [{ ...c, owner: s.listing?.seller ?? s.owner, status, priceUsdt: s.listing?.priceUsdt ?? c.priceUsdt }];
+    return { ...c, owner: s.listing?.seller ?? s.owner, status, priceUsdt: s.listing?.priceUsdt ?? c.priceUsdt };
   });
 }
 
@@ -127,18 +165,18 @@ const useListings = () =>
     () => null,
   );
 
-export type TemplateMarket = { forSale: number; fromUsdt: number | null };
+// vaultCardId：最便宜的那張在售金庫卡，沒有金庫卡在售時為空
+export type TemplateMarket = { forSale: number; fromUsdt: number | null; vaultCardId: string | null };
 
-// 一個卡款的真實在售情況：金庫卡（鏈上掛單）加上對得上這個卡款的自由刊登
+// 一個卡款的真實在售情況：這個卡款的金庫卡（鏈上掛單）加上對得上的自由刊登
 export function useTemplateMarket() {
-  const chain = useChainState();
+  const vault = useVaultCards();
   const free = useListings();
-  return (template: { id: string; listingId?: string }): TemplateMarket | null => {
-    if (!chain || !free) return null;
-    const prices: number[] = [];
-    const vault = template.listingId ? chain.cards[template.listingId]?.listing : null;
-    if (vault) prices.push(vault.priceUsdt);
+  return (template: Template): TemplateMarket | null => {
+    if (!vault || !free) return null;
+    const listed = vault.filter((c) => c.status === "listed" && isTemplateOf(c, template)).sort((a, b) => a.priceUsdt - b.priceUsdt);
+    const prices = listed.map((c) => c.priceUsdt);
     for (const l of free) if (l.templateId === template.id && l.priceUsdt !== null) prices.push(l.priceUsdt);
-    return { forSale: prices.length, fromUsdt: prices.length ? Math.min(...prices) : null };
+    return { forSale: prices.length, fromUsdt: prices.length ? Math.min(...prices) : null, vaultCardId: listed[0]?.id ?? null };
   };
 }

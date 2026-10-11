@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "./AuthContext";
 import { Link } from "@/i18n/navigation";
-import { shortAddress, solscanUrl } from "@/lib/solana/config";
+import { CLUSTER, shortAddress, solscanUrl } from "@/lib/solana/config";
 import { formatUsdt } from "@/lib/fx";
 import { openAddCard } from "@/components/binder/AddCard";
 import { ChainError, claimFaucet, useBalance } from "@/lib/chain-client";
@@ -72,6 +72,11 @@ export default function AccountButton() {
             >
               {t("addCard")}
             </button>
+            {user.isAdmin && (
+              <Link href="/admin" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 font-medium hover:bg-surface-2">
+                {t("admin")}
+              </Link>
+            )}
           </div>
 
           {user.walletAddress ? <WalletBox address={user.walletAddress} /> : <LinkWalletBox />}
@@ -132,17 +137,20 @@ function WalletBox({ address }: { address: string }) {
       </div>
       <dl className="mt-2 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-lg bg-surface px-2.5 py-1.5">
-          <dt className="text-ink-3">{t("testUsdt")}</dt>
+          <dt className="text-ink-3">{CLUSTER === "devnet" ? t("testUsdt") : "USDT"}</dt>
           <dd className="font-semibold tabular-nums">{balance ? formatUsdt(balance.usdt) : "…"}</dd>
         </div>
         <div className="rounded-lg bg-surface px-2.5 py-1.5">
-          <dt className="text-ink-3">devnet SOL</dt>
+          <dt className="text-ink-3">{CLUSTER === "devnet" ? "devnet SOL" : "SOL"}</dt>
           <dd className="font-semibold tabular-nums">{balance ? balance.sol.toFixed(3) : "…"}</dd>
         </div>
       </dl>
-      <button onClick={claim} disabled={faucet === "busy"} className="mt-2 w-full rounded-lg border border-line bg-surface py-1.5 text-xs font-semibold hover:bg-surface-3 disabled:opacity-50">
-        {faucet === "busy" ? t("faucetBusy") : t("faucet")}
-      </button>
+      {/* 測試幣只在 devnet 有 */}
+      {CLUSTER === "devnet" && (
+        <button onClick={claim} disabled={faucet === "busy"} className="mt-2 w-full rounded-lg border border-line bg-surface py-1.5 text-xs font-semibold hover:bg-surface-3 disabled:opacity-50">
+          {faucet === "busy" ? t("faucetBusy") : t("faucet")}
+        </button>
+      )}
       {faucet !== "idle" && faucet !== "busy" && <p className={`mt-1.5 text-[11px] ${faucet === "done" ? "text-up" : "text-down"}`}>{t(`faucet_${faucet}`)}</p>}
     </div>
   );
