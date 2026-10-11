@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Link } from "@/i18n/navigation";
@@ -12,7 +13,7 @@ import { listVaultCards } from "@/lib/server/vault-cards";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Meta");
-  return { title: t("creditsTitle") };
+  return pageMetadata({ locale: await getLocale(), path: "/credits", title: t("creditsTitle") });
 }
 
 // CC BY 要求的署名：作者、授權、原圖連結、是否修改。只列金庫卡實際用到的照片

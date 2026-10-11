@@ -27,6 +27,7 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
   const t = useTranslations("Packs");
   const { phase } = usePackPhase(pack.startsAt, pack.endsAt);
   const [qty, setQty] = useState<(typeof QUANTITIES)[number]>(1);
+  const quantities = QUANTITIES.filter((q) => q <= pack.maxQty);
   const [stage, setStage] = useState<Stage>("closed");
   const chain = useChainState();
   const live = Boolean(chain?.ready);
@@ -124,35 +125,37 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
     ? t("paying")
     : regionBlocked
       ? t("regionBlocked")
-    : !live
-      ? t("unavailable")
-      : !user
-      ? t("loginToOpen")
-      : phase === "upcoming"
-      ? t("notStarted")
-      : phase === "ended"
-        ? t("ended")
-        : left < qty
-          ? t("soldOut")
-          : t("openN", { count: qty, total: round2(qty * pack.priceUsdt) });
+      : !live
+        ? t("unavailable")
+        : !user
+          ? t("loginToOpen")
+          : phase === "upcoming"
+            ? t("notStarted")
+            : phase === "ended"
+              ? t("ended")
+              : left < qty
+                ? t("soldOut")
+                : t("openN", { count: qty, total: round2(qty * pack.priceUsdt) });
 
   return (
     <div>
-      <div className="flex gap-2" role="radiogroup" aria-label={t("qtyLabel")}>
-        {QUANTITIES.map((q) => (
-          <button
-            key={q}
-            role="radio"
-            aria-checked={qty === q}
-            onClick={() => setQty(q)}
-            className={`flex-1 rounded-xl border py-2.5 text-sm font-semibold transition ${
-              qty === q ? "border-line-strong bg-surface-3" : "border-line bg-surface-2 text-ink-2 hover:text-ink"
-            }`}
-          >
-            ×{q}
-          </button>
-        ))}
-      </div>
+      {quantities.length > 1 && (
+        <div className="flex gap-2" role="radiogroup" aria-label={t("qtyLabel")}>
+          {quantities.map((q) => (
+            <button
+              key={q}
+              role="radio"
+              aria-checked={qty === q}
+              onClick={() => setQty(q)}
+              className={`flex-1 rounded-xl border py-2.5 text-sm font-semibold transition ${
+                qty === q ? "border-line-strong bg-surface-3" : "border-line bg-surface-2 text-ink-2 hover:text-ink"
+              }`}
+            >
+              ×{q}
+            </button>
+          ))}
+        </div>
+      )}
       <button
         onClick={open}
         disabled={!canOpen || paying || (live && Boolean(user) && !wallet)}
@@ -173,9 +176,7 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
         </div>
       )}
       {payError && <p className="mt-2 text-center text-xs text-down">{t.has(`error_${payError}`) ? t(`error_${payError}`) : t("error_generic")}</p>}
-      <p className="mt-3 rounded-lg border border-notice-line bg-notice-bg px-3 py-2 text-[11px] leading-relaxed text-notice-ink">
-        {t("chainNote")}
-      </p>
+      <p className="mt-3 rounded-lg border border-notice-line bg-notice-bg px-3 py-2 text-[11px] leading-relaxed text-notice-ink">{t("chainNote")}</p>
 
       {stage !== "closed" && (
         <OpeningModal
@@ -287,15 +288,7 @@ function OpeningModal({
           <>
             <div className={`grid gap-3 sm:gap-4 ${pulls.length === 1 ? "" : "grid-cols-3 sm:grid-cols-5"}`}>
               {pulls.map((entry, i) => (
-                <RevealCard
-                  key={i}
-                  entry={entry}
-                  index={i}
-                  flipped={flipped[i]}
-                  onFlip={() => onFlip(i)}
-                  className={cardWidth}
-                  flipLabel={t("tapToFlip")}
-                />
+                <RevealCard key={i} entry={entry} index={i} flipped={flipped[i]} onFlip={() => onFlip(i)} className={cardWidth} flipLabel={t("tapToFlip")} />
               ))}
             </div>
             <div className="mt-8 flex gap-3">
@@ -304,11 +297,7 @@ function OpeningModal({
                   {t("seeResults")}
                 </button>
               ) : (
-                <button
-                  ref={primary}
-                  onClick={onRevealAll}
-                  className="rounded-full border border-line bg-surface px-6 py-2.5 text-sm font-semibold hover:bg-surface-3"
-                >
+                <button ref={primary} onClick={onRevealAll} className="rounded-full border border-line bg-surface px-6 py-2.5 text-sm font-semibold hover:bg-surface-3">
                   {t("revealAll")}
                 </button>
               )}
@@ -361,7 +350,7 @@ function OpeningModal({
                       {nft && (
                         <p className="mt-0.5 flex gap-3 text-[11px] text-ink-3">
                           <a href={solscanUrl("account", nft.asset)} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
-                            NFT ↗
+                            {t("collectible")} ↗
                           </a>
                           {nft.tx && (
                             <a href={solscanUrl("tx", nft.tx)} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
@@ -377,15 +366,9 @@ function OpeningModal({
                       )}
                     </div>
                     {choice ? (
-                      <span className="text-xs text-up">
-                        {choice === "kept" ? t("kept") : t("soldBack")}
-                      </span>
+                      <span className="text-xs text-up">{choice === "kept" ? t("kept") : t("soldBack")}</span>
                     ) : (
-                      <ChoiceButtons
-                        buybackLabel={t("buyback", { value: buyback })}
-                        onKeep={() => onChoose(i, "kept")}
-                        onSell={() => onSellBack(i)}
-                      />
+                      <ChoiceButtons buybackLabel={t("buyback", { value: buyback })} onKeep={() => onChoose(i, "kept")} onSell={() => onSellBack(i)} />
                     )}
                   </li>
                 );

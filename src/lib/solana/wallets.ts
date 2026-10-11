@@ -1,6 +1,6 @@
 "use client";
 
-// 瀏覽器錢包：用 Wallet Standard 偵測 Phantom、Solflare、Backpack 等已安裝的錢包，不經過第三方登入服務。
+// 瀏覽器錢包：用 Wallet Standard 偵測 MetaMask、Phantom、Solflare、Backpack 等已安裝、支援 Solana 的錢包，不經過第三方登入服務。
 // 登入、綁定錢包都是簽一段文字；買賣則由伺服器組好交易，錢包簽名送出
 import { useSyncExternalStore } from "react";
 import { getWallets } from "@wallet-standard/app";

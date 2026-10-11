@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/seo";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -23,8 +24,12 @@ export function generateStaticParams() {
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Meta");
   return {
+    metadataBase: new URL(SITE_URL),
     title: { default: "Idolca", template: "%s · Idolca" },
     description: t("description"),
+    applicationName: "Idolca",
+    openGraph: { siteName: "Idolca", type: "website" },
+    twitter: { card: "summary_large_image" },
   };
 }
 

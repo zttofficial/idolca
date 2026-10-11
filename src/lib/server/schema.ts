@@ -149,6 +149,8 @@ export const packs = pgTable("packs", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   priceCents: integer("price_cents").notNull(),
+  // 一筆訂單最多開幾包（1 就是只能單抽）
+  maxQty: integer("max_qty").notNull().default(10),
   startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
   endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
   // 包裝的兩個顏色，JSON 陣列
@@ -428,6 +430,7 @@ export const BOOTSTRAP_SQL = [
     seed_hash text NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now()
   )`,
+  `ALTER TABLE packs ADD COLUMN IF NOT EXISTS max_qty integer NOT NULL DEFAULT 10`,
   `CREATE TABLE IF NOT EXISTS pack_pulls (
     id text PRIMARY KEY,
     order_id text NOT NULL,

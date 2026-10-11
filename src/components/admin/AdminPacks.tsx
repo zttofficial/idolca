@@ -70,13 +70,13 @@ const label = "block text-xs text-ink-3";
 
 function NewPack({ onCreate, busy }: { onCreate: (body: unknown) => Promise<void>; busy: boolean }) {
   const t = useTranslations("Admin");
-  const [f, setF] = useState({ id: "", name: "", priceUsdt: "", startsAt: "", endsAt: "", c1: "#ff6f93", c2: "#e8285a" });
+  const [f, setF] = useState({ id: "", name: "", priceUsdt: "", maxQty: "1", startsAt: "", endsAt: "", c1: "#ff6f93", c2: "#e8285a" });
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value }));
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        onCreate({ id: f.id, name: f.name, priceUsdt: Number(f.priceUsdt), startsAt: new Date(f.startsAt).toISOString(), endsAt: new Date(f.endsAt).toISOString(), palette: [f.c1, f.c2] });
+        onCreate({ id: f.id, name: f.name, priceUsdt: Number(f.priceUsdt), maxQty: Number(f.maxQty), startsAt: new Date(f.startsAt).toISOString(), endsAt: new Date(f.endsAt).toISOString(), palette: [f.c1, f.c2] });
       }}
       className="mt-4 grid gap-3 rounded-2xl border border-line bg-surface p-5 sm:grid-cols-3"
     >
@@ -91,6 +91,16 @@ function NewPack({ onCreate, busy }: { onCreate: (body: unknown) => Promise<void
       <label className={label}>
         {t("packPrice")}
         <input required type="number" min="0.01" step="0.01" value={f.priceUsdt} onChange={set("priceUsdt")} className={field} />
+      </label>
+      <label className={label}>
+        {t("packMaxQty")}
+        <select value={f.maxQty} onChange={set("maxQty")} className={field}>
+          {["1", "5", "10"].map((q) => (
+            <option key={q} value={q}>
+              {q === "1" ? t("singlePull") : `×${q}`}
+            </option>
+          ))}
+        </select>
       </label>
       <label className={label}>
         {t("packStarts")}

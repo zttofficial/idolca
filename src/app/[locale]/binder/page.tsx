@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { pageMetadata } from "@/lib/seo";
+import { getLocale, getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import BinderView from "@/components/binder/BinderView";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Meta");
-  return { title: t("binderTitle"), description: t("binderDescription") };
+  return pageMetadata({ locale: await getLocale(), path: "/binder", title: t("binderTitle"), description: t("binderDescription"), noindex: true });
 }
 
 export default async function BinderPage() {

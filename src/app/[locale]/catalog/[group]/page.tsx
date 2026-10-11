@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import CatalogGrid from "@/components/binder/CatalogGrid";
@@ -15,7 +16,9 @@ export function generateStaticParams() {
 
 export async function generateMetadata(props: PageProps<"/[locale]/catalog/[group]">): Promise<Metadata> {
   const g = findGroup((await props.params).group);
-  return g ? { title: g.name } : {};
+  if (!g) return {};
+  const t = await getTranslations("Meta");
+  return pageMetadata({ locale: await getLocale(), path: `/catalog/${g.id}`, title: t("groupTitle", { group: g.name }), description: t("groupDescription", { group: g.name }) });
 }
 
 // 外框靜態，讀取網址參數的內容放進 Suspense

@@ -8,6 +8,7 @@ import { listPacks, getPackRow, sha256 } from "@/lib/server/pack-pool";
 import { vaultState } from "@/lib/server/vault-chain";
 import { toCard } from "@/lib/server/vault-cards";
 import { CHAIN } from "@/lib/chain";
+import { MAX_QTY } from "@/lib/packs";
 
 // 卡包管理：所有卡包（含卡池），以及可以放進卡池的卡——平台自有（沒有寄存人）、還在平台錢包、沒掛單、沒在提貨、不在別的卡包
 export async function GET() {
@@ -38,7 +39,7 @@ const COLOR = /^#[0-9a-fA-F]{6}$/;
 export async function POST(request: Request) {
   const a = await requireAdmin();
   if (a.error) return a.error;
-  const body = (await request.json().catch(() => ({}))) as { id?: string; name?: string; priceUsdt?: number; startsAt?: string; endsAt?: string; palette?: string[] };
+  const body = (await request.json().catch(() => ({}))) as { id?: string; name?: string; priceUsdt?: number; maxQty?: number; startsAt?: string; endsAt?: string; palette?: string[] };
   const id = body.id?.trim().toLowerCase() ?? "";
   const name = body.name?.trim().slice(0, 40) ?? "";
   const price = Number(body.priceUsdt);
@@ -49,8 +50,10 @@ export async function POST(request: Request) {
   if (!Number.isFinite(price) || price <= 0 || price > 10_000) return fail("invalid_price");
   if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || endsAt <= startsAt) return fail("invalid_dates");
   if (!palette) return fail("invalid_palette");
+  const maxQty = body.maxQty === undefined ? MAX_QTY : Number(body.maxQty);
+  if (!Number.isInteger(maxQty) || maxQty < 1 || maxQty > MAX_QTY) return fail("invalid_qty");
   if (await getPackRow(a.db, id)) return fail("pack_exists", 409);
   const seed = randomBytes(32).toString("hex");
-  await a.db.insert(packs).values({ id, name, priceCents: Math.round(price * 100), startsAt, endsAt, palette: JSON.stringify(palette), seed, seedHash: sha256(seed) });
+  await a.db.insert(packs).values({ id, name, priceCents: Math.round(price * 100), maxQty, startsAt, endsAt, palette: JSON.stringify(palette), seed, seedHash: sha256(seed) });
   return Response.json({ ok: true });
 }

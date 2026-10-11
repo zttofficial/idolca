@@ -209,7 +209,7 @@ export default function AccountModal({ configured, onClose, onSignedIn }: { conf
   );
 }
 
-// 已安裝的瀏覽器錢包列在這裡；一個都沒有時提示安裝 Phantom
+// 已安裝的瀏覽器錢包列在這裡（MetaMask、Phantom、Solflare、Backpack 等支援 Solana 的都會出現）；一個都沒有時連到 Solana 官方的錢包列表
 function WalletLogin({ configured, onSignedIn }: { configured: boolean; onSignedIn: (user: AuthUser) => void }) {
   const t = useTranslations("Auth");
   const wallets = useWallets();
@@ -250,8 +250,8 @@ function WalletLogin({ configured, onSignedIn }: { configured: boolean; onSigned
       ) : (
         <p className="mt-3 rounded-xl bg-surface-2 px-3.5 py-2.5 text-xs text-ink-2">
           {t("noWallet")}{" "}
-          <a href="https://phantom.com/download" target="_blank" rel="noreferrer" className="font-semibold text-accent-ink hover:underline">
-            {t("installPhantom")}
+          <a href="https://solana.com/solana-wallets" target="_blank" rel="noreferrer" className="font-semibold text-accent-ink hover:underline">
+            {t("getWallet")}
           </a>
         </p>
       )}

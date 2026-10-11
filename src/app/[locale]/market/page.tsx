@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { Suspense } from "react";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import MarketBrowser from "@/components/market/MarketBrowser";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("Market");
-  return { title: t("pageTitle") };
+  const t = await getTranslations("Meta");
+  return pageMetadata({ locale: await getLocale(), path: "/market", title: t("marketTitle"), description: t("marketDescription") });
 }
 
 // 篩選狀態在網址查詢字串裡，讀取它的元件放進 Suspense

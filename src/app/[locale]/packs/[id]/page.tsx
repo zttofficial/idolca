@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import CardArt from "@/components/market/CardArt";
@@ -26,7 +27,10 @@ async function findPack(id: string) {
 
 export async function generateMetadata(props: PageProps<"/[locale]/packs/[id]">): Promise<Metadata> {
   const pack = await findPack((await props.params).id);
-  return pack ? { title: `${pack.name} · Mystery Pack` } : {};
+  if (!pack) return {};
+  const t = await getTranslations("Meta");
+  const { topValue } = packStats(pack);
+  return pageMetadata({ locale: await getLocale(), path: `/packs/${pack.id}`, title: t("packTitle", { name: pack.name }), description: t("packDescription", { price: pack.priceUsdt, top: topValue }) });
 }
 
 const SECTION = "rounded-2xl border border-line bg-surface p-5";

@@ -197,8 +197,8 @@ function LinkWalletBox() {
       ) : (
         <p className="mt-2 text-[11px] text-ink-2">
           {t("noWallet")}{" "}
-          <a href="https://phantom.com/download" target="_blank" rel="noreferrer" className="font-semibold text-accent-ink hover:underline">
-            {t("installPhantom")}
+          <a href="https://solana.com/solana-wallets" target="_blank" rel="noreferrer" className="font-semibold text-accent-ink hover:underline">
+            {t("getWallet")}
           </a>
         </p>
       )}

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import PhotoGallery from "@/components/market/PhotoGallery";
@@ -19,7 +20,9 @@ export async function generateMetadata(props: PageProps<"/[locale]/listing/[id]"
   await connection();
   const db = await getDb();
   const listing = db ? await getListing(db, (await props.params).id) : null;
-  return listing ? { title: itemTitle(listing) } : {};
+  if (!listing) return {};
+  const t = await getTranslations("Meta");
+  return pageMetadata({ locale: await getLocale(), path: `/listing/${listing.id}`, title: itemTitle(listing), description: t("listingDescription", { title: itemTitle(listing) }), image: listing.photo });
 }
 
 const SECTION = "rounded-2xl border border-line bg-surface p-5";

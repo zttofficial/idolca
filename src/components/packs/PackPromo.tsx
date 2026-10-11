@@ -13,7 +13,8 @@ export default async function PackPromo() {
   const db = await getDb();
   const pack = db ? await featuredPack(db) : null;
   if (!pack) return null;
-  const { topValue } = packStats(pack);
+  const { topValue, remaining } = packStats(pack);
+  const soldOut = remaining === 0;
   return (
     <section className="mx-auto max-w-7xl px-4 pt-16 sm:px-6">
       <Link
@@ -22,12 +23,15 @@ export default async function PackPromo() {
       >
         <PackArt pack={pack} className="w-24 shrink-0 rotate-[-6deg] transition group-hover:rotate-0 sm:w-32" />
         <div>
-          <p className="text-xs font-semibold tracking-[0.2em] text-accent-ink">{t("title").toUpperCase()}</p>
+          <p className="text-xs font-semibold tracking-[0.2em] text-accent-ink">
+            {pack.name.toUpperCase()}
+            {soldOut && <span className="ml-2 rounded-full bg-surface px-2 py-0.5 tracking-normal text-ink-2">{t("soldOut")}</span>}
+          </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
             {t("promoTitle", { price: pack.priceUsdt, top: topValue.toLocaleString("en-US") })}
           </h2>
           <p className="mt-2 max-w-xl text-sm text-ink-2">{t("promoBody")}</p>
-          <span className="btn-primary mt-5 inline-block rounded-full px-5 py-2 text-sm font-semibold">{t("promoCta")}</span>
+          <span className="btn-primary mt-5 inline-block rounded-full px-5 py-2 text-sm font-semibold">{t(soldOut ? "promoCtaSoldOut" : "promoCta")}</span>
         </div>
       </Link>
     </section>

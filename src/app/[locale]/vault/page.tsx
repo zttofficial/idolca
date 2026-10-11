@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { pageMetadata } from "@/lib/seo";
+import { getLocale, getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import VaultTable, { VaultSummary } from "@/components/vault/VaultTable";
@@ -7,7 +8,7 @@ import { CARD_COLLECTION, shortAddress, solscanUrl } from "@/lib/solana/config";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Meta");
-  return { title: t("vaultTitle"), description: t("vaultDescription") };
+  return pageMetadata({ locale: await getLocale(), path: "/vault", title: t("vaultTitle"), description: t("vaultDescription") });
 }
 
 export default async function VaultPage() {

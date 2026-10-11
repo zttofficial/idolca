@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { getLocale } from "next-intl/server";
 import LegalPage from "@/components/legal/LegalPage";
 import { BUYBACK_RATE } from "@/lib/packs";
 import { ADDRESS_RETENTION_DAYS, ESCROW_CONFIRM_DAYS, ESCROW_SHIP_DAYS, FEE_BPS } from "@/lib/policy";
 import { REDEEM_FEE_USDT } from "@/lib/shipping";
 
-export const metadata: Metadata = { title: "Terms of Service" };
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({ locale: await getLocale(), path: "/terms", title: "Terms of Service" });
+}
 
 const pct = (bps: number) => `${bps / 100}%`;
 

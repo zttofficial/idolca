@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { pageMetadata } from "@/lib/seo";
+import { getLocale, getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { CIRCLE_CHART_URL, weeklyAlbumTop10 } from "@/lib/server/circle-chart";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("Charts");
-  return { title: t("title") };
+  const t = await getTranslations("Meta");
+  return pageMetadata({ locale: await getLocale(), path: "/charts", title: t("chartsTitle"), description: t("chartsDescription") });
 }
 
 // Circle Chart 週專輯榜前 10 名，看板展示。數據每幾小時從 Circle Chart 讀一次

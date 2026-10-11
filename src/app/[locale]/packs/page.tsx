@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import PackArt from "@/components/packs/PackArt";
@@ -13,7 +14,7 @@ import { listPacks } from "@/lib/server/pack-pool";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Meta");
-  return { title: t("packsTitle"), description: t("packsDescription") };
+  return pageMetadata({ locale: await getLocale(), path: "/packs", title: t("packsTitle"), description: t("packsDescription") });
 }
 
 const STEPS = ["how1", "how2", "how3"] as const;
@@ -70,7 +71,10 @@ async function PackList() {
           >
             <PackArt pack={pack} className="w-32 shrink-0 transition group-hover:-rotate-2 sm:w-40" />
             <div className="flex min-w-0 flex-1 flex-col">
-              <h2 className="text-xl font-bold">{pack.name}</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold">{pack.name}</h2>
+                {s.remaining === 0 && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-semibold text-ink-2">{t("soldOut")}</span>}
+              </div>
               <p className="mt-1 text-sm text-ink-2">{t("chance", { price: pack.priceUsdt, top: s.topValue.toLocaleString("en-US") })}</p>
               <div className="mt-4">
                 <div className="h-1.5 overflow-hidden rounded-full bg-accent-soft">

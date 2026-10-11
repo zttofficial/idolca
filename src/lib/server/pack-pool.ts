@@ -33,6 +33,7 @@ async function withPool(db: Db, p: PackRow): Promise<Pack> {
     id: p.id,
     name: p.name,
     priceUsdt: p.priceCents / 100,
+    maxQty: p.maxQty,
     startsAt: p.startsAt.toISOString(),
     endsAt: p.endsAt.toISOString(),
     palette: JSON.parse(p.palette) as [string, string],
@@ -100,8 +101,10 @@ export async function myPackPulls(db: Db, userId: string) {
     .orderBy(desc(packPulls.createdAt));
 }
 
-// 首頁推的卡包：正在賣、還有卡的第一個
+// 首頁推的卡包：正在賣、還有卡的第一個；都賣完了就推最近開賣的那個（顯示已售罄），還沒開賣的不推
 export async function featuredPack(db: Db) {
   const now = Date.now();
-  return (await listPacks(db)).find((p) => Date.parse(p.startsAt) <= now && now < Date.parse(p.endsAt) && p.pool.some((e) => e.remaining > 0)) ?? null;
+  const started = (await listPacks(db)).filter((p) => Date.parse(p.startsAt) <= now && p.pool.length > 0);
+  const live = started.find((p) => now < Date.parse(p.endsAt) && p.pool.some((e) => e.remaining > 0));
+  return live ?? started.sort((a, b) => b.startsAt.localeCompare(a.startsAt))[0] ?? null;
 }

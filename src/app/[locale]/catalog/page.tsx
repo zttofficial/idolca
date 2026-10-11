@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import CardArt from "@/components/market/CardArt";
@@ -13,7 +14,7 @@ import { listVaultCards } from "@/lib/server/vault-cards";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Meta");
-  return { title: t("catalogTitle"), description: t("catalogDescription") };
+  return pageMetadata({ locale: await getLocale(), path: "/catalog", title: t("catalogTitle"), description: t("catalogDescription") });
 }
 
 export default async function CatalogPage() {

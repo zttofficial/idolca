@@ -29,6 +29,8 @@ export type Pack = {
   id: string;
   name: string;
   priceUsdt: number;
+  // 一筆訂單最多開幾包
+  maxQty: number;
   startsAt: string;
   endsAt: string;
   palette: [string, string];

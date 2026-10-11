@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { SITE_URL, jsonLd, pageMetadata } from "@/lib/seo";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import CardGallery from "@/components/card/CardGallery";
@@ -24,7 +25,15 @@ async function findCard(id: string) {
 
 export async function generateMetadata(props: PageProps<"/[locale]/card/[id]">): Promise<Metadata> {
   const card = await findCard((await props.params).id);
-  return card ? { title: `${card.group} ${card.member} ${card.version}` } : {};
+  if (!card) return {};
+  const t = await getTranslations("Meta");
+  return pageMetadata({
+    locale: await getLocale(),
+    path: `/card/${card.id}`,
+    title: t("cardTitle", { name: `${card.group} ${card.member} ${card.version}` }),
+    description: t("cardDescription", { group: card.group, member: card.member, album: card.album, version: card.version, serial: card.serial }),
+    image: card.image?.front,
+  });
 }
 
 const SECTION = "rounded-2xl border border-line bg-surface p-5";
@@ -67,6 +76,20 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLd({
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: `${card.group} ${card.member} ${card.version} photocard`,
+          sku: card.serial,
+          category: "K-pop photocard",
+          brand: { "@type": "Brand", name: card.group },
+          description: `${card.group} ${card.member} · ${card.album} · ${card.version}`,
+          ...(card.image ? { image: `${SITE_URL}${card.image.front}` } : {}),
+          ...(card.grade ? { additionalProperty: [{ "@type": "PropertyValue", name: "Grade", value: card.grade }] } : {}),
+        })}
+      />
       <nav aria-label="breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs text-ink-3">
         <Link href="/market" className="hover:text-ink">
           {t("breadcrumbMarket")}
@@ -110,7 +133,7 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
             </dl>
             <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 border-t border-line pt-3 text-xs text-ink-3">
               <a href={solscanUrl("account", card.asset)} target="_blank" rel="noreferrer" className="hover:text-ink">
-                NFT <span className="font-mono">{shortAddress(card.asset, 6, 6)}</span> ↗
+                {tCard("asset")} <span className="font-mono">{shortAddress(card.asset, 6, 6)}</span> ↗
               </a>
               {CHAIN.vaultCollection && (
                 <a href={solscanUrl("account", CHAIN.vaultCollection)} target="_blank" rel="noreferrer" className="hover:text-ink">

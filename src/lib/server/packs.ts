@@ -37,7 +37,7 @@ export async function createPackOrder(db: Db, userId: string, wallet: string, pa
   const pack = await getPackRow(db, packId);
   if (!pack) return { error: "not_found" as const };
   if (!isLive(pack)) return { error: "not_live" as const };
-  if (!Number.isInteger(qty) || qty < 1 || qty > MAX_QTY) return { error: "invalid_qty" as const };
+  if (!Number.isInteger(qty) || qty < 1 || qty > Math.min(MAX_QTY, pack.maxQty)) return { error: "invalid_qty" as const };
   if ((await available(db, packId)).length < qty) return { error: "sold_out" as const };
   const id = randomUUID();
   const amountCents = pack.priceCents * qty;
