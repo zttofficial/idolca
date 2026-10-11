@@ -367,6 +367,7 @@
     "listForSale": "刊登出售",
     "listedAt": "刊登中 · {price}",
     "viewListing": "看刊登頁",
+    "viewCard": "查看卡片頁",
     "editPrice": "改價",
     "unlist": "下架",
     "price": "價格",

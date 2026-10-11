@@ -9,7 +9,7 @@ import { CardBackArt } from "@/components/market/CardArt";
 import { formatUsdt } from "@/lib/fx";
 import { BUYBACK_RATE, TIER_COLOR, entryCard, type Pack, type PoolEntry } from "@/lib/packs";
 import { useAuth } from "@/components/auth/AuthContext";
-import { payAndConfirm, postAction, useChainState } from "@/lib/chain-client";
+import { payAndConfirm, postAction, refreshChainState, useChainState } from "@/lib/chain-client";
 import { signAndSend } from "@/lib/solana/wallets";
 import { solscanUrl } from "@/lib/solana/config";
 
@@ -83,6 +83,8 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
       setPaySig(signature);
       setMinted(result.pulls.map(({ cardId, asset, tx }) => ({ cardId, asset, tx })));
       setRefundTx(result.refundTx);
+      // 抽到的卡已轉進錢包，重讀鏈上持有人，收藏冊和市場立刻看得到
+      refreshChainState();
       reveal(result.pulls.map((p) => pool.find((e) => e.id === p.cardId) ?? pack.pool.find((e) => e.id === p.cardId)).filter((e): e is PoolEntry => Boolean(e)));
     } catch (e) {
       setPayError(e instanceof Error ? e.message : "network");
@@ -98,6 +100,7 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
     const { tx } = await postAction<{ tx: string }>("/api/packs/buyback", { cardId: m.cardId });
     const signature = await signAndSend(tx, wallet);
     await postAction("/api/packs/buyback/confirm", { cardId: m.cardId, signature });
+    refreshChainState();
     setMinted((prev) => prev.map((x, j) => (j === i ? { ...x, buybackTx: signature } : x)));
     setChoices((prev) => ({ ...prev, [i]: "sold" }));
   };

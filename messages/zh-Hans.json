@@ -367,6 +367,7 @@
     "listForSale": "挂出售卖",
     "listedAt": "在售 · {price}",
     "viewListing": "看商品页",
+    "viewCard": "查看卡片页",
     "editPrice": "改价",
     "unlist": "下架",
     "price": "价格",

@@ -7,7 +7,7 @@ import { AddCardButton, openAddCard } from "./AddCard";
 import VerificationBadge from "./VerificationBadge";
 import BinderBook from "./BinderBook";
 import { OnChainCards, Orders } from "./BinderChain";
-import { useTemplateMarket, useVaultCards } from "@/lib/chain-client";
+import { refreshChainState, useTemplateMarket, useVaultCards } from "@/lib/chain-client";
 import { useAuth } from "@/components/auth/AuthContext";
 import { Thumbs } from "@/components/market/PhotoGallery";
 import { Link } from "@/i18n/navigation";
@@ -37,10 +37,15 @@ export default function BinderView() {
     if (wanted && TABS.includes(wanted)) setTab(wanted);
   }, []);
   const vault = useVaultCards();
+  // 鏈上持有人隨時會變（開卡包、買賣），每次進收藏冊都重讀一次
+  useEffect(() => {
+    refreshChainState();
+  }, []);
   // 錢包裡的金庫卡（買來的、開卡包抽到的、寄存的）
   const myVault = user?.walletAddress && vault ? vault.filter((c) => c.owner === user.walletAddress) : [];
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [selectedVault, setSelectedVault] = useState<string | null>(null);
   const items = useMyItems();
 
   // 按圖鑑順序排列，和實體卡冊一樣同一團體、同一成員的卡放在一起
@@ -83,6 +88,7 @@ export default function BinderView() {
   ];
   const selectedOwned = owned.find((o) => o.template.id === selected);
   const pickedItem = items.find((i) => i.id === selectedItem);
+  const pickedVault = myVault.find((c) => c.id === selectedVault);
 
   return (
     <div className="mt-8">
@@ -123,7 +129,7 @@ export default function BinderView() {
           <BinderBook
             slots={slots.map((slot, i) =>
               slot.kind === "vault" ? (
-                <VaultSlot key={i} card={slot.card} />
+                <VaultSlot key={i} card={slot.card} onSelect={() => setSelectedVault(slot.card.id)} />
               ) : slot.kind === "item" ? (
                 <ItemPocket key={i} item={slot.item} onSelect={() => setSelectedItem(slot.item.id)} />
               ) : (
@@ -167,6 +173,7 @@ export default function BinderView() {
 
       {selectedOwned && <CardSheet owned={selectedOwned} onClose={() => setSelected(null)} />}
       {pickedItem && <ItemSheet item={pickedItem} onClose={() => setSelectedItem(null)} />}
+      {pickedVault && <VaultSheet card={pickedVault} onClose={() => setSelectedVault(null)} />}
     </div>
   );
 }
@@ -252,7 +259,7 @@ function CardSheet({ owned, onClose }: { owned: Owned; onClose: () => void }) {
   );
 }
 
-// 自己上鏈的卡：照片 + 狀態；假卡打紅框、轉灰階並蓋上斜向 FAKE 字樣；刊登中的標出價格
+// 自己上鏈的卡：只放照片，狀態和價格在點開的詳情裡；假卡打紅框、轉灰階並蓋上斜向 FAKE 字樣
 function ItemPocket({ item, onSelect }: { item: CollectorItem; onSelect: () => void }) {
   const fake = item.verification === "fake";
   return (
@@ -264,11 +271,6 @@ function ItemPocket({ item, onSelect }: { item: CollectorItem; onSelect: () => v
           <span className="-rotate-[30deg] rounded border-2 border-down bg-white/70 px-2 text-lg font-black tracking-widest text-down">FAKE</span>
         </span>
       )}
-      {item.quantity > 1 && <span className="absolute top-1 right-1 rounded-full bg-ink/80 px-1.5 text-[10px] font-bold text-white">×{item.quantity}</span>}
-      <span className="absolute bottom-1 left-1 flex gap-1">
-        <VerificationBadge status={item.verification} />
-        {item.priceUsdt !== null && <span className="rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-bold text-white tabular-nums">{formatUsdt(item.priceUsdt)}</span>}
-      </span>
       <span className="absolute inset-0 bg-ink/0 transition group-hover:bg-ink/10" />
     </button>
   );
@@ -393,10 +395,10 @@ function ListingControl({ item }: { item: CollectorItem }) {
     return (
       <div className="rounded-xl bg-accent-soft p-3 text-sm">
         <p className="font-semibold text-accent-ink">{t("listedAt", { price: formatUsdt(item.priceUsdt!) })}</p>
-        <div className="mt-2 flex gap-3 text-xs">
-          <Link href={`/listing/${item.id}`} className="font-semibold text-accent-ink hover:underline">
-            {t("viewListing")}
-          </Link>
+        <Link href={`/listing/${item.id}`} className="btn-primary mt-2 block rounded-full py-2 text-center text-sm font-semibold">
+          {t("viewListing")} →
+        </Link>
+        <div className="mt-2 flex justify-center gap-4 text-xs">
           <button onClick={() => setEditing(true)} className="text-ink-2 hover:text-ink">
             {t("editPrice")}
           </button>
@@ -592,12 +594,47 @@ function LoggedOut({ localCount, onLogin }: { localCount: number; onLogin: () =>
   );
 }
 
-// 錢包裡的金庫卡：點進卡片頁
-function VaultSlot({ card }: { card: Card }) {
+// 錢包裡的金庫卡：和自己上鏈的卡一樣先打開詳情，再從詳情進卡片頁
+function VaultSlot({ card, onSelect }: { card: Card; onSelect: () => void }) {
   const tRarity = useTranslations("Rarity");
   return (
-    <Link href={`/card/${card.id}`} className="group block h-full w-full">
-      <CardArt card={card} rarityLabel={tRarity(card.rarity)} className="block h-full w-full transition group-hover:scale-[1.03]" />
-    </Link>
+    <button onClick={onSelect} className="group relative block h-full w-full overflow-hidden text-left">
+      <CardArt card={card} rarityLabel={tRarity(card.rarity)} className="block h-full w-full" />
+      <span className="absolute inset-0 bg-ink/0 transition group-hover:bg-ink/10" />
+    </button>
+  );
+}
+
+function VaultSheet({ card, onClose }: { card: Card; onClose: () => void }) {
+  const t = useTranslations("Binder");
+  const tRarity = useTranslations("Rarity");
+  const tStatus = useTranslations("Status");
+  return (
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="grid w-full max-w-xl gap-6 rounded-2xl border border-line bg-surface p-6 shadow-2xl sm:grid-cols-[180px_1fr]" onClick={(e) => e.stopPropagation()}>
+        <div className="aspect-[55/85] overflow-hidden rounded-xl">
+          <CardArt card={card} rarityLabel={tRarity(card.rarity)} className="block h-full w-full" />
+        </div>
+        <div className="flex flex-col">
+          <p className="text-xs text-ink-3">
+            {card.group} · {card.album}
+          </p>
+          <h3 className="mt-1 text-xl font-bold">{card.member}</h3>
+          <p className="text-sm text-ink-2">{card.version}</p>
+          <p className="mt-3 font-mono text-[11px] text-ink-3">{card.serial}</p>
+          <p className="mt-3 text-sm font-semibold text-accent-ink">
+            {card.status === "listed" ? t("listedAt", { price: formatUsdt(card.priceUsdt) }) : tStatus(card.status)}
+          </p>
+          <div className="mt-auto flex flex-col gap-2 pt-5">
+            <Link href={`/card/${card.id}`} className="btn-primary rounded-full py-2.5 text-center text-sm font-semibold">
+              {t("viewCard")} →
+            </Link>
+            <button onClick={onClose} className="py-1 text-xs text-ink-3 hover:text-ink">
+              {t("close")}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

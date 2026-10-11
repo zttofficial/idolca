@@ -367,6 +367,7 @@
     "listForSale": "ลงขาย",
     "listedAt": "กำลังขาย · {price}",
     "viewListing": "ดูหน้าประกาศ",
+    "viewCard": "ดูหน้าการ์ด",
     "editPrice": "เปลี่ยนราคา",
     "unlist": "ยกเลิกการขาย",
     "price": "ราคา",

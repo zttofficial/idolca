@@ -367,6 +367,7 @@
     "listForSale": "판매 등록",
     "listedAt": "판매 중 · {price}",
     "viewListing": "판매 페이지 보기",
+    "viewCard": "카드 페이지 보기",
     "editPrice": "가격 변경",
     "unlist": "판매 내리기",
     "price": "가격",

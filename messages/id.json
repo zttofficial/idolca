@@ -367,6 +367,7 @@
     "listForSale": "Jual",
     "listedAt": "Dijual · {price}",
     "viewListing": "Lihat halaman jual",
+    "viewCard": "Lihat halaman kartu",
     "editPrice": "Ubah harga",
     "unlist": "Batalkan jual",
     "price": "Harga",

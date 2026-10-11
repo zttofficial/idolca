@@ -367,6 +367,7 @@
     "listForSale": "出品する",
     "listedAt": "出品中 · {price}",
     "viewListing": "出品ページを見る",
+    "viewCard": "カードページを見る",
     "editPrice": "価格を変更",
     "unlist": "出品を取り下げる",
     "price": "価格",
