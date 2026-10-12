@@ -311,7 +311,8 @@
     "colPhoto": "사진",
     "colAuthor": "저작자",
     "colLicense": "라이선스",
-    "none": "현재 사용 중인 제3자 사진이 없어요."
+    "none": "현재 사용 중인 제3자 사진이 없어요.",
+    "trademarks": "Solana는 Solana Foundation의 상표입니다. Arc는 Circle Internet Group, Inc. 및/또는 그 계열사의 상표입니다. Visa, Mastercard, American Express는 각 소유자의 상표입니다. 이 로고들은 결제 수단을 표시하기 위해서만 사용하며 보증을 의미하지 않습니다."
   },
   "Catalog": {
     "title": "포카 도감",

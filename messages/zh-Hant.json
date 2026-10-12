@@ -311,7 +311,8 @@
     "colPhoto": "照片",
     "colAuthor": "作者",
     "colLicense": "授權",
-    "none": "目前沒有使用第三方照片。"
+    "none": "目前沒有使用第三方照片。",
+    "trademarks": "Solana 是 Solana Foundation 的商標。Arc 是 Circle Internet Group, Inc. 及／或其關係企業的商標。Visa、Mastercard、American Express 是各自所有者的商標。這些標誌只用來標示付款方式，不代表背書。"
   },
   "Catalog": {
     "title": "小卡圖鑑",

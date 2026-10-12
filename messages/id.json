@@ -311,7 +311,8 @@
     "colPhoto": "Foto",
     "colAuthor": "Pembuat",
     "colLicense": "Lisensi",
-    "none": "Saat ini tidak ada foto pihak ketiga yang digunakan."
+    "none": "Saat ini tidak ada foto pihak ketiga yang digunakan.",
+    "trademarks": "Solana adalah merek dagang Solana Foundation. Arc adalah merek dagang Circle Internet Group, Inc. dan/atau afiliasinya. Visa, Mastercard, dan American Express adalah merek dagang pemiliknya masing-masing. Logo ini hanya untuk menandai metode pembayaran dan tidak menyiratkan dukungan."
   },
   "Catalog": {
     "title": "Katalog photocard",

@@ -16,7 +16,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({ locale: await getLocale(), path: "/credits", title: t("creditsTitle") });
 }
 
-// CC BY 要求的署名：作者、授權、原圖連結、是否修改。只列金庫卡實際用到的照片
+// CC BY 要求的署名：作者、授權、原圖連結、是否修改。只列金庫卡實際用到的照片。
+// 最後是付款方式標誌的商標聲明（Arc 的品牌規範要求註明商標歸屬）
 export default async function CreditsPage() {
   const t = await getTranslations("Credits");
   return (
@@ -28,6 +29,7 @@ export default async function CreditsPage() {
         <Suspense fallback={<div className="mt-8 h-64 animate-pulse rounded-2xl bg-surface-2" />}>
           <Credits />
         </Suspense>
+        <p className="mt-10 max-w-2xl text-xs leading-relaxed text-ink-3">{t("trademarks")}</p>
       </main>
       <Footer />
     </>

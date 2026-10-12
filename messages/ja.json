@@ -311,7 +311,8 @@
     "colPhoto": "写真",
     "colAuthor": "作者",
     "colLicense": "ライセンス",
-    "none": "現在、第三者の写真は使用していません。"
+    "none": "現在、第三者の写真は使用していません。",
+    "trademarks": "Solana は Solana Foundation の商標です。Arc は Circle Internet Group, Inc. またはその関連会社の商標です。Visa、Mastercard、American Express はそれぞれの所有者の商標です。これらのロゴは支払い方法を示すためだけに表示しており、推奨を意味するものではありません。"
   },
   "Catalog": {
     "title": "トレカ図鑑",

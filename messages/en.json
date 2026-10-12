@@ -311,7 +311,8 @@
     "colPhoto": "Photo",
     "colAuthor": "Author",
     "colLicense": "License",
-    "none": "No third-party photos are in use."
+    "none": "No third-party photos are in use.",
+    "trademarks": "Solana is a trademark of the Solana Foundation. Arc is a trademark of Circle Internet Group, Inc. and/or its affiliates. Visa, Mastercard and American Express are trademarks of their respective owners. These logos appear only to identify payment methods and do not imply endorsement."
   },
   "Catalog": {
     "title": "Photocard catalog",

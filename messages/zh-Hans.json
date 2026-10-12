@@ -311,7 +311,8 @@
     "colPhoto": "照片",
     "colAuthor": "作者",
     "colLicense": "许可",
-    "none": "目前没有使用第三方照片。"
+    "none": "目前没有使用第三方照片。",
+    "trademarks": "Solana 是 Solana Foundation 的商标。Arc 是 Circle Internet Group, Inc. 及／或其关联企业的商标。Visa、Mastercard、American Express 是各自所有者的商标。这些标志只用来标示付款方式，不代表背书。"
   },
   "Catalog": {
     "title": "小卡图鉴",

@@ -311,7 +311,8 @@
     "colPhoto": "Ảnh",
     "colAuthor": "Tác giả",
     "colLicense": "Giấy phép",
-    "none": "Hiện không sử dụng ảnh của bên thứ ba."
+    "none": "Hiện không sử dụng ảnh của bên thứ ba.",
+    "trademarks": "Solana là nhãn hiệu của Solana Foundation. Arc là nhãn hiệu của Circle Internet Group, Inc. và/hoặc các công ty liên kết. Visa, Mastercard và American Express là nhãn hiệu của chủ sở hữu tương ứng. Các logo này chỉ dùng để nhận diện phương thức thanh toán, không hàm ý chứng thực."
   },
   "Catalog": {
     "title": "Bách khoa photocard",
