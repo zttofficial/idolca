@@ -11,6 +11,7 @@ import { Link } from "@/i18n/navigation";
 import { packStats } from "@/lib/packs";
 import { getDb } from "@/lib/server/db";
 import { listPacks } from "@/lib/server/pack-pool";
+import { withLiveRemaining } from "@/lib/server/packs";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Meta");
@@ -52,12 +53,12 @@ export default async function PacksPage() {
   );
 }
 
-// 卡包和卡池存在資料庫，剩餘張數是真實庫存，每次請求讀
+// 卡包和卡池存在資料庫，剩餘張數是真實庫存（按鏈上狀態核過），每次請求讀
 async function PackList() {
   await connection();
   const t = await getTranslations("Packs");
   const db = await getDb();
-  const packs = db ? await listPacks(db) : [];
+  const packs = db ? await withLiveRemaining(await listPacks(db)) : [];
   if (!packs.length) return <p className="mt-10 rounded-2xl border border-dashed border-line px-6 py-12 text-center text-sm text-ink-2">{t("noPacks")}</p>;
   return (
     <div className="mt-10 grid gap-6 md:grid-cols-2">

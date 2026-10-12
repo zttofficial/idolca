@@ -17,12 +17,14 @@ import { packsBlockedIn } from "@/lib/server/region";
 import { BUYBACK_RATE, TIERS, TIER_COLOR, entryCard, packStats } from "@/lib/packs";
 import { getDb } from "@/lib/server/db";
 import { getPack, recentPackPulls } from "@/lib/server/pack-pool";
+import { withLiveRemaining } from "@/lib/server/packs";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 
 async function findPack(id: string) {
   await connection();
   const db = await getDb();
-  return db ? getPack(db, id) : null;
+  const pack = db ? await getPack(db, id) : null;
+  return pack ? (await withLiveRemaining([pack]))[0] : null;
 }
 
 export async function generateMetadata(props: PageProps<"/[locale]/packs/[id]">): Promise<Metadata> {

@@ -5,11 +5,11 @@ import { PublicKey } from "@solana/web3.js";
 import type { Db } from "./db";
 import { packOrders, packPulls, vaultCards } from "./schema";
 import { buildBuybackTx, buildPayment, payout, transferVaultNft, verifyPayment } from "./funds";
-import { confirmSignature, invalidateVaultState, vaultState, type VaultCardState } from "./vault-chain";
+import { confirmSignature, invalidateVaultState, marketReady, vaultState, type VaultCardState } from "./vault-chain";
 import { getPackRow } from "./pack-pool";
 import { invalidateVaultCards, toCard } from "./vault-cards";
 import { CHAIN } from "@/lib/chain";
-import { BUYBACK_RATE, MAX_QTY, pickIndex, poolOrder } from "@/lib/packs";
+import { BUYBACK_RATE, MAX_QTY, pickIndex, poolOrder, type Pack } from "@/lib/packs";
 import { drawRandom } from "@/lib/pack-draw";
 import { arcPaymentRequest, arcPayout, settleArcPayment } from "./arc-pay";
 import type { PayRail } from "./schema";
@@ -23,6 +23,15 @@ const isLive = (p: { startsAt: Date; endsAt: Date }) => p.startsAt.getTime() <= 
 
 // 鏈上確實能抽：還在平台錢包，沒掛單、沒在提貨、沒銷毀
 export const drawable = (s: VaultCardState | undefined) => Boolean(s && s.owner === CHAIN.platform && !s.listing && !s.redeeming && !s.burned);
+
+// 頁面顯示的剩餘張數按鏈上狀態再核一次，和下單時的檢查一致：卡已經不在平台錢包裡（被掛單、提貨，
+// 或測試環境的卡在別處被抽走）就不算剩餘。鏈上讀不到時照資料庫顯示
+export async function withLiveRemaining(packs: Pack[]): Promise<Pack[]> {
+  if (!marketReady() || !packs.length) return packs;
+  const state = await vaultState().catch(() => null);
+  if (!state) return packs;
+  return packs.map((p) => ({ ...p, pool: p.pool.map((e) => (e.remaining && !drawable(state[e.id]) ? { ...e, remaining: 0 } : e)) }));
+}
 
 // 現在能抽的卡：在卡池裡、沒被抽走，而且鏈上確實能抽
 async function available(db: Db, packId: string) {
