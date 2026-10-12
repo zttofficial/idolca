@@ -40,7 +40,7 @@ export default async function TermsPage() {
         {
           title: "Trading vault cards",
           body: [
-            `Vault cards are listed and sold through Idolca's on-chain escrow program. The buyer's ${CURRENCY} and the NFT swap in a single transaction; a marketplace fee of ${pct(FEE_BPS)} of the sale price goes to Idolca. Completed on-chain trades are final.`,
+            `Vault cards are listed and sold through Idolca's on-chain escrow program. The buyer's stablecoin payment and the NFT swap in a single transaction; a marketplace fee of ${pct(FEE_BPS)} of the sale price goes to Idolca. Completed on-chain trades are final.`,
           ],
         },
         {
@@ -76,7 +76,7 @@ export default async function TermsPage() {
         {
           title: "Blockchain risks",
           body: [
-            `Blockchain transactions are public and irreversible. Network congestion, wallet software and token contracts are outside Idolca's control. ${CURRENCY} and other stablecoins are issued by third parties, and their value is not guaranteed by Idolca.`,
+            `Blockchain transactions are public and irreversible. Network congestion, wallet software and token contracts are outside Idolca's control. USDT, USDC and other stablecoins are issued by third parties, and their value is not guaranteed by Idolca.`,
           ],
         },
         {
