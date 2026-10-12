@@ -8,6 +8,8 @@ import { invalidateVaultCards, newVaultCardId, nextSerial, toCard } from "@/lib/
 import { RARITY_LIST, type Rarity } from "@/lib/cards";
 import { parseGrade } from "@/lib/grading";
 import { matchTemplate } from "@/lib/server/items";
+import credits from "@/lib/sample-credits.json";
+import { sampleImage } from "@/lib/sample-image";
 
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
@@ -44,11 +46,20 @@ export async function POST(request: Request) {
     depositor = { id: u.id, wallet: u.wallet };
   }
 
-  // 正反面都要，存成未加浮水印的原圖加展示圖兩份
-  const photos = Array.isArray(body.photos) ? body.photos : [];
-  if (photos.length !== 2) return fail("invalid_photo");
-  const urls = await saveUploads(a.db, a.user.id, photos);
-  if (!urls) return fail("invalid_photo");
+  // 正反面都要，存成未加浮水印的原圖加展示圖兩份。
+  // 平台自有的展示庫存可以改用樣本照片（sample 填 src/lib/sample-credits.json 的 card，例如 "c20"）：
+  // 只有正面，網址固定，署名頁會自動列出作者和授權
+  let urls: [string, string | null];
+  if (typeof body.sample === "string") {
+    if (!credits.some((c) => c.card === body.sample)) return fail("invalid_photo");
+    urls = [sampleImage(body.sample), null];
+  } else {
+    const photos = Array.isArray(body.photos) ? body.photos : [];
+    if (photos.length !== 2) return fail("invalid_photo");
+    const saved = await saveUploads(a.db, a.user.id, photos);
+    if (!saved) return fail("invalid_photo");
+    urls = [saved[0], saved[1]];
+  }
 
   const id = newVaultCardId();
   const intakeDate = new Date().toISOString().slice(0, 10);

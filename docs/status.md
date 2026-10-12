@@ -4,7 +4,7 @@
 
 ## 總覽
 
-- 線上 <https://idolca.vercel.app>，跑在 Solana devnet，所有流程都用錢包真實上鏈驗證過。
+- 線上 <https://idolca.vercel.app>，卡片和交易跑在 Solana devnet，所有流程都用錢包真實上鏈驗證過。開卡包和擔保交易另外可以在 Arc 上用 USDC 付款（線上接 Arc 主網、只限管理員），設計見 [arc.md](arc.md)。
 - 代碼按正式上線標準寫：換主網只改環境變數和部署合約，不改代碼（步驟見 tech-stack.md「上線主網」）。
 - 黑客松：已提交 Colosseum Crypto World's Fair 主賽和 Superteam Canada track；GitHub 倉庫是私有的，已分享給 hackathon@colosseum.com。
 
@@ -19,6 +19,9 @@
 | 提貨（凍結、委託銷毀、付運費；後台出貨或取消） | `/card/[id]`、`/admin` | `RedeemDialog.tsx`、`vault-chain.ts`、`src/lib/shipping.ts` |
 | 自由上鏈、自由刊登、擔保交易 | 收藏冊、`/listing/[id]` | `src/components/binder/AddCard.tsx`、`src/lib/server/items.ts`、`orders.ts`、`src/lib/policy.ts` |
 | 寄進金庫、收藏卡轉金庫卡 | 收藏冊、`/admin` | `src/app/api/items/[id]/vault`、`src/app/api/admin/items/[id]/vault`、`VaultConvert.tsx` |
+| 付款方式面板（Solana 錢包、Arc 上的 USDC、信用卡佔位） | 購買按鈕 | `src/components/pay/PaymentPicker.tsx`，標誌在 `public/pay/` |
+| Arc 收款通道（USDC 授權轉帳、平台代送、退款） | 開卡包、擔保交易 | `src/lib/arc.ts`、`src/lib/server/arc-pay.ts`、`src/lib/evm/arc-wallet.ts` |
+| 評級（IDG 自家評級和第三方評級） | `/card/[id]`、`/admin` | `src/lib/grading.ts`、`src/components/admin/VaultGrade.tsx`、`src/app/api/admin/vault/[id]/grade` |
 | 盲盒卡包（承諾—揭示抽卡、即時回購） | `/packs` | `src/lib/server/packs.ts`、`pack-pool.ts`，`src/lib/pack-draw.ts`、`src/lib/packs.ts`，`src/components/packs/PackOpener.tsx` |
 | 收藏冊（卡冊、整理、同步） | `/binder` | `BinderView.tsx`、`BinderBook.tsx`、`BinderArranger.tsx`、`BinderChain.tsx`，`src/lib/binder.ts`、`binder-layout.ts`，`src/app/api/binder` |
 | 圖鑑 | `/catalog` | `src/lib/catalog.ts` |
@@ -76,7 +79,11 @@
 
 ## 已知問題
 
-- **測試環境和線上共用 devnet 集合**：本機和端到端測試鑄的卡也在線上的兩個集合裡，元數據網址指向線上（`NEXT_PUBLIC_SITE_URL` 預設值），線上資料庫查不到，錢包裡顯示成沒名字、沒圖片。這些卡都在平台錢包和測試錢包裡，沒有進真實用戶的錢包。要徹底分開，測試環境改用自己的一組集合；收藏集合裡的孤兒卡可以用集合的 PermanentTransferDelegate 收回再銷毀，金庫集合裡的平台動不了。
+- **測試環境和線上共用 devnet 鏈上資產**：本機、端到端測試和線上用同一個平台錢包、同兩個集合和同一個託管程序。
+  - 本機和測試鑄的卡也在線上的集合裡，元數據網址指向線上，線上資料庫查不到，錢包裡顯示成沒名字、沒圖片。這些卡都在平台錢包和測試錢包裡，沒有進真實用戶的錢包。
+  - 一邊賣掉的卡，另一邊的資料庫不知道；卡包的剩餘張數按鏈上狀態核過，所以只會顯示成已抽走，不會賣出去。
+  - 要徹底分開，測試環境要有自己的平台錢包、一組集合，再部署一份託管程序（一份程序只有一個設定）。收藏集合裡的孤兒卡可以用集合的 PermanentTransferDelegate 收回再銷毀，金庫集合裡的平台動不了。
+- **Vercel 預覽部署連的是正式資料庫**：資料庫變數同時設在 Production 和 Preview。非 main 的分支推上去會建預覽部署，有人打開時會在正式資料庫上跑建表語句。要改成 Neon 給每個預覽部署開分支，或從 Preview 拿掉資料庫變數。
 - **用戶錢包連在主網時看不到 devnet 資產**：Phantom 要在開發者設定裡開測試網模式並選 Devnet，Solflare 在網路設定裡選 Devnet。登入框和 README 還沒有這個提示。
 - **線上管理員是測試錢包**：要換成用戶自己的錢包（`ADMIN_WALLETS` 或 `npm run admin:grant`）。Vercel 上的舊變數 `ADMIN_TOKEN` 已不再使用，可以刪掉。
 - **榜單數據**：讀 Circle Chart 網頁用的接口，正式營運前要換授權來源。
