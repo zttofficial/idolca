@@ -4,6 +4,7 @@
 // 所有頁面透過 useBinder 共用同一份快照，任何一處改動都會即時同步到其他元件和分頁。
 
 import { useSyncExternalStore } from "react";
+import { EMPTY_LAYOUT, type BinderLayout } from "./binder-layout";
 
 export type BinderEntry = {
   count: number;
@@ -13,10 +14,11 @@ export type BinderEntry = {
   mint?: string;
 };
 
-export type Binder = { have: Record<string, BinderEntry>; want: Record<string, true> };
+// layout 是卡在冊子裡的擺法和拿出冊子的卡（見 binder-layout.ts）
+export type Binder = { have: Record<string, BinderEntry>; want: Record<string, true>; layout: BinderLayout };
 
 const KEY = "idolca:binder:v1";
-const EMPTY: Binder = { have: {}, want: {} };
+const EMPTY: Binder = { have: {}, want: {}, layout: EMPTY_LAYOUT };
 const listeners = new Set<() => void>();
 let cache: Binder | null = null;
 
@@ -54,7 +56,7 @@ function write(next: Binder, push = true) {
   if (push) pushSoon();
 }
 
-// 兩本收藏冊合併：張數取大，照片和鏈上地址保留有的那份，想要清單取聯集
+// 兩本收藏冊合併：張數取大，照片和鏈上地址保留有的那份，想要清單取聯集；擺法以帳號裡排過的為準
 function merge(a: Binder, b: Binder): Binder {
   const have: Record<string, BinderEntry> = { ...a.have };
   for (const [id, e] of Object.entries(b.have)) {
@@ -63,14 +65,15 @@ function merge(a: Binder, b: Binder): Binder {
   }
   const want: Record<string, true> = { ...a.want, ...b.want };
   for (const id of Object.keys(have)) delete want[id];
-  return { have, want };
+  const arranged = (x: Binder) => x.layout.order.length > 0 || x.layout.hidden.length > 0;
+  return { have, want, layout: arranged(a) ? a.layout : b.layout };
 }
 
 // 登入時呼叫：把帳號裡的收藏冊和本機的合併，之後的改動自動同步
 export async function attachAccount() {
   const res = await fetch("/api/binder");
   if (!res.ok) return;
-  const remote = (await res.json()) as Binder;
+  const remote = { ...EMPTY, ...((await res.json()) as Partial<Binder>) };
   const merged = merge(remote, read());
   syncing = true;
   write(merged, false);
@@ -113,7 +116,7 @@ export const binderActions = {
       else have[id] = { count: 1 };
       const want = { ...b.want };
       delete want[id];
-      return { have, want };
+      return { ...b, have, want };
     });
   },
   setCount(id: string, count: number) {
@@ -132,7 +135,11 @@ export const binderActions = {
       return { ...b, want };
     });
   },
+  // 清空手動標記的卡和想要清單；擺法留著，鏈上的卡位置不變
   clear() {
-    write(EMPTY);
+    update((b) => ({ ...EMPTY, layout: b.layout }));
+  },
+  setLayout(layout: BinderLayout) {
+    update((b) => ({ ...b, layout }));
   },
 };

@@ -6,6 +6,8 @@ import CardArt from "@/components/market/CardArt";
 import { AddCardButton, openAddCard } from "./AddCard";
 import VerificationBadge from "./VerificationBadge";
 import BinderBook from "./BinderBook";
+import BinderArranger from "./BinderArranger";
+import { arrange, EMPTY_LAYOUT, takeOut } from "@/lib/binder-layout";
 import { OnChainCards, Orders } from "./BinderChain";
 import { refreshChainState, useTemplateMarket, useVaultCards } from "@/lib/chain-client";
 import { useAuth } from "@/components/auth/AuthContext";
@@ -46,6 +48,7 @@ export default function BinderView() {
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [selectedVault, setSelectedVault] = useState<string | null>(null);
+  const [arranging, setArranging] = useState(false);
   const items = useMyItems();
 
   // 按圖鑑順序排列，和實體卡冊一樣同一團體、同一成員的卡放在一起
@@ -86,6 +89,11 @@ export default function BinderView() {
     ...items.map((item) => ({ kind: "item" as const, item })),
     ...[...owned.filter(withPhoto), ...owned.filter((o) => !withPhoto(o))].map((o) => ({ kind: "card" as const, owned: o })),
   ];
+  const byKey = new Map(slots.map((slot) => [slotKey(slot), slot]));
+  const keys = [...byKey.keys()];
+  const { layout, pockets, hiddenCards } = arrange(keys, binder.layout);
+  const present = new Set(keys);
+  const takeOutCard = (key: string) => binderActions.setLayout(takeOut(layout, key));
   const selectedOwned = owned.find((o) => o.template.id === selected);
   const pickedItem = items.find((i) => i.id === selectedItem);
   const pickedVault = myVault.find((c) => c.id === selectedVault);
@@ -119,24 +127,50 @@ export default function BinderView() {
             </button>
           ))}
         </div>
-        <button onClick={() => window.confirm(t("clearConfirm")) && binderActions.clear()} className="pb-3 text-xs text-ink-3 hover:text-down">
-          {t("clear")}
-        </button>
+        {/* 只清得掉手動標記的卡和想要清單；錢包裡的金庫卡和自己上鏈的卡跟著鏈上持有顯示，清不掉也不必加回 */}
+        {(owned.length > 0 || wants.length > 0) && (
+          <button onClick={() => window.confirm(t("clearConfirm")) && binderActions.clear()} className="shrink-0 pb-3 text-xs text-ink-3 hover:text-down">
+            {t("clear")}
+          </button>
+        )}
       </div>
 
       {tab === "binder" && (
         <div className="mt-6">
-          <BinderBook
-            slots={slots.map((slot, i) =>
-              slot.kind === "vault" ? (
-                <VaultSlot key={i} card={slot.card} onSelect={() => setSelectedVault(slot.card.id)} />
-              ) : slot.kind === "item" ? (
-                <ItemPocket key={i} item={slot.item} onSelect={() => setSelectedItem(slot.item.id)} />
-              ) : (
-                <Pocket key={i} owned={slot.owned} onSelect={() => setSelected(slot.owned.template.id)} />
-              ),
+          <div className="mb-4 flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
+            {!arranging && hiddenCards.length > 0 && <p className="mr-auto text-xs text-ink-3">{t("hiddenCount", { count: hiddenCards.length })}</p>}
+            {arranging && (
+              <button onClick={() => window.confirm(t("resetLayoutConfirm")) && binderActions.setLayout(EMPTY_LAYOUT)} className="mr-auto text-xs text-ink-3 hover:text-ink">
+                {t("resetLayout")}
+              </button>
             )}
-          />
+            <button
+              onClick={() => setArranging(!arranging)}
+              className={`rounded-full px-4 py-1.5 text-sm font-semibold ${arranging ? "btn-primary" : "border border-line hover:bg-surface-2"}`}
+            >
+              {t(arranging ? "arrangeDone" : "arrange")}
+            </button>
+          </div>
+          {arranging ? (
+            <BinderArranger
+              layout={layout}
+              pockets={pockets}
+              boxed={hiddenCards}
+              present={present}
+              render={(key) => <SlotView slot={byKey.get(key)!} />}
+              onChange={binderActions.setLayout}
+            />
+          ) : (
+            <BinderBook
+              slots={pockets.map((key, i) => {
+                const slot = key ? byKey.get(key) : undefined;
+                if (!slot) return null;
+                const open = () =>
+                  slot.kind === "vault" ? setSelectedVault(slot.card.id) : slot.kind === "item" ? setSelectedItem(slot.item.id) : setSelected(slot.owned.template.id);
+                return <SlotView key={i} slot={slot} onSelect={open} />;
+              })}
+            />
+          )}
         </div>
       )}
 
@@ -171,11 +205,47 @@ export default function BinderView() {
           <p className="mt-6 text-sm text-ink-3">{t("wantsEmpty")}</p>
         ))}
 
-      {selectedOwned && <CardSheet owned={selectedOwned} onClose={() => setSelected(null)} />}
-      {pickedItem && <ItemSheet item={pickedItem} onClose={() => setSelectedItem(null)} />}
-      {pickedVault && <VaultSheet card={pickedVault} onClose={() => setSelectedVault(null)} />}
+      {selectedOwned && (
+        <CardSheet
+          owned={selectedOwned}
+          onClose={() => setSelected(null)}
+          onTakeOut={() => {
+            setSelected(null);
+            takeOutCard(`card:${selectedOwned.template.id}`);
+          }}
+        />
+      )}
+      {pickedItem && (
+        <ItemSheet
+          item={pickedItem}
+          onClose={() => setSelectedItem(null)}
+          onTakeOut={() => {
+            setSelectedItem(null);
+            takeOutCard(`item:${pickedItem.id}`);
+          }}
+        />
+      )}
+      {pickedVault && (
+        <VaultSheet
+          card={pickedVault}
+          onClose={() => setSelectedVault(null)}
+          onTakeOut={() => {
+            setSelectedVault(null);
+            takeOutCard(`vault:${pickedVault.id}`);
+          }}
+        />
+      )}
     </div>
   );
+}
+
+// 卡在擺法裡的鍵（見 binder-layout.ts）
+const slotKey = (slot: Slot) => (slot.kind === "vault" ? `vault:${slot.card.id}` : slot.kind === "item" ? `item:${slot.item.id}` : `card:${slot.owned.template.id}`);
+
+function SlotView({ slot, onSelect }: { slot: Slot; onSelect?: () => void }) {
+  if (slot.kind === "vault") return <VaultSlot card={slot.card} onSelect={onSelect} />;
+  if (slot.kind === "item") return <ItemPocket item={slot.item} onSelect={onSelect} />;
+  return <Pocket owned={slot.owned} onSelect={onSelect} />;
 }
 
 function ownedCard({ template, entry }: Owned, vault: Card[] | null) {
@@ -183,11 +253,13 @@ function ownedCard({ template, entry }: Owned, vault: Card[] | null) {
   return entry.photo ? { ...base, image: { front: entry.photo } } : base;
 }
 
-function Pocket({ owned, onSelect }: { owned: Owned; onSelect: () => void }) {
+// 卡套裡的卡。沒給 onSelect 時只畫卡面，不能點（整理收藏冊時用）
+function Pocket({ owned, onSelect }: { owned: Owned; onSelect?: () => void }) {
   const tRarity = useTranslations("Rarity");
   const card = ownedCard(owned, useVaultCards());
+  const Tag = onSelect ? "button" : "span";
   return (
-    <button onClick={onSelect} className="group relative block h-full w-full overflow-hidden text-left">
+    <Tag onClick={onSelect} className="group relative block h-full w-full overflow-hidden text-left">
       {card.image ? (
         <CardArt card={card} rarityLabel={tRarity(owned.template.rarity)} className="block h-full w-full" />
       ) : (
@@ -203,11 +275,11 @@ function Pocket({ owned, onSelect }: { owned: Owned; onSelect: () => void }) {
       )}
       {owned.entry.count > 1 && <span className="absolute top-1 right-1 rounded-full bg-ink/80 px-1.5 text-[10px] font-bold text-white">×{owned.entry.count}</span>}
       <span className="absolute inset-0 bg-ink/0 transition group-hover:bg-ink/10" />
-    </button>
+    </Tag>
   );
 }
 
-function CardSheet({ owned, onClose }: { owned: Owned; onClose: () => void }) {
+function CardSheet({ owned, onClose, onTakeOut }: { owned: Owned; onClose: () => void; onTakeOut: () => void }) {
   const t = useTranslations("Binder");
   const tRarity = useTranslations("Rarity");
   const { template, entry } = owned;
@@ -249,6 +321,7 @@ function CardSheet({ owned, onClose }: { owned: Owned; onClose: () => void }) {
             >
               {t("mint")}
             </button>
+            <TakeOutButton onTakeOut={onTakeOut} />
             <button onClick={onClose} className="py-1 text-xs text-ink-3 hover:text-ink">
               {t("close")}
             </button>
@@ -260,10 +333,11 @@ function CardSheet({ owned, onClose }: { owned: Owned; onClose: () => void }) {
 }
 
 // 自己上鏈的卡：只放照片，狀態和價格在點開的詳情裡；假卡打紅框、轉灰階並蓋上斜向 FAKE 字樣
-function ItemPocket({ item, onSelect }: { item: CollectorItem; onSelect: () => void }) {
+function ItemPocket({ item, onSelect }: { item: CollectorItem; onSelect?: () => void }) {
   const fake = item.verification === "fake";
+  const Tag = onSelect ? "button" : "span";
   return (
-    <button onClick={onSelect} className={`group relative block h-full w-full overflow-hidden text-left ${fake ? "ring-2 ring-down ring-inset" : ""}`}>
+    <Tag onClick={onSelect} className={`group relative block h-full w-full overflow-hidden text-left ${fake ? "ring-2 ring-down ring-inset" : ""}`}>
       {/* eslint-disable-next-line @next/next/no-img-element -- 用戶上傳的照片 */}
       <img src={item.photo} alt={itemTitle(item)} className={`h-full w-full object-cover ${fake ? "grayscale" : ""}`} />
       {fake && (
@@ -272,11 +346,11 @@ function ItemPocket({ item, onSelect }: { item: CollectorItem; onSelect: () => v
         </span>
       )}
       <span className="absolute inset-0 bg-ink/0 transition group-hover:bg-ink/10" />
-    </button>
+    </Tag>
   );
 }
 
-function ItemSheet({ item, onClose }: { item: CollectorItem; onClose: () => void }) {
+function ItemSheet({ item, onClose, onTakeOut }: { item: CollectorItem; onClose: () => void; onTakeOut: () => void }) {
   const t = useTranslations("Binder");
   const tMint = useTranslations("Mint");
   const tSource = useTranslations("Source");
@@ -321,6 +395,7 @@ function ItemSheet({ item, onClose }: { item: CollectorItem; onClose: () => void
           <div className="mt-auto flex flex-col gap-2 pt-5">
             {!fake && !item.vaultRequestedAt && <ListingControl item={item} />}
             {!fake && <VaultRequest item={item} />}
+            <TakeOutButton onTakeOut={onTakeOut} />
             <button onClick={onClose} className="py-1 text-xs text-ink-3 hover:text-ink">
               {t("close")}
             </button>
@@ -595,17 +670,18 @@ function LoggedOut({ localCount, onLogin }: { localCount: number; onLogin: () =>
 }
 
 // 錢包裡的金庫卡：和自己上鏈的卡一樣先打開詳情，再從詳情進卡片頁
-function VaultSlot({ card, onSelect }: { card: Card; onSelect: () => void }) {
+function VaultSlot({ card, onSelect }: { card: Card; onSelect?: () => void }) {
   const tRarity = useTranslations("Rarity");
+  const Tag = onSelect ? "button" : "span";
   return (
-    <button onClick={onSelect} className="group relative block h-full w-full overflow-hidden text-left">
+    <Tag onClick={onSelect} className="group relative block h-full w-full overflow-hidden text-left">
       <CardArt card={card} rarityLabel={tRarity(card.rarity)} className="block h-full w-full" />
       <span className="absolute inset-0 bg-ink/0 transition group-hover:bg-ink/10" />
-    </button>
+    </Tag>
   );
 }
 
-function VaultSheet({ card, onClose }: { card: Card; onClose: () => void }) {
+function VaultSheet({ card, onClose, onTakeOut }: { card: Card; onClose: () => void; onTakeOut: () => void }) {
   const t = useTranslations("Binder");
   const tRarity = useTranslations("Rarity");
   const tStatus = useTranslations("Status");
@@ -629,6 +705,7 @@ function VaultSheet({ card, onClose }: { card: Card; onClose: () => void }) {
             <Link href={`/card/${card.id}`} className="btn-primary rounded-full py-2.5 text-center text-sm font-semibold">
               {t("viewCard")} →
             </Link>
+            <TakeOutButton onTakeOut={onTakeOut} />
             <button onClick={onClose} className="py-1 text-xs text-ink-3 hover:text-ink">
               {t("close")}
             </button>
@@ -636,5 +713,15 @@ function VaultSheet({ card, onClose }: { card: Card; onClose: () => void }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// 拿出收藏冊：卡還是你的（鏈上持有不變），只是不放在冊子裡顯示，整理收藏冊時可以放回
+function TakeOutButton({ onTakeOut }: { onTakeOut: () => void }) {
+  const t = useTranslations("Binder");
+  return (
+    <button onClick={onTakeOut} className="py-1 text-xs text-ink-3 hover:text-ink">
+      {t("takeOut")}
+    </button>
   );
 }

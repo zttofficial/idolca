@@ -58,6 +58,15 @@ export const binderWants = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.templateId] })],
 );
 
+// 收藏冊的擺法：order 是每個卡套放的卡鍵（"" 為空卡套），hidden 是拿出冊子的卡鍵，都存成 JSON 陣列
+export const binderLayouts = pgTable("binder_layouts", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  orderKeys: text("order_keys").notNull().default("[]"),
+  hiddenKeys: text("hidden_keys").notNull().default("[]"),
+});
+
 // 用戶自由上鏈的卡（收藏 NFT）。不要求在圖鑑裡，名稱由用戶填；可以是一張卡，也可以是一組卡。
 // 平台不查驗這類卡：一律是 unverified（待驗證）；只有被查出是假卡時，平台才改成 fake，持有人改不回來。
 // 「真品」只屬於金庫卡：卡寄進金庫鑑定通過後另鑄金庫 NFT，和這張表無關
@@ -332,6 +341,11 @@ export const BOOTSTRAP_SQL = [
     user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     template_id text NOT NULL,
     PRIMARY KEY (user_id, template_id)
+  )`,
+  `CREATE TABLE IF NOT EXISTS binder_layouts (
+    user_id text PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    order_keys text NOT NULL DEFAULT '[]',
+    hidden_keys text NOT NULL DEFAULT '[]'
   )`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_address text UNIQUE`,
   `ALTER TABLE users ALTER COLUMN email DROP NOT NULL`,
