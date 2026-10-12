@@ -188,5 +188,35 @@
     "license_url": "https://creativecommons.org/licenses/by/3.0",
     "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0e/Hyunjin_of_Stray_Kids_at_Incheon_Airport%2C_May_3%2C_2024.png/960px-Hyunjin_of_Stray_Kids_at_Incheon_Airport%2C_May_3%2C_2024.png",
     "cropX": 0.5
+  },
+  {
+    "card": "c20",
+    "file": "File:ITZY's Lia in August 2023 01.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:ITZY%27s_Lia_in_August_2023_01.jpg",
+    "author": "K-POPIT 케이팝잇",
+    "license": "CC BY 3.0",
+    "license_url": "https://creativecommons.org/licenses/by/3.0",
+    "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/03/ITZY%27s_Lia_in_August_2023_01.jpg/960px-ITZY%27s_Lia_in_August_2023_01.jpg",
+    "cropX": 0.5
+  },
+  {
+    "card": "c21",
+    "file": "File:ITZY's Shin Yuna (신유나) 01.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:ITZY%27s_Shin_Yuna_(%EC%8B%A0%EC%9C%A0%EB%82%98)_01.jpg",
+    "author": "K-POPIT 케이팝잇",
+    "license": "CC BY 3.0",
+    "license_url": "https://creativecommons.org/licenses/by/3.0",
+    "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fb/ITZY%27s_Shin_Yuna_%28%EC%8B%A0%EC%9C%A0%EB%82%98%29_01.jpg/960px-ITZY%27s_Shin_Yuna_%28%EC%8B%A0%EC%9C%A0%EB%82%98%29_01.jpg",
+    "cropX": 0.5
+  },
+  {
+    "card": "c22",
+    "file": "File:ITZY's Shin Ryujin in August 2023 01.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:ITZY%27s_Shin_Ryujin_in_August_2023_01.jpg",
+    "author": "K-POPIT 케이팝잇",
+    "license": "CC BY 3.0",
+    "license_url": "https://creativecommons.org/licenses/by/3.0",
+    "src": "https://upload.wikimedia.org/wikipedia/commons/8/87/ITZY%27s_Shin_Ryujin_in_August_2023_01.jpg",
+    "cropX": 0.5
   }
 ]
