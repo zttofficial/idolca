@@ -1,0 +1,90 @@
+# 實施現況
+
+截至 2026-10-12。功能規則和選型理由見 [tech-stack.md](tech-stack.md)，這裡記已經做出來的東西在哪、環境怎麼配、開發要守的約定和還沒做的事。
+
+## 總覽
+
+- 線上 <https://idolca.vercel.app>，跑在 Solana devnet，所有流程都用錢包真實上鏈驗證過。
+- 代碼按正式上線標準寫：換主網只改環境變數和部署合約，不改代碼（步驟見 tech-stack.md「上線主網」）。
+- 黑客松：已提交 Colosseum Crypto World's Fair 主賽和 Superteam Canada track；GitHub 倉庫是私有的，已分享給 hackathon@colosseum.com。
+
+## 功能與代碼位置
+
+| 功能 | 頁面 | 主要代碼 |
+|---|---|---|
+| 帳號：郵箱密碼或錢包簽名登入、綁定錢包、管理員 | 帳號選單 | `src/lib/server/auth.ts`、`wallet-auth.ts`、`admin.ts`，`src/components/auth/`，`scripts/grant-admin.ts` |
+| 市場（金庫卡、自由刊登兩條線） | `/market` | `src/components/market/MarketBrowser.tsx`、`src/lib/market.ts` |
+| 金庫卡買賣、掛單（Anchor 託管程序） | `/card/[id]` | `src/lib/server/vault-chain.ts`、`src/components/card/`、`onchain/` |
+| 鏈上紀錄 | `/card/[id]` | `src/lib/server/history.ts` |
+| 提貨（凍結、委託銷毀、付運費；後台出貨或取消） | `/card/[id]`、`/admin` | `RedeemDialog.tsx`、`vault-chain.ts`、`src/lib/shipping.ts` |
+| 自由上鏈、自由刊登、擔保交易 | 收藏冊、`/listing/[id]` | `src/components/binder/AddCard.tsx`、`src/lib/server/items.ts`、`orders.ts`、`src/lib/policy.ts` |
+| 寄進金庫、收藏卡轉金庫卡 | 收藏冊、`/admin` | `src/app/api/items/[id]/vault`、`src/app/api/admin/items/[id]/vault`、`VaultConvert.tsx` |
+| 盲盒卡包（承諾—揭示抽卡、即時回購） | `/packs` | `src/lib/server/packs.ts`、`pack-pool.ts`，`src/lib/pack-draw.ts`、`src/lib/packs.ts`，`src/components/packs/PackOpener.tsx` |
+| 收藏冊（卡冊、整理、同步） | `/binder` | `BinderView.tsx`、`BinderBook.tsx`、`BinderArranger.tsx`、`BinderChain.tsx`，`src/lib/binder.ts`、`binder-layout.ts`，`src/app/api/binder` |
+| 圖鑑 | `/catalog` | `src/lib/catalog.ts` |
+| 團體名錄（表單的團體、成員建議） | 上鏈、入庫表單 | `src/lib/kpop-groups.ts` |
+| 金庫頁（存貨證明） | `/vault` | `src/components/vault/` |
+| 專輯銷量榜 | `/charts` | `src/lib/server/circle-chart.ts` |
+| 後台（入庫、卡包、擔保訂單、提貨、假卡） | `/admin` | `src/components/admin/`、`src/app/api/admin/` |
+| 照片處理和浮水印 | — | `src/lib/server/media.ts`、`src/lib/crop-card.ts` |
+| 每日排程（逾時訂單、清地址、清過期會話） | — | `src/app/api/cron/daily`、`vercel.json` |
+| SEO（標題、hreflang、站點地圖、分享圖、JSON-LD） | 全站 | `src/lib/seo.ts`、`src/app/sitemap.ts`、`robots.ts`、`opengraph-image.tsx` |
+| 下拉選單元件 | 全站 | `src/components/ui/Combobox.tsx`（可自由輸入的建議清單）、`Select.tsx`（選單，可帶搜尋） |
+| 多語言（8 種） | 全站 | `messages/*.json` |
+
+## 資料表
+
+全部定義在 `src/lib/server/schema.ts`，`BOOTSTRAP_SQL` 在第一次連線時建表和補欄位。
+
+| 表 | 存什麼 |
+|---|---|
+| `users`、`sessions`、`login_nonces` | 帳號（郵箱或錢包、角色、年齡確認）、會話、錢包登入挑戰碼 |
+| `binder_entries`、`binder_wants`、`binder_layouts` | 收藏冊的標記、想要清單、擺法 |
+| `collector_items` | 自由上鏈的卡：資料、刊登價格、鑑定狀態、NFT 地址、寄進金庫申請 |
+| `vault_cards` | 金庫卡實物資料；持有人和掛單以鏈上為準 |
+| `packs`、`pack_pulls`、`pack_orders` | 卡包、每一抽的紀錄、開包訂單 |
+| `orders` | 自由刊登的擔保訂單 |
+| `redemptions` | 提貨申請和收件地址 |
+| `media` | 照片（原圖和浮水印展示圖） |
+| `faucet_claims`、`rate_limits` | devnet 水龍頭領取紀錄、頻率限制計數 |
+
+## 環境
+
+| | 線上 | 本機開發 | 本機端到端測試 |
+|---|---|---|---|
+| 網站 | Vercel 專案 `ai-artist-projects/idolca`，推送 main 自動部署 | `npm run dev` | `PGLITE_DIR=.data/pglite-e2e npm run dev` |
+| 資料庫 | Neon（Vercel 整合，變數前綴 `idolca_api_`） | PGlite，`.data/pglite` | PGlite，`.data/pglite-e2e` |
+| 平台金鑰 | `PLATFORM_SECRET_KEY`（敏感變數） | `.data/platform-devnet.json` | 同左 |
+| 管理員 | `ADMIN_WALLETS` 目前是測試錢包 `5ftP1ayDW7EpPmTXBjdC1dvuoRbdqfEKDX4tRWnFCBZu` | `.env.local` 的 `ADMIN_WALLETS`，金鑰 `.data/admin-test-devnet.json` | 同左 |
+
+- 線上已設的變數：資料庫、`PLATFORM_SECRET_KEY`、`ADMIN_WALLETS`、`CRON_SECRET`（Production 和 Preview）。全部變數見 `.env.example`。
+- Vercel CLI 在 `C:/Software/VercelCLI/node_modules/.bin/vercel`，已登入並連結專案。每次部署的專屬網址有 Vercel 登入保護，對外只用 idolca.vercel.app。
+- 鏈上地址（程序、集合、平台錢包、測試 USDT）在 `src/lib/chain/devnet.json`，說明見 tech-stack.md「devnet 部署」。
+- 合約在 WSL 的 `~/idolca-onchain` 編譯（`/mnt/c` 下會記憶體錯誤），要用 `anchor build --arch v0`。
+- `.data/` 不進倉庫，放金鑰、本機資料庫和一次性的除錯腳本。
+
+## 開發約定
+
+- **Next.js 16**：寫代碼前先讀 `node_modules/next/dist/docs/` 的對應指南。開了 Cache Components：讀請求資料的路由處理器先 `await connection()`，動態頁面內容包在 `Suspense` 裡。沒有 `.next` 時先 `npx next typegen` 再跑 `tsc`。
+- **dev 伺服器**：開著時不要跑 `npm run build`（會覆寫 `.next`，頁面無限重載）；要驗證構建就先停 dev，構建後刪 `.next` 再重啟。頁面無限重載時同樣停 dev、刪 `.next`、重開。改了 `schema.ts` 要重啟 dev 才會執行新的建表語句。停 dev 時連 3000 埠上的 node 子程序一起結束。
+- **測試資料不進日常資料庫**：端到端測試只對 `PGLITE_DIR=.data/pglite-e2e` 啟動的網站跑，不對日常開發庫或線上跑；跑的時候不要改 `src`（熱更新會打斷測試）。瀏覽器自動化只結束命令列帶 `remote-debugging-port` 的 Chrome，不動用戶自己的瀏覽器。
+- **多語言**：先定英文和繁中，再一次翻成其他六種。單元測試會檢查八種語言的鍵和參數一致，以及程式碼裡寫死的每個鍵都存在。
+- **用詞**：面向粉絲的文字照 tech-stack.md「首頁」的用詞表（數位珍藏、公開認證紀錄等）；後台保留技術用語。
+- **不放假數據**：頁面數字只來自鏈上或自己的資料庫，沒有就不顯示。
+- **多條寫入**：必須一起生效的寫入用 `atomic()`（`src/lib/server/db.ts`）。
+- **提交**：用戶說 commit 時才提交，並推送到 `origin/main`；CI 跑 lint、型別檢查、單元測試和正式構建。
+
+## 已知問題
+
+- **測試環境和線上共用 devnet 集合**：本機和端到端測試鑄的卡也在線上的兩個集合裡，元數據網址指向線上（`NEXT_PUBLIC_SITE_URL` 預設值），線上資料庫查不到，錢包裡顯示成沒名字、沒圖片。這些卡都在平台錢包和測試錢包裡，沒有進真實用戶的錢包。要徹底分開，測試環境改用自己的一組集合；收藏集合裡的孤兒卡可以用集合的 PermanentTransferDelegate 收回再銷毀，金庫集合裡的平台動不了。
+- **用戶錢包連在主網時看不到 devnet 資產**：Phantom 要在開發者設定裡開測試網模式並選 Devnet，Solflare 在網路設定裡選 Devnet。登入框和 README 還沒有這個提示。
+- **線上管理員是測試錢包**：要換成用戶自己的錢包（`ADMIN_WALLETS` 或 `npm run admin:grant`）。Vercel 上的舊變數 `ADMIN_TOKEN` 已不再使用，可以刪掉。
+- **榜單數據**：讀 Circle Chart 網頁用的接口，正式營運前要換授權來源。
+- **團體名錄**：122 個團體裡 64 個附成員，其餘只有團名。
+
+## 還沒做
+
+- 自己的網域（idolca.com、idolca.app 查過可註冊）；接上後改 `NEXT_PUBLIC_SITE_URL`。
+- 法幣入金（MoonPay 這類）、提現和 KYC、Google 和 Apple 登入、郵箱驗證。
+- 專輯代購代拆。
+- 主網部署和營運準備（法務、物流報價、熱錢包餘額警報），清單見 tech-stack.md「上線主網」。

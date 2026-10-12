@@ -4,7 +4,7 @@ K-pop 小卡鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Solana 
 
 English: [README.md](README.md)
 
-市場調研和競品分析見 [docs/research.md](docs/research.md)，技術選型和各功能的規則見 [docs/tech-stack.md](docs/tech-stack.md)，命名方案見 [docs/naming.md](docs/naming.md)。
+市場調研和競品分析見 [docs/research.md](docs/research.md)，技術選型和各功能的規則見 [docs/tech-stack.md](docs/tech-stack.md)，已實施的功能、代碼地圖、環境和待辦見 [docs/status.md](docs/status.md)，命名方案見 [docs/naming.md](docs/naming.md)。
 
 ## 開發
 
@@ -41,7 +41,7 @@ npm run admin:grant -- you@example.com     # 或錢包地址；加 --revoke 撤�
 
 ## 測試
 
-- `npm test`：單元測試（卡包機率、抽卡公平性、收件地址驗證、八種語言的文字一致）。
+- `npm test`：單元測試（卡包機率、抽卡公平性、收件地址驗證、收藏冊擺法、八種語言的文字一致、程式碼用到的翻譯鍵都存在）。
 - 端到端測試對著跑起來的網站和 devnet 執行，每次都是真實交易，會消耗平台錢包的 SOL，也會入庫測試卡、建測試卡包。網站要用獨立的測試資料庫啟動（`PGLITE_DIR=.data/pglite-e2e npm run dev`），不要對著日常開發的資料庫或線上環境跑。管理員錢包金鑰檔用 `E2E_ADMIN_KEYPAIR` 指定（預設 `.data/admin-test-devnet.json`），地址要在網站的 `ADMIN_WALLETS` 裡。
 
 ```bash
@@ -142,6 +142,7 @@ tests/                    單元測試
 e2e/                      端到端測試和瀏覽器測試錢包
 docs/
   research.md             市場調研與競品分析
-  tech-stack.md           技術選型
+  tech-stack.md           技術選型和各功能規則
+  status.md               實施現況：已上線功能、代碼地圖、環境、開發約定、待辦
   naming.md               命名方案
 ```

@@ -100,7 +100,7 @@ With no `DATABASE_URL`, local development uses PGlite in `.data/` and seeds the 
 
 ```bash
 npm run lint && npx next typegen && npx tsc --noEmit
-npm test                     # unit: odds, fair-draw verification, address validation, translation consistency
+npm test                     # unit: odds, fair-draw verification, address validation, binder layout, translations
 ```
 
 End-to-end suites run against a live site and devnet with real transactions. Start the site on a separate test database first (`PGLITE_DIR=.data/pglite-e2e npm run dev`):
@@ -122,7 +122,7 @@ src/app/api/        accounts, items, escrow orders, packs, vault trading and red
 src/lib/server/     database, auth, chain actions, payments, escrow, packs, vault cards
 onchain/            Anchor workspace for the escrow program
 tests/  e2e/        unit and end-to-end tests
-docs/               market research and competitor analysis, technical design (Chinese)
+docs/               market research, technical design, implementation status (Chinese)
 ```
 
 ## Notes
