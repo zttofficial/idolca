@@ -1,7 +1,7 @@
 // 擔保交易：逾時退款、申訴與後台退款、逾時自動放款、後台放款。
 // 網站要用縮短的期限啟動：ESCROW_SHIP_DAYS=0.0003 ESCROW_CONFIRM_DAYS=0.0003 CRON_SECRET=<同 E2E_CRON_SECRET> npm run dev
 // 用法：E2E_CRON_SECRET=testcron npm run test:e2e:escrow
-import { adminKey, api, check, finish, login, must, newKey, photo, signSend, sleep, step } from "./lib.mjs";
+import { adminKey, api, check, finish, login, mintSelf, must, newKey, photo, signSend, sleep, step } from "./lib.mjs";
 
 const CRON = process.env.E2E_CRON_SECRET ?? "testcron";
 const AD = await login(adminKey());
@@ -52,7 +52,8 @@ check("admin refund", ar.ok && Boolean(ar.json.refundTx), ar.json.refundTx ?? JS
 check("release after refund refused", (await api("POST", `/api/admin/orders/${b}/release`, undefined, AD)).status === 409);
 
 step("C. 寄出後逾時未確認 → 排程自動放款");
-const itemC = await list("Escrow C");
+// C 由賣家自己付費上鏈：成交時數位珍藏也要轉給買家；其他刊登沒上鏈，只過戶不轉 NFT
+const itemC = await mintSelf((await list("Escrow C")).id, seller, S);
 const c = await buy(itemC.id);
 await must("POST", `/api/orders/${c}/ship`, undefined, S);
 o = await order(c);
@@ -71,6 +72,7 @@ await must("POST", `/api/orders/${d}/ship`, undefined, S);
 await must("POST", `/api/orders/${d}/dispute`, { reason: "Not arrived" }, B);
 const rel = await api("POST", `/api/admin/orders/${d}/release`, undefined, AD);
 check("admin release", rel.ok && Boolean(rel.json.payoutTx), rel.json.payoutTx ?? JSON.stringify(rel.json));
-check("completed", (await order(d)).status === "completed");
+o = await order(d);
+check("completed without an NFT to transfer", o.status === "completed" && o.transferTx === null);
 
 finish();

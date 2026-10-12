@@ -96,7 +96,8 @@ export const collectorItems = pgTable("collector_items", {
   // 和圖鑑卡款對得上時記下，方便收集進度和行情；對不上就留空
   templateId: text("template_id"),
   // NFT 地址和鑄造交易
-  asset: text("asset").notNull(),
+  // 收藏 NFT：用戶自己付費上鏈時才有（見 funds.ts 的 buildUserMint），沒上鏈時三項都空。刊登和擔保交易不需要它
+  asset: text("asset"),
   mintTx: text("mint_tx"),
   // NFT 的持有地址：錢包登入的用戶是自己的錢包，郵箱帳號是平台代管錢包
   ownerAddress: text("owner_address"),
@@ -332,6 +333,7 @@ export const BOOTSTRAP_SQL = [
   )`,
   `CREATE INDEX IF NOT EXISTS collector_items_user_id_idx ON collector_items(user_id)`,
   // 舊資料庫補欄位
+  `ALTER TABLE collector_items ALTER COLUMN asset DROP NOT NULL`,
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS photo_back text`,
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'album'`,
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS extra_photos text`,

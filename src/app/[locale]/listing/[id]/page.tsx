@@ -136,13 +136,13 @@ async function ListingContent({ params }: { params: PageProps<"/[locale]/listing
               <div className="col-span-2">
                 <dt className="text-xs text-ink-3">{t("nft")}</dt>
                 <dd className="mt-0.5 text-xs">
-                  {listing.mintTx ? (
+                  {listing.mintTx && listing.asset ? (
                     <a href={solscanUrl("account", listing.asset)} target="_blank" rel="noreferrer" className="inline-flex gap-1.5 hover:underline">
                       <span className="font-mono text-ink-2">{shortAddress(listing.asset, 8, 8)}</span>
                       <span className="font-semibold text-accent-ink">{tMint("onSolscan")} ↗</span>
                     </a>
                   ) : (
-                    <span className="font-mono text-ink-2">{shortAddress(listing.asset, 8, 8)}</span>
+                    <span className="text-ink-3">{tMint("notMintedYet")}</span>
                   )}
                 </dd>
               </div>

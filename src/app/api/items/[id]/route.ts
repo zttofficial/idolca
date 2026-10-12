@@ -4,7 +4,7 @@ import { MAX_DESCRIPTION, priceToCents, publicItem } from "@/lib/server/items";
 import { requireUser } from "@/lib/server/require-user";
 
 // 持有人改自己的卡：
-// - priceUsdt 為數字時刊登（或改價），為 null 時下架；假卡不能刊登
+// - priceUsdt 為數字時刊登（或改價），為 null 時下架；假卡不能刊登。刊登不需要上鏈
 // - description 改描述（空字串清除）；NFT 元數據即時讀資料庫，不用改鏈上
 export async function PATCH(request: Request, ctx: RouteContext<"/api/items/[id]">) {
   const a = await requireUser();

@@ -19,6 +19,7 @@ import { getDb } from "@/lib/server/db";
 import { getPack, recentPackPulls } from "@/lib/server/pack-pool";
 import { withLiveRemaining } from "@/lib/server/pack-live";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
+import InfoTip from "@/components/ui/InfoTip";
 
 async function findPack(id: string) {
   await connection();
@@ -91,11 +92,11 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
               <Countdown startsAt={pack.startsAt} endsAt={pack.endsAt} className="mt-1 block text-xs text-ink" />
             </div>
             <div className="rounded-xl bg-surface-2 px-4 py-3">
-              <p className="text-[11px] text-ink-3">{t("expectedTitle")}</p>
-              <p className="mt-1 text-lg font-semibold tabular-nums">{formatPrice(s.expected, 2)}</p>
-              <p className="mt-0.5 text-[11px] leading-snug text-ink-3">
-                {t("expectedBody", { rtp: Math.round((s.expected / pack.priceUsdt) * 100) })}
+              <p className="flex items-center gap-1.5 text-[11px] text-ink-3">
+                {t("expectedTitle")}
+                <InfoTip text={t("expectedBody", { rtp: Math.round((s.expected / pack.priceUsdt) * 100) })} label={t("expectedTitle")} align="end" />
               </p>
+              <p className="mt-1 text-lg font-semibold tabular-nums">{formatPrice(s.expected, 2)}</p>
             </div>
           </div>
 

@@ -7,7 +7,7 @@ import { usePackPhase } from "./Countdown";
 import { HoloCardFace } from "@/components/market/HoloTile";
 import { CardBackArt } from "@/components/market/CardArt";
 import { formatPrice } from "@/lib/fx";
-import { BUYBACK_RATE, TIER_COLOR, entryCard, type Pack, type PoolEntry } from "@/lib/packs";
+import { BUYBACK_RATE, MAX_RTP, TIER_COLOR, entryCard, packStats, type Pack, type PoolEntry } from "@/lib/packs";
 import { useAuth } from "@/components/auth/AuthContext";
 import { payAndConfirm, payOnArc, postAction, refreshChainState, useChainState } from "@/lib/chain-client";
 import { arcExplorerUrl } from "@/lib/arc";
@@ -16,6 +16,7 @@ import PaymentPicker from "@/components/pay/PaymentPicker";
 import { signAndSend } from "@/lib/solana/wallets";
 import { solscanUrl } from "@/lib/solana/config";
 import { CloseButton } from "@/components/ui/Dialog";
+import InfoTip from "@/components/ui/InfoTip";
 
 const QUANTITIES = [1, 5, 10] as const;
 type Stage = "closed" | "pack" | "tearing" | "reveal" | "results";
@@ -61,7 +62,9 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
   const [choices, setChoices] = useState<Record<number, Choice>>({});
 
   const left = pool.reduce((n, e) => n + e.remaining, 0);
-  const canOpen = phase === "live" && left >= qty && !regionBlocked;
+  // 剩下卡池的期望價值超過返還率上限時暫停販售，等補貨（見 lib/packs.ts 的 MAX_RTP）
+  const paused = live && packStats({ pool, priceUsdt: pack.priceUsdt }).paused;
+  const canOpen = phase === "live" && left >= qty && !regionBlocked && !paused;
 
   const reveal = (drawn: PoolEntry[]) => {
     setPulls(drawn);
@@ -143,7 +146,9 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
               ? t("ended")
               : left < qty
                 ? t("soldOut")
-                : t("openN", { count: qty, total: round2(qty * pack.priceUsdt) });
+                : paused
+                  ? t("paused")
+                  : t("openN", { count: qty, total: round2(qty * pack.priceUsdt) });
 
   return (
     <div>
@@ -164,13 +169,16 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
           ))}
         </div>
       )}
-      <button
-        onClick={() => ready() && setPicking(true)}
-        disabled={!canOpen || picking || (live && Boolean(user) && !wallet)}
-        className="btn-primary mt-3 w-full rounded-full px-6 py-3.5 text-base font-bold disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {label}
-      </button>
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          onClick={() => ready() && setPicking(true)}
+          disabled={!canOpen || picking || (live && Boolean(user) && !wallet)}
+          className="btn-primary flex-1 rounded-full px-6 py-3.5 text-base font-bold disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {label}
+        </button>
+        {paused && phase === "live" && left >= qty && <InfoTip text={t("pausedNote", { max: Math.round(MAX_RTP * 100) })} label={t("paused")} align="end" />}
+      </div>
       {live && user && !wallet && <p className="mt-2 text-center text-xs text-ink-2">{t("linkWalletToOpen")}</p>}
       {ageAsk && (
         <div className="mt-3 rounded-xl border border-line bg-surface-2 p-4 text-sm">
@@ -210,7 +218,14 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
           payLink={(tx: string) => (payRail === "arc" ? arcExplorerUrl("tx", tx) : solscanUrl("tx", tx))}
           refundTx={refundTx}
           onSellBack={sellBack}
-          onAgain={canOpen ? open : undefined}
+          onAgain={
+            canOpen
+              ? () => {
+                  setStage("closed");
+                  if (ready()) setPicking(true);
+                }
+              : undefined
+          }
           onClose={close}
         />
       )}

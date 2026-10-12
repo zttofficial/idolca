@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { Card } from "@/lib/cards";
 import { drawRandom, verifyDraw } from "@/lib/pack-draw";
-import { entryCard, packStats, pickIndex, poolOrder, type PoolEntry, type Tier } from "@/lib/packs";
+import { MAX_RTP, entryCard, overRtp, packStats, pickIndex, poolOrder, type PoolEntry, type Tier } from "@/lib/packs";
 
 const card = (serial: string): Card => ({
   id: serial,
@@ -26,7 +26,7 @@ describe("packStats", () => {
   const pool = [entry("IC-3", "SSR", 100), entry("IC-1", "R", 10), entry("IC-2", "N", 2), entry("IC-4", "N", 2, 0)];
 
   it("odds are each tier's share of the cards still in the pool", () => {
-    const s = packStats({ pool });
+    const s = packStats({ pool, priceUsdt: 100 });
     expect(s.remaining).toBe(3);
     expect(s.total).toBe(4);
     expect(s.tiers.find((t) => t.tier === "SSR")!.odds).toBeCloseTo(1 / 3);
@@ -35,15 +35,30 @@ describe("packStats", () => {
   });
 
   it("expected value and top value only count cards still in the pool", () => {
-    const s = packStats({ pool });
+    const s = packStats({ pool, priceUsdt: 100 });
     expect(s.expected).toBeCloseTo((100 + 10 + 2) / 3);
     expect(s.topValue).toBe(100);
   });
 
   it("handles an empty pool and empty tiers", () => {
-    const s = packStats({ pool: [] });
+    const s = packStats({ pool: [], priceUsdt: 10 });
     expect(s).toMatchObject({ remaining: 0, total: 0, expected: 0, topValue: 0 });
     expect(s.tiers.every((t) => t.minValue === 0 && t.maxValue === 0)).toBe(true);
+  });
+
+  it("return rate: sell-out profit, remaining-pool rate, and a pause above the cap", () => {
+    // 4 張卡總值 100+10+2+2 = 114，售價 50：賣完收入 200，返還率 57%，利潤 86
+    const s = packStats({ pool, priceUsdt: 50 });
+    expect(s.sellOutRtp).toBeCloseTo(114 / 200);
+    expect(s.sellOutProfit).toBeCloseTo(86);
+    // 剩下 3 張的期望價值 (100+10+2)/3 ≈ 37.3，是售價的 75%，在 80% 上限內
+    expect(s.rtp).toBeCloseTo(112 / 3 / 50);
+    expect(s.paused).toBe(false);
+    // 便宜的卡抽完、只剩高價卡時，期望價值超過上限，暫停販售
+    expect(packStats({ pool: [entry("IC-3", "SSR", 100), entry("IC-1", "R", 10, 0), entry("IC-2", "N", 2, 0)], priceUsdt: 50 }).paused).toBe(true);
+    expect(MAX_RTP).toBe(0.8);
+    expect(overRtp(40, 50)).toBe(false);
+    expect(overRtp(40.01, 50)).toBe(true);
   });
 
   it("entryCard shows the pack value as the price", () => {

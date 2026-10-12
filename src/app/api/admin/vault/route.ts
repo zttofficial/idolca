@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/server/admin";
 import { fail } from "@/lib/server/require-user";
 import { users, vaultCards } from "@/lib/server/schema";
 import { saveUploads } from "@/lib/server/media";
+import { invalidateVaultState } from "@/lib/server/vault-chain";
 import { mintVaultNft } from "@/lib/server/chain";
 import { invalidateVaultCards, newVaultCardId, nextSerial, toCard } from "@/lib/server/vault-cards";
 import { RARITY_LIST, type Rarity } from "@/lib/cards";
@@ -94,5 +95,7 @@ export async function POST(request: Request) {
     })
     .returning();
   invalidateVaultCards();
+  // 新鑄的卡要馬上算進鏈上狀態（例如放進卡包後立刻能抽），不等快取過期
+  invalidateVaultState();
   return Response.json({ card: toCard(row), mintTx: minted.tx, templateId: matchTemplate(group, member, album, version) });
 }

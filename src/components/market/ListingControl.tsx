@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { CURRENCY, formatPrice } from "@/lib/fx";
+import InfoTip from "@/components/ui/InfoTip";
 
 // 上架、改價、下架。收藏冊裡自己上鏈的卡（擔保交易刊登）、收藏冊和卡片頁上的金庫卡（鏈上託管掛單）共用這一個介面，
 // 差別只在呼叫方傳進來的動作和說明文字
@@ -18,7 +19,7 @@ export default function ListingControl({
   price: number | null;
   // 上架後「看刊登頁」連到哪裡；已經在刊登頁上時不給
   viewHref?: string;
-  // 輸入價格時下方的說明
+  // 輸入價格時，價格旁問號裡的說明
   note: string;
   onList: (price: number) => Promise<unknown>;
   onUnlist: () => Promise<unknown>;
@@ -83,6 +84,7 @@ export default function ListingControl({
       }}
     >
       <label className="flex items-center gap-2 text-xs text-ink-2">
+        <InfoTip text={note} label={t("price")} align="start" />
         {t("price")}
         <input
           autoFocus
@@ -93,7 +95,6 @@ export default function ListingControl({
         />
         {CURRENCY}
       </label>
-      <p className="mt-2 text-[11px] leading-snug text-ink-3">{note}</p>
       <div className="mt-2 flex gap-2">
         <button disabled={!valid || busy} className="btn-primary rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-40">
           {busy ? "…" : t(listed ? "savePrice" : "confirmList")}

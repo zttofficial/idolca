@@ -8,6 +8,7 @@ import { AddCardButton, openAddCard } from "./AddCard";
 import VerificationBadge from "./VerificationBadge";
 import ListingControl from "@/components/market/ListingControl";
 import Dialog from "@/components/ui/Dialog";
+import InfoTip from "@/components/ui/InfoTip";
 import BinderBook from "./BinderBook";
 import BinderArranger from "./BinderArranger";
 import { arrange, clearPocket, EMPTY_LAYOUT, isTrackedOnly, takeOut } from "@/lib/binder-layout";
@@ -22,7 +23,7 @@ import type { Card } from "@/lib/cards";
 import { formatPrice } from "@/lib/fx";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 import { itemTitle } from "@/lib/item-title";
-import { setDescription, setListing, useMyItems, type CollectorItem, requestVault } from "@/lib/items";
+import { putOnChain, setDescription, setListing, useMyItems, type CollectorItem, requestVault } from "@/lib/items";
 
 type Tab = "binder" | "onchain" | "orders" | "progress" | "wants";
 const TABS: Tab[] = ["binder", "onchain", "orders", "progress", "wants"];
@@ -98,7 +99,10 @@ export default function BinderView() {
   const byKey = new Map(slots.map((slot) => [slotKey(slot), slot]));
   const keys = [...byKey.keys()];
   // 只是記錄的卡不進卡盒；以前被拿出冊子的放回冊子
-  const { layout, pockets, hiddenCards } = arrange(keys, { ...binder.layout, hidden: binder.layout.hidden.filter((k) => !isTrackedOnly(k)) });
+  const { layout, pockets, hiddenCards } = arrange(keys, {
+    ...binder.layout,
+    hidden: binder.layout.hidden.filter((k) => !isTrackedOnly(k)),
+  });
   const present = new Set(keys);
   // 統計冊子裡的卡（拿出收藏冊的不算）：張數、團體數、自己上鏈的張數，跟著擺法即時變
   const inBinder = slots.filter((slot) => !hiddenCards.includes(slotKey(slot)));
@@ -108,7 +112,10 @@ export default function BinderView() {
   const stats = [
     { label: t("statCards"), value: copies.toLocaleString("en-US") },
     { label: t("statGroups"), value: groups },
-    { label: t("statMinted"), value: inBinder.filter((slot) => slot.kind === "item").length },
+    {
+      label: t("statMinted"),
+      value: inBinder.filter((slot) => slot.kind === "item").length,
+    },
   ];
   // 鏈上的卡拿出冊子放進卡盒；只是記錄的卡直接刪掉標記和它的位置
   const takeOutCard = (key: string) => {
@@ -374,7 +381,12 @@ function CardSheet({ owned, onClose, onTakeOut }: { owned: Owned; onClose: () =>
             <button
               onClick={() => {
                 onClose();
-                openAddCard({ group: template.group, member: template.member, album: template.album, version: template.version });
+                openAddCard({
+                  group: template.group,
+                  member: template.member,
+                  album: template.album,
+                  version: template.version,
+                });
               }}
               className="btn-primary rounded-full py-2.5 text-sm font-semibold"
             >
@@ -435,12 +447,12 @@ function ItemSheet({ item, onClose, onTakeOut }: { item: CollectorItem; onClose:
           <DescriptionEditor item={item} />
           {item.verifiedAt && <p className="mt-1 text-[11px] text-ink-3">{tMint("verifiedOn", { date: item.verifiedAt.slice(0, 10) })}</p>}
           {item.mintTx ? (
-            <a href={solscanUrl("account", item.asset)} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-ink-2 hover:text-ink">
-              <span className="font-mono">{shortAddress(item.asset, 6, 6)}</span>
+            <a href={solscanUrl("account", item.asset!)} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-ink-2 hover:text-ink">
+              <span className="font-mono">{shortAddress(item.asset!, 6, 6)}</span>
               <span className="font-semibold text-accent-ink">{tMint("onSolscan")} ↗</span>
             </a>
           ) : (
-            <p className="mt-3 font-mono text-[11px] text-ink-3">{shortAddress(item.asset, 6, 6)}</p>
+            !fake && !item.vaultRequestedAt && <MintSelf item={item} />
           )}
           {item.fakeTx && (
             <a href={solscanUrl("tx", item.fakeTx)} target="_blank" rel="noreferrer" className="mt-1 block text-[11px] font-semibold text-down hover:underline">
@@ -489,7 +501,11 @@ function VaultRequest({ item }: { item: CollectorItem }) {
     return (
       <div className="rounded-xl bg-surface-2 p-3 text-xs leading-relaxed text-ink-2">
         <p className="font-semibold text-ink">{t("vaultRequested")}</p>
-        <p className="mt-1">{t("vaultShipInstructions", { ref: `IDOLCA-${item.id.slice(0, 8).toUpperCase()}` })}</p>
+        <p className="mt-1">
+          {t("vaultShipInstructions", {
+            ref: `IDOLCA-${item.id.slice(0, 8).toUpperCase()}`,
+          })}
+        </p>
         {address ? <p className="mt-2 whitespace-pre-line text-ink">{address}</p> : <p className="mt-2 text-ink-3">{t("vaultAddressPending")}</p>}
         <button disabled={busy} onClick={() => run(true)} className="btn-secondary mt-2 rounded-full px-3 py-1 text-xs font-semibold disabled:opacity-50">
           {t("vaultCancel")}
@@ -499,10 +515,13 @@ function VaultRequest({ item }: { item: CollectorItem }) {
   }
   return (
     <div>
-      <button disabled={busy || !user?.walletAddress} onClick={() => run(false)} className="w-full btn-secondary rounded-full py-2.5 text-center text-sm font-semibold disabled:opacity-50">
-        {busy ? "…" : t("sendToVault")}
-      </button>
-      <p className="mt-1.5 text-[11px] leading-relaxed text-ink-3">{t(user?.walletAddress ? "vaultHint" : "vaultNeedsWallet")}</p>
+      <div className="flex items-center gap-2">
+        <button disabled={busy || !user?.walletAddress} onClick={() => run(false)} className="btn-secondary flex-1 rounded-full py-2.5 text-center text-sm font-semibold disabled:opacity-50">
+          {busy ? "…" : t("sendToVault")}
+        </button>
+        <InfoTip text={t("vaultHint")} label={t("sendToVault")} align="end" />
+      </div>
+      {!user?.walletAddress && <p className="mt-1.5 text-[11px] leading-relaxed text-ink-3">{t("vaultNeedsWallet")}</p>}
       {error && <p className="mt-1 text-[11px] text-down">{t.has(`error_${error}`) ? t(`error_${error}`) : t("orderError")}</p>}
     </div>
   );
@@ -516,7 +535,14 @@ function Progress() {
     g.albums.flatMap((a) =>
       a.members.map((m) => {
         const list = TEMPLATES.filter((x) => x.groupId === g.id && x.albumId === a.id && x.member === m);
-        return { key: `${g.id}-${a.id}-${m}`, groupId: g.id, label: `${g.name} ${m}`, album: a.title, have: list.filter((x) => binder.have[x.id]).length, total: list.length };
+        return {
+          key: `${g.id}-${a.id}-${m}`,
+          groupId: g.id,
+          label: `${g.name} ${m}`,
+          album: a.title,
+          have: list.filter((x) => binder.have[x.id]).length,
+          total: list.length,
+        };
       }),
     ),
   )
@@ -553,7 +579,14 @@ function WantMarket({ template }: { template: Template }) {
   const market = useTemplateMarket()(template);
   return (
     <span className="text-xs text-ink-2">
-      {!market ? "…" : market.forSale && market.fromUsdt !== null ? t("forSaleNow", { count: market.forSale, price: formatPrice(market.fromUsdt) }) : t("noneForSale")}
+      {!market
+        ? "…"
+        : market.forSale && market.fromUsdt !== null
+          ? t("forSaleNow", {
+              count: market.forSale,
+              price: formatPrice(market.fromUsdt),
+            })
+          : t("noneForSale")}
     </span>
   );
 }
@@ -717,5 +750,40 @@ function TakeOutButton({ onTakeOut, label = "takeOut" }: { onTakeOut: () => void
     <button onClick={onTakeOut} className="btn-secondary rounded-full py-2.5 text-center text-sm font-semibold">
       {t(label)}
     </button>
+  );
+}
+
+// 自己付費做成數位珍藏（可選）：刊登和擔保交易都不需要；想要的話用自己的錢包付手續費和押金（約 0.003 SOL）。
+// 旁邊的問號說明數位珍藏有什麼用，吸引用戶做
+function MintSelf({ item }: { item: CollectorItem }) {
+  const t = useTranslations("Mint");
+  const wallet = useAuth().user?.walletAddress;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  if (!wallet) return <p className="mt-3 text-[11px] leading-relaxed text-ink-3">{t("mintNeedsWallet")}</p>;
+  return (
+    <div className="mt-3">
+      <div className="flex items-center gap-2">
+        <button
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setError(undefined);
+            try {
+              await putOnChain(item.id, wallet);
+            } catch (e) {
+              setError(e instanceof Error ? e.message : "mint_failed");
+            } finally {
+              setBusy(false);
+            }
+          }}
+          className="btn-secondary rounded-full px-3 py-1 text-xs font-semibold disabled:opacity-50"
+        >
+          {busy ? t("mintSelfBusy") : t("mintSelf")}
+        </button>
+        <InfoTip text={`${t("mintWhat")} ${t("mintSelfNote")}`} label={t("mintWhatLabel")} />
+      </div>
+      {error && <p className="mt-1 text-[11px] text-down">{t.has(`error_${error}`) ? t(`error_${error}`) : t("mintSelfError")}</p>}
+    </div>
   );
 }

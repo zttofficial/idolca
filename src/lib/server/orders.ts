@@ -134,7 +134,7 @@ export async function releaseOrder(db: Db, orderId: string, from: OrderStatus[] 
   try {
     const [item] = await db.select().from(collectorItems).where(eq(collectorItems.id, order.itemId));
     const [seller] = await db.select({ wallet: users.walletAddress }).from(users).where(eq(users.id, order.sellerId));
-    const transferTx = item?.mintTx ? await transferCollectorNft(item.asset, order.buyerWallet) : null;
+    const transferTx = item?.mintTx && item.asset ? await transferCollectorNft(item.asset, order.buyerWallet) : null;
     const payoutTx = seller?.wallet ? await payout(new PublicKey(seller.wallet), (order.priceCents - order.feeCents) / 100) : null;
     await db
       .update(orders)

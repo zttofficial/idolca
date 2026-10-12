@@ -257,7 +257,7 @@ export default function AdminConsole() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{itemTitle(i)}</p>
                   <p className="mt-0.5 flex flex-wrap gap-3 text-xs text-ink-3">
-                    {i.mintTx ? (
+                    {i.mintTx && i.asset ? (
                       <a href={solscanUrl("account", i.asset)} target="_blank" rel="noreferrer" className="font-mono hover:underline">
                         {shortAddress(i.asset)} ↗
                       </a>

@@ -8,6 +8,7 @@ import Wordmark from "@/components/brand/Wordmark";
 import { Link } from "@/i18n/navigation";
 import { WalletError, signInWithWallet, useWallets } from "@/lib/solana/wallets";
 import { CloseButton } from "@/components/ui/Dialog";
+import InfoTip from "@/components/ui/InfoTip";
 
 type Mode = "signup" | "login";
 type ErrorCode = "invalid_email" | "weak_password" | "email_taken" | "invalid_credentials" | "not_configured" | "network";
@@ -229,7 +230,10 @@ function WalletLogin({ configured, onSignedIn }: { configured: boolean; onSigned
 
   return (
     <div className="mt-5">
-      <p className="text-xs leading-relaxed text-ink-2">{t("walletLoginHint")}</p>
+      <p className="flex items-center gap-1.5 text-xs font-medium text-ink-2">
+        {t("walletLoginTitle")}
+        <InfoTip text={t("walletLoginHint")} label={t("walletLoginTitle")} align="start" />
+      </p>
       {wallets.length ? (
         <div className="mt-3 grid gap-2">
           {wallets.map((w) => (

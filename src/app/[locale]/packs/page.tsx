@@ -74,7 +74,7 @@ async function PackList() {
             <div className="flex min-w-0 flex-1 flex-col">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold">{pack.name}</h2>
-                {s.remaining === 0 && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-semibold text-ink-2">{t("soldOut")}</span>}
+                {(s.remaining === 0 || s.paused) && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-semibold text-ink-2">{t(s.remaining === 0 ? "soldOut" : "paused")}</span>}
               </div>
               <p className="mt-1 text-sm text-ink-2">{t("chance", { price: pack.priceUsdt, top: s.topValue.toLocaleString("en-US") })}</p>
               <div className="mt-4">

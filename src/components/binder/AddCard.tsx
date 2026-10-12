@@ -10,10 +10,11 @@ import { GROUPS, TEMPLATES } from "@/lib/catalog";
 import { findDirectoryGroup, groupOptions } from "@/lib/kpop-groups";
 import Combobox from "@/components/ui/Combobox";
 import Select from "@/components/ui/Select";
-import { mintItem, type CollectorItem } from "@/lib/items";
+import { addItem, type CollectorItem } from "@/lib/items";
 import { solscanUrl } from "@/lib/solana/config";
 import { CARD_SOURCES, type CardSource } from "@/lib/sources";
 import { CloseButton } from "@/components/ui/Dialog";
+import InfoTip from "@/components/ui/InfoTip";
 
 // 「新增我的卡」= 自由上鏈：拍正反面（可以再補幾張）、選來源、填名字、上鏈，可以順手標價刊登。
 // 一則可以是一張卡，也可以是一組卡。平台不查驗：新卡一律「待驗證」，刊登時買家看到免責聲明。可以從任何頁面打開
@@ -97,7 +98,7 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
     setBusy(true);
     setError(false);
     try {
-      setDone(await mintItem({ photos: [front, back, ...extras], title, description, quantity, source, group, member, album, version, priceUsdt: sell ? priceValue : undefined }));
+      setDone(await addItem({ photos: [front, back, ...extras], title, description, quantity, source, group, member, album, version, priceUsdt: sell ? priceValue : undefined }));
     } catch {
       setError(true);
     } finally {
@@ -124,7 +125,10 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
               <PhotoSlot label={t("front")} value={front} onChange={setFront} disabled={Boolean(done)} hint={t("choosePhoto")} retake={t("retake")} />
               <PhotoSlot label={t("back")} value={back} onChange={setBack} disabled={Boolean(done)} hint={t("chooseBack")} retake={t("retake")} />
             </div>
-            <p className="mt-3 text-xs font-medium text-ink-2">{t("morePhotos")}</p>
+            <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-ink-2">
+              {t("morePhotos")}
+              <InfoTip text={t("morePhotosHint")} label={t("morePhotos")} align="start" />
+            </p>
             <div className="mt-1 grid grid-cols-4 gap-1.5">
               {extras.map((x, i) => (
                 <button
@@ -140,7 +144,6 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
               ))}
               {!done && extras.length < MAX_EXTRA && <AddPhoto label={t("addPhoto")} onAdd={(x) => setExtras([...extras, x])} />}
             </div>
-            <p className="mt-1 text-[11px] leading-snug text-ink-3">{t("morePhotosHint")}</p>
           </div>
 
           {done ? (
@@ -212,6 +215,7 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
                 <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
                   <input type="checkbox" checked={sell} onChange={() => setSell(!sell)} className="h-4 w-4 accent-[var(--accent)]" />
                   {t("sellNow")}
+                  <InfoTip text={t("freeMintNote")} label={t("sellNow")} align="start" />
                 </label>
                 {sell && (
                   <label className="mt-2 flex items-center gap-2 text-xs text-ink-2">
@@ -228,7 +232,6 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
                 )}
               </div>
 
-              <p className="mt-3 rounded-xl bg-surface-2 p-3 text-xs leading-relaxed text-ink-2">{t("freeMintNote")}</p>
 
               {error && <p className="mt-3 text-xs text-down">{t("error")}</p>}
               {user ? (
@@ -240,7 +243,6 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
                   {t("loginToMint")}
                 </button>
               )}
-              <p className="mt-3 text-[11px] text-ink-3">{t("mintNote")}</p>
             </div>
           )}
         </div>

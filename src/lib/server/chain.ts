@@ -30,8 +30,6 @@ export function platformUmi() {
   return (cached = umi);
 }
 
-// 有平台金鑰和收藏集合時才能上鏈；沒有時（例如還沒建置的環境）鑄造類接口回「未開通」
-export const chainEnabled = () => platformUmi() !== null;
 export const platformAddress = () => platformUmi()?.identity.publicKey.toString() ?? null;
 
 // 網站的公開網址：NFT 的元數據和圖片都指向這裡
@@ -53,26 +51,18 @@ const attributeList = (a: CollectorAttributes, verification: "unverified" | "fak
     .filter((x): x is [string, string] => Boolean(x[1]))
     .map(([key, value]) => ({ key, value }));
 
-// 鑄造收藏 NFT。owner 是用戶自己的錢包（錢包登入），沒有時鑄到平台代管錢包。
-// 每個 NFT 自帶 PermanentFreezeDelegate（平台可凍結假卡）；集合上的 PermanentTransferDelegate 讓平台在擔保交易成交時轉移
-export async function mintCollectorNft(itemId: string, attrs: CollectorAttributes, owner: string | null) {
-  const umi = platformUmi();
-  if (!umi) return null;
-  const collection = await fetchCollection(umi, publicKey(CHAIN.collectorCollection));
-  const asset = generateSigner(umi);
-  const { signature } = await create(umi, {
-    asset,
-    collection,
-    owner: owner ? publicKey(owner) : umi.identity.publicKey,
-    name: attrs.title.slice(0, 32),
-    uri: `${SITE_URL}/api/meta/item/${itemId}`,
-    plugins: [
-      { type: "Attributes", attributeList: attributeList(attrs, "unverified") },
-      { type: "PermanentFreezeDelegate", frozen: false },
-    ],
-  }).sendAndConfirm(umi, { confirm: { commitment: "confirmed" } });
-  return { asset: asset.publicKey.toString(), tx: base58.deserialize(signature)[0], owner: (owner ?? umi.identity.publicKey).toString() };
-}
+// 收藏 NFT 的內容：名稱、元數據網址（指向 /api/meta/item/{id}，用來確認 NFT 屬於哪張卡）、屬性。
+// 每個 NFT 自帶 PermanentFreezeDelegate（平台可凍結假卡）；集合上的 PermanentTransferDelegate 讓平台在擔保交易成交時轉移。
+// 收藏 NFT 由用戶自己付費鑄造（見 funds.ts 的 buildUserMint），平台不墊付
+export const collectorUri = (itemId: string) => `${SITE_URL}/api/meta/item/${itemId}`;
+export const collectorCreateArgs = (itemId: string, attrs: CollectorAttributes) => ({
+  name: attrs.title.slice(0, 32),
+  uri: collectorUri(itemId),
+  plugins: [
+    { type: "Attributes" as const, attributeList: attributeList(attrs, "unverified") },
+    { type: "PermanentFreezeDelegate" as const, frozen: false },
+  ],
+});
 
 // 標成假卡：名稱加上 [FAKE]、屬性改成 fake、凍結 NFT，持有人改不回來也轉不走
 export async function markFakeOnChain(assetAddress: string, attrs: CollectorAttributes) {

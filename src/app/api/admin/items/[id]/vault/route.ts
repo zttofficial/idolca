@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/server/admin";
 import { fail } from "@/lib/server/require-user";
 import { collectorItems, users, vaultCards } from "@/lib/server/schema";
+import { invalidateVaultState } from "@/lib/server/vault-chain";
 import { burnCollectorNft, mintVaultNft } from "@/lib/server/chain";
 import { invalidateVaultCards, newVaultCardId, nextSerial, toCard } from "@/lib/server/vault-cards";
 import { RARITY_LIST, type Rarity } from "@/lib/cards";
@@ -66,10 +67,12 @@ export async function POST(request: Request, ctx: RouteContext<"/api/admin/items
     });
     await a.db.update(collectorItems).set({ vaultCardId: cardId, priceCents: null, listedAt: null }).where(eq(collectorItems.id, id));
     invalidateVaultCards();
+    // 新鑄的卡要馬上算進鏈上狀態（例如放進卡包後立刻能抽），不等快取過期
+    invalidateVaultState();
   }
 
   let burnTx = item.vaultBurnTx;
-  if (!burnTx && item.mintTx) {
+  if (!burnTx && item.mintTx && item.asset) {
     try {
       burnTx = await burnCollectorNft(item.asset);
       await a.db.update(collectorItems).set({ vaultBurnTx: burnTx }).where(eq(collectorItems.id, id));

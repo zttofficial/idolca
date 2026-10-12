@@ -43,7 +43,13 @@ export type Pack = {
 
 export type TierStats = { tier: Tier; remaining: number; total: number; odds: number; minValue: number; maxValue: number };
 
-export function packStats(pack: Pick<Pack, "pool">) {
+// 返還率上限：剩下卡池的單包期望價值 ÷ 售價。超過就暫停販售（頁面顯示補貨中），等補進便宜的卡再恢復：
+// 一來卡包不會賣虧（賣完時的利潤 = 張數 × 售價 − 卡池總價值），二來便宜的卡被抽完後，沒人能撿期望值高過售價的尾單。
+// 每個卡包實際的返還率由售價和卡池決定，只要不超過上限；頁面公開期望價值和返還率。用 NEXT_PUBLIC_PACK_MAX_RTP 調，預設 0.8
+export const MAX_RTP = Number(process.env.NEXT_PUBLIC_PACK_MAX_RTP) || 0.8;
+export const overRtp = (expectedUsdt: number, priceUsdt: number) => priceUsdt > 0 && expectedUsdt / priceUsdt > MAX_RTP + 1e-9;
+
+export function packStats(pack: Pick<Pack, "pool" | "priceUsdt">) {
   const remaining = pack.pool.reduce((n, e) => n + e.remaining, 0);
   const total = pack.pool.reduce((n, e) => n + e.total, 0);
   const tiers: TierStats[] = TIERS.map((tier) => {
@@ -63,7 +69,14 @@ export function packStats(pack: Pick<Pack, "pool">) {
   const expected = remaining ? pack.pool.reduce((v, e) => v + e.valueUsdt * e.remaining, 0) / remaining : 0;
   const left = pack.pool.filter((e) => e.remaining > 0).map((e) => e.valueUsdt);
   const topValue = left.length ? Math.max(...left) : 0;
-  return { remaining, total, tiers, expected, topValue };
+  // 整個卡池（含已抽走的）賣完時的返還率和利潤，給後台看
+  const poolValue = pack.pool.reduce((v, e) => v + e.valueUsdt * e.total, 0);
+  const sellOutRtp = total && pack.priceUsdt ? poolValue / (total * pack.priceUsdt) : 0;
+  const sellOutProfit = total * pack.priceUsdt - poolValue;
+  // 當前剩餘卡池的返還率；超過上限時暫停販售
+  const rtp = pack.priceUsdt ? expected / pack.priceUsdt : 0;
+  const paused = remaining > 0 && overRtp(expected, pack.priceUsdt);
+  return { remaining, total, tiers, expected, topValue, rtp, paused, sellOutRtp, sellOutProfit };
 }
 
 // 卡池條目渲染成卡片：價格欄顯示卡包給它的價值

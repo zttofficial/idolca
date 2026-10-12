@@ -9,7 +9,7 @@ import { confirmSignature, invalidateVaultState, vaultState, type VaultCardState
 import { getPackRow } from "./pack-pool";
 import { invalidateVaultCards, toCard } from "./vault-cards";
 import { CHAIN } from "@/lib/chain";
-import { BUYBACK_RATE, MAX_QTY, pickIndex, poolOrder } from "@/lib/packs";
+import { BUYBACK_RATE, MAX_QTY, overRtp, pickIndex, poolOrder } from "@/lib/packs";
 import { drawRandom } from "@/lib/pack-draw";
 import { arcPaymentRequest, arcPayout, settleArcPayment } from "./arc-pay";
 import type { PayRail } from "./schema";
@@ -41,7 +41,11 @@ export async function createPackOrder(db: Db, userId: string, wallet: string, pa
   if (!pack) return { error: "not_found" as const };
   if (!isLive(pack)) return { error: "not_live" as const };
   if (!Number.isInteger(qty) || qty < 1 || qty > Math.min(MAX_QTY, pack.maxQty)) return { error: "invalid_qty" as const };
-  if ((await available(db, packId)).length < qty) return { error: "sold_out" as const };
+  const pool = await available(db, packId);
+  if (pool.length < qty) return { error: "sold_out" as const };
+  // 剩下卡池的期望價值超過返還率上限就暫停販售（見 lib/packs.ts 的 MAX_RTP）
+  const expected = pool.reduce((v, r) => v + (r.packValueCents ?? 0), 0) / pool.length / 100;
+  if (overRtp(expected, pack.priceCents / 100)) return { error: "paused" as const };
   const id = randomUUID();
   const amountCents = pack.priceCents * qty;
   await db.insert(packOrders).values({ id, userId, packId, qty, amountCents, wallet, rail });

@@ -12,6 +12,7 @@ import CopyButton from "@/components/ui/CopyButton";
 import { ARC, arcExplorerUrl } from "@/lib/arc";
 import { evmAddress, useEvmWallets } from "@/lib/evm/arc-wallet";
 import { WalletError, linkWallet, useWallets } from "@/lib/solana/wallets";
+import InfoTip from "@/components/ui/InfoTip";
 
 // 導航列的帳號入口。選單：頭像和暱稱（可以改）、收藏冊和交易的入口、Solana 錢包（地址、餘額；郵箱帳號在這裡綁定錢包）、登出
 export default function AccountButton() {
@@ -203,8 +204,10 @@ function LinkWalletBox() {
 
   return (
     <div className="px-3 py-1">
-      <p className="text-xs font-semibold">{t("linkTitle")}</p>
-      <p className="mt-1 text-[11px] leading-relaxed text-ink-3">{t("linkBody")}</p>
+      <p className="flex items-center gap-1.5 text-xs font-semibold">
+        {t("linkTitle")}
+        <InfoTip text={t("linkBody")} label={t("linkTitle")} align="start" />
+      </p>
       {wallets.length ? (
         <div className="mt-2 grid gap-1.5">
           {wallets.map((w) => (

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { POCKETS } from "./BinderBook";
 import { isTrackedOnly, putBack, swapPockets, type BinderLayout } from "@/lib/binder-layout";
+import InfoTip from "@/components/ui/InfoTip";
 
 // 整理收藏冊：所有內頁攤開，像實體卡冊一樣把卡拿起來換到別的卡套；拿出冊子的卡放在下面的卡盒，隨時放回。
 // 點一張卡拿起、再點卡套放下（手機和電腦都能用），電腦上也能直接拖曳。
@@ -119,8 +120,10 @@ export default function BinderArranger({
         }}
         className="mt-6 rounded-2xl border border-dashed border-line p-4"
       >
-        <p className="text-sm font-semibold">{t("outOfBinder", { count: boxed.length })}</p>
-        <p className="mt-1 text-xs text-ink-3">{t("outOfBinderHint")}</p>
+        <p className="flex items-center gap-1.5 text-sm font-semibold">
+          {t("outOfBinder", { count: boxed.length })}
+          <InfoTip text={t("outOfBinderHint")} label={t("outOfBinder", { count: boxed.length })} align="start" />
+        </p>
         {boxed.length > 0 && (
           <div className="mt-3 grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-9">
             {boxed.map((key) => {

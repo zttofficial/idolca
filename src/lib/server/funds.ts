@@ -1,12 +1,12 @@
 import "server-only";
-import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction, TransactionInstruction, sendAndConfirmTransaction } from "@solana/web3.js";
+import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction, TransactionInstruction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { createAssociatedTokenAccountIdempotentInstruction, createMintToInstruction, createTransferCheckedInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { publicKey } from "@metaplex-foundation/umi";
+import { generateSigner, publicKey } from "@metaplex-foundation/umi";
 import { base58 } from "@metaplex-foundation/umi/serializers";
-import { fetchAsset, fetchCollection, transfer } from "@metaplex-foundation/mpl-core";
+import { create, fetchAsset, fetchCollection, transfer } from "@metaplex-foundation/mpl-core";
 import { toWeb3JsInstruction } from "@metaplex-foundation/umi-web3js-adapters";
 import { CHAIN } from "@/lib/chain";
-import { platformUmi } from "./chain";
+import { collectorCreateArgs, collectorUri, platformUmi, type CollectorAttributes } from "./chain";
 import { USDT_DECIMALS, connection, platform, usdtMint } from "./vault-chain";
 
 // 平台的資金動作：發測試幣（只有 devnet）、收款（進平台託管錢包）並驗證、放款、轉移 NFT
@@ -115,4 +115,35 @@ export async function buildBuybackTx(owner: PublicKey, asset: string, amountUsdt
   );
   tx.partialSign(me);
   return tx.serialize({ requireAllSignatures: false }).toString("base64");
+}
+
+// 用戶自己付費把收藏卡上鏈（像 Getgems：鑄造者付費）。伺服器組好鑄造交易：手續費和 NFT 帳戶的押金由用戶錢包付，
+// 平台以集合更新權限者的身分、新資產以自己的金鑰先簽，錢包簽名後送出。回傳交易（base64）和新 NFT 的地址
+export async function buildUserMint(itemId: string, attrs: CollectorAttributes, owner: PublicKey) {
+  const umi = platformUmi()!;
+  const me = platform()!;
+  const collection = await fetchCollection(umi, publicKey(CHAIN.collectorCollection));
+  const asset = generateSigner(umi);
+  const ownerSigner = { publicKey: publicKey(owner.toBase58()), signMessage: async () => new Uint8Array(), signTransaction: async <T,>(t: T) => t, signAllTransactions: async <T,>(t: T[]) => t };
+  const ixs = create(umi, { asset, collection, owner: ownerSigner.publicKey, payer: ownerSigner, authority: umi.identity, ...collectorCreateArgs(itemId, attrs) })
+    .getInstructions()
+    .map(toWeb3JsInstruction);
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+  const tx = new Transaction({ feePayer: owner, blockhash, lastValidBlockHeight }).add(...ixs);
+  tx.partialSign(me, Keypair.fromSecretKey(asset.secretKey));
+  return { tx: tx.serialize({ requireAllSignatures: false }).toString("base64"), asset: asset.publicKey.toString() };
+}
+
+// 確認用戶送出的鑄造：NFT 在平台的收藏集合裡、持有人是這個錢包、元數據指向這張卡（所以不能拿別張卡的 NFT 來充數）
+export async function checkUserMint(itemId: string, assetAddress: string, owner: string) {
+  const umi = platformUmi()!;
+  for (let i = 0; i < 20; i++) {
+    const asset = await fetchAsset(umi, publicKey(assetAddress)).catch(() => null);
+    if (asset) {
+      const inCollection = asset.updateAuthority.type === "Collection" && asset.updateAuthority.address?.toString() === CHAIN.collectorCollection;
+      return inCollection && asset.owner.toString() === owner && asset.uri === collectorUri(itemId);
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  return false;
 }

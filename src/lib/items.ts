@@ -4,6 +4,7 @@
 import { useSyncExternalStore } from "react";
 
 import type { CardSource } from "./sources";
+import { signAndSend } from "./solana/wallets";
 
 // 自由上鏈的卡平台不查驗：一律待驗證，只有查出假卡時才會變成 fake
 export type Verification = "unverified" | "fake";
@@ -23,7 +24,8 @@ export type CollectorItem = {
   album: string | null;
   version: string | null;
   templateId: string | null;
-  asset: string;
+  // 收藏 NFT 的地址；還沒上架出售過（沒鑄造）時為 null
+  asset: string | null;
   // 鏈上鑄造的交易
   mintTx: string | null;
   // NFT 持有地址：自己的錢包，或平台代管錢包
@@ -86,13 +88,30 @@ export type MintInput = {
   priceUsdt?: number;
 };
 
-export async function mintItem(input: MintInput): Promise<CollectorItem> {
+// 加卡進收藏冊（只存資料庫，不上鏈）
+export async function addItem(input: MintInput): Promise<CollectorItem> {
   const res = await fetch("/api/items", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input) });
   const data = (await res.json()) as { item?: CollectorItem; error?: string };
   if (!data.item) throw new Error(data.error ?? "mint_failed");
   items = [data.item, ...items];
   emit();
   return data.item;
+}
+
+// 自己付費把卡上鏈：伺服器組交易 → 錢包簽名送出（手續費和押金由這個錢包付）→ 回報確認
+export async function putOnChain(id: string, wallet: string) {
+  const post = async (url: string, body?: unknown) => {
+    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const data = (await res.json().catch(() => ({}))) as { error?: string } & Record<string, unknown>;
+    if (!res.ok) throw new Error(data.error ?? "mint_failed");
+    return data;
+  };
+  const { tx, asset } = (await post(`/api/items/${id}/mint`)) as unknown as { tx: string; asset: string };
+  const signature = await signAndSend(tx, wallet);
+  const { item } = (await post(`/api/items/${id}/mint/confirm`, { signature, asset })) as unknown as { item: CollectorItem };
+  items = items.map((i) => (i.id === id ? item : i));
+  emit();
+  return item;
 }
 
 // 刊登（priceUsdt 為數字）或下架（null）

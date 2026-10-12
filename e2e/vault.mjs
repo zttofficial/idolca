@@ -3,7 +3,7 @@
 // 用法：npm run test:e2e:vault
 import { createHash } from "node:crypto";
 import { PublicKey } from "@solana/web3.js";
-import { adminKey, api, check, conn, finish, login, must, newKey, photo, signSend, step } from "./lib.mjs";
+import { adminKey, api, check, conn, finish, login, mintSelf, must, newKey, photo, signSend, step } from "./lib.mjs";
 import { verifyDraw } from "../src/lib/pack-draw.ts";
 
 const admin = adminKey();
@@ -37,7 +37,7 @@ check("bad rarity refused", (await api("POST", "/api/admin/vault", { photos: [aw
 step("建卡包、放卡");
 const packId = `e2e-${Date.now().toString(36)}`;
 const now = Date.now();
-await must("POST", "/api/admin/packs", { id: packId, name: "E2E Pack", priceUsdt: 1, startsAt: new Date(now - 60_000).toISOString(), endsAt: new Date(now + 86_400_000).toISOString(), palette: ["#ff6f93", "#e8285a"] }, AD);
+await must("POST", "/api/admin/packs", { id: packId, name: "E2E Pack", priceUsdt: 20, startsAt: new Date(now - 60_000).toISOString(), endsAt: new Date(now + 86_400_000).toISOString(), palette: ["#ff6f93", "#e8285a"] }, AD);
 check("duplicate pack refused", (await api("POST", "/api/admin/packs", { id: packId, name: "x", priceUsdt: 1, startsAt: new Date(now).toISOString(), endsAt: new Date(now + 1000).toISOString(), palette: ["#000000", "#ffffff"] }, AD)).status === 409);
 // 卡池另外入庫兩張平台自有卡，測試不依賴現有庫存
 const others = [];
@@ -46,7 +46,7 @@ for (const [member, hue] of [["Ryujin", 30], ["Lia", 90]]) {
 }
 const { assignable } = await must("GET", "/api/admin/packs", undefined, AD);
 check("new cards assignable", [fresh, ...others].every((c) => assignable.some((x) => x.id === c.id)), `${assignable.length} assignable`);
-await must("POST", `/api/admin/packs/${packId}/cards`, { cardId: fresh.id, tier: "SSR", valueUsdt: 50 }, AD);
+await must("POST", `/api/admin/packs/${packId}/cards`, { cardId: fresh.id, tier: "SSR", valueUsdt: 10 }, AD);
 await must("POST", `/api/admin/packs/${packId}/cards`, { cardId: others[0].id, tier: "R", valueUsdt: 5 }, AD);
 await must("POST", `/api/admin/packs/${packId}/cards`, { cardId: others[1].id, tier: "N", valueUsdt: 2 }, AD);
 check("assigned card no longer assignable", (await api("POST", `/api/admin/packs/${packId}/cards`, { cardId: fresh.id, tier: "N", valueUsdt: 1 }, AD)).status === 409);
@@ -58,6 +58,12 @@ step("開包");
 await must("POST", "/api/chain/faucet", undefined, B);
 check("age required", (await api("POST", `/api/packs/${packId}/order`, { qty: 1 }, B)).json.error === "age_required");
 await must("POST", "/api/account/age", undefined, B);
+// 返還率上限：卡池期望價值 (10+5+2)/3 ≈ 5.7，是售價 20 的 28%。把 SSR 的價值改成 60，期望價值 22.3 超過售價的 80%，暫停販售
+await must("DELETE", `/api/admin/packs/${packId}/cards`, { cardId: fresh.id }, AD);
+await must("POST", `/api/admin/packs/${packId}/cards`, { cardId: fresh.id, tier: "SSR", valueUsdt: 60 }, AD);
+check("paused above the return cap", (await api("POST", `/api/packs/${packId}/order`, { qty: 1 }, B)).json.error === "paused");
+await must("DELETE", `/api/admin/packs/${packId}/cards`, { cardId: fresh.id }, AD);
+await must("POST", `/api/admin/packs/${packId}/cards`, { cardId: fresh.id, tier: "SSR", valueUsdt: 10 }, AD);
 const open = async (qty) => {
   const order = await must("POST", `/api/packs/${packId}/order`, { qty }, B);
   return must("POST", `/api/packs/orders/${order.id}/confirm`, { signature: await signSend(order.tx, buyer.kp) }, B);
@@ -110,7 +116,9 @@ check("can request redemption again after a cancel", (await must("GET", "/api/ch
 check("second cancel", (await api("POST", `/api/admin/redemptions/${keep}/cancel`, undefined, AD)).ok);
 
 step("收藏卡寄進金庫");
-const minted = (await must("POST", "/api/items", { photos: [await photo(50), await photo(230)], group: "ITZY", member: "Yeji", album: "BORN TO BE", version: "Lucky Draw Round 1", source: "luckydraw", quantity: 1, priceUsdt: 9 }, B)).item;
+// 這張卡持有人自己付費上鏈過，入庫時要銷毀原本的收藏 NFT
+const added = (await must("POST", "/api/items", { photos: [await photo(50), await photo(230)], group: "ITZY", member: "Yeji", album: "BORN TO BE", version: "Lucky Draw Round 1", source: "luckydraw", quantity: 1, priceUsdt: 9 }, B)).item;
+const minted = await mintSelf(added.id, buyer, B);
 const req2 = await api("POST", `/api/items/${minted.id}/vault`, undefined, B);
 check("request delists", req2.ok && req2.json.item.priceUsdt === null && Boolean(req2.json.item.vaultRequestedAt));
 check("relisting refused while requested", (await api("PATCH", `/api/items/${minted.id}`, { priceUsdt: 9 }, B)).json.error === "in_vault");
@@ -130,5 +138,18 @@ check("convert is idempotent", (await api("POST", `/api/admin/items/${minted.id}
 const returned = (await must("POST", "/api/items", { photos: [await photo(10), await photo(190)], group: "ITZY", member: "Lia", source: "album", quantity: 1 }, B)).item;
 await must("POST", `/api/items/${returned.id}/vault`, undefined, B);
 check("admin return clears request", (await api("DELETE", `/api/admin/items/${returned.id}/vault`, undefined, AD)).ok && !(await must("GET", "/api/items", undefined, B)).items.find((i) => i.id === returned.id).vaultRequestedAt);
+
+step("上鏈是可選的，由用戶付費");
+check("added card is not on-chain", returned.mintTx === null && returned.asset === null);
+const listed = (await must("PATCH", `/api/items/${returned.id}`, { priceUsdt: 4 }, B)).item;
+check("listing doesn't mint", listed.priceUsdt === 4 && listed.mintTx === null);
+check("other users can't mint it", (await api("POST", `/api/items/${returned.id}/mint`, undefined, AD)).status === 404);
+const self = await mintSelf(returned.id, buyer, B);
+check("minted to the owner's wallet", Boolean(self.asset) && self.ownerAddress === buyer.address, self.asset ?? "");
+const mintTx = await conn.getTransaction(self.mintTx, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+check("the owner paid the fee", mintTx?.transaction.message.staticAccountKeys[0].toBase58() === buyer.address);
+const selfAccount = await conn.getAccountInfo(new PublicKey(self.asset));
+check("collectible exists on-chain", Boolean(selfAccount && selfAccount.data[0] === 1));
+check("can't mint twice", (await api("POST", `/api/items/${returned.id}/mint`, undefined, B)).json.error === "already_minted");
 
 finish();

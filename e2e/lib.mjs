@@ -48,6 +48,13 @@ export async function signSend(txBase64, kp) {
   return sig;
 }
 
+// 用戶自己付費把收藏卡上鏈：伺服器組交易、錢包（key）簽名送出並付手續費和押金、回報確認。回傳上鏈後的收藏卡
+export async function mintSelf(itemId, key, cookie) {
+  const { tx, asset } = await must("POST", `/api/items/${itemId}/mint`, undefined, cookie);
+  const signature = await signSend(tx, key.kp);
+  return (await must("POST", `/api/items/${itemId}/mint/confirm`, { signature, asset }, cookie)).item;
+}
+
 // 上傳用的卡片照片：執行時用 sharp 畫一張帶色塊的 JPEG，倉庫裡不放圖片檔
 export async function photo(hue = 330) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="660" height="1020"><rect width="660" height="1020" fill="hsl(${hue},70%,60%)"/><circle cx="330" cy="420" r="180" fill="hsl(${(hue + 40) % 360},80%,85%)"/><rect x="80" y="760" width="500" height="120" rx="20" fill="#fff" opacity=".8"/></svg>`;

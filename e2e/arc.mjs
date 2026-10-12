@@ -30,7 +30,8 @@ const now = Date.now();
 await must("POST", "/api/admin/packs", { id: packId, name: "E2E Arc Pack", priceUsdt: 0.1, startsAt: new Date(now - 60_000).toISOString(), endsAt: new Date(now + 86_400_000).toISOString(), palette: ["#ff6f93", "#e8285a"] }, AD);
 for (const [member, hue] of [["Yeji", 10], ["Chaeryeong", 60]]) {
   const card = (await must("POST", "/api/admin/vault", { photos: [await photo(hue), await photo(hue + 180)], group: "ITZY", member, album: "BORN TO BE", version: "Album Ver.", rarity: "album", location: "SEL-E2E-ARC" }, AD)).card;
-  await must("POST", `/api/admin/packs/${packId}/cards`, { cardId: card.id, tier: "N", valueUsdt: 1 }, AD);
+  // 卡值 0.05、售價 0.1：返還率 50%，在上限內
+  await must("POST", `/api/admin/packs/${packId}/cards`, { cardId: card.id, tier: "N", valueUsdt: 0.05 }, AD);
 }
 
 step("在 Arc 上付款開包");

@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import type { Card } from "@/lib/cards";
 import { formatPrice } from "@/lib/fx";
-import { TIERS, packStats, type Pack, type Tier } from "@/lib/packs";
+import { MAX_RTP, TIERS, packStats, type Pack, type Tier } from "@/lib/packs";
 import Select from "@/components/ui/Select";
 
 type Call = <T>(method: string, path: string, body?: unknown) => Promise<T>;
@@ -143,6 +143,10 @@ function PackPool({
           {t("poolSummary", { remaining: s.remaining, total: s.total, ev: s.expected.toFixed(2) })} · {pack.startsAt.slice(0, 16).replace("T", " ")} → {pack.endsAt.slice(0, 16).replace("T", " ")}
         </span>
       </div>
+      <p className={`mt-2 text-xs ${s.sellOutRtp > MAX_RTP ? "font-semibold text-down" : "text-ink-2"}`}>
+        {t("rtpSummary", { rtp: Math.round(s.sellOutRtp * 100), max: Math.round(MAX_RTP * 100), profit: formatPrice(s.sellOutProfit, 2), now: Math.round(s.rtp * 100) })}
+        {s.paused && ` · ${t("rtpPaused")}`}
+      </p>
       <p className="mt-1 font-mono text-[10px] break-all text-ink-3">sha256(seed) = {pack.seedHash}</p>
       {pack.pool.length > 0 && (
         <ul className="mt-3 divide-y divide-line text-sm">

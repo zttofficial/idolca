@@ -22,7 +22,7 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/item
   if (current.fakeTx && !fake) return Response.json({ error: "permanent_on_chain" }, { status: 409 });
 
   let fakeTx = current.fakeTx;
-  if (fake && current.mintTx && !current.fakeTx) {
+  if (fake && current.mintTx && current.asset && !current.fakeTx) {
     try {
       fakeTx = await markFakeOnChain(current.asset, chainAttributes(current));
     } catch (err) {

@@ -36,8 +36,10 @@ export default function Combobox({
   const all = useMemo(() => options.map((o) => (typeof o === "string" ? { value: o } : o)), [options]);
   const shown = useMemo(() => {
     const q = norm(value);
-    // 已經完全等於某個選項時列出全部，方便改選
-    if (!q || all.some((o) => norm(o.value) === q)) return all.slice(0, MAX_SHOWN);
+    if (!q) return all.slice(0, MAX_SHOWN);
+    // 已經完全等於某個選項時列出全部方便改選，但那個選項排第一個（清單只顯示前 MAX_SHOWN 個，不然可能被擠出去）
+    const exact = all.find((o) => norm(o.value) === q);
+    if (exact) return [exact, ...all.filter((o) => o !== exact)].slice(0, MAX_SHOWN);
     const score = (o: ComboOption) => {
       const words = [o.value, ...(o.keywords ?? [])].map(norm);
       if (words.some((w) => w.startsWith(q))) return 0;
@@ -123,7 +125,15 @@ export default function Combobox({
               className={`flex cursor-pointer items-baseline justify-between gap-3 rounded-lg px-3 py-2 text-sm ${i === active ? "bg-surface-2" : ""} ${norm(o.value) === norm(value) ? "font-semibold" : ""}`}
             >
               <span className="min-w-0 truncate">{o.value}</span>
-              {o.hint && <span className="shrink-0 truncate text-[11px] text-ink-3">{o.hint}</span>}
+              <span className="flex shrink-0 items-center gap-2">
+                {o.hint && <span className="truncate text-[11px] text-ink-3">{o.hint}</span>}
+                {/* 目前的值，和 Select 一樣打勾 */}
+                {norm(o.value) === norm(value) && (
+                  <svg viewBox="0 0 20 20" aria-hidden className="h-4 w-4 shrink-0 text-accent-ink">
+                    <path d="M4.5 10.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </span>
             </li>
           ))}
         </ul>
