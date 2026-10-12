@@ -1,5 +1,6 @@
 // 金庫卡的資料型別。卡片資料存在資料庫（vault_cards 表，見 src/lib/server/vault-cards.ts），
 // 持有人、掛單價格和狀態以鏈上即時狀態為準
+import type { Grade } from "./grading";
 
 export type Rarity = "album" | "pob" | "luckydraw" | "fansign";
 export const RARITY_LIST: Rarity[] = ["album", "pob", "luckydraw", "fansign"];
@@ -15,7 +16,8 @@ export type Card = {
   album: string;
   version: string;
   rarity: Rarity;
-  grade?: number;
+  // 外部評級機構的分數和鑑定編號；沒有送評時沒有
+  grade?: Grade;
   // 入庫時的品相說明
   condition?: string;
   // 掛單價格（USDT）；沒有掛單時為 0

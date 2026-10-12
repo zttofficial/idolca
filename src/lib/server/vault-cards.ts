@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { desc, eq, isNotNull, isNull } from "drizzle-orm";
 import type { Card, Rarity } from "@/lib/cards";
+import type { GraderId } from "@/lib/grading";
 import { GROUPS } from "@/lib/catalog";
 import { CHAIN } from "@/lib/chain";
 import type { Db } from "./db";
@@ -22,7 +23,7 @@ export function toCard(r: VaultCardRow): Card {
     album: r.album,
     version: r.version,
     rarity: r.rarity as Rarity,
-    grade: r.grade ?? undefined,
+    grade: r.grader && r.grade !== null && r.gradeCert ? { grader: r.grader as GraderId, score: r.grade, cert: r.gradeCert } : undefined,
     condition: r.condition ?? undefined,
     priceUsdt: 0,
     palette: paletteOf(r.groupName),

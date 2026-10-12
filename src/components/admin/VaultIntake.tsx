@@ -11,9 +11,10 @@ import Select from "@/components/ui/Select";
 import { cropToCard } from "@/lib/crop-card";
 import { refreshVaultCards } from "@/lib/chain-client";
 import { solscanUrl } from "@/lib/solana/config";
+import { GRADERS } from "@/lib/grading";
 
 const unique = (xs: string[]) => [...new Set(xs)];
-const EMPTY = { group: "", member: "", album: "", version: "", rarity: "album" as Rarity, grade: "", condition: "", location: "", depositor: "" };
+const EMPTY = { group: "", member: "", album: "", version: "", rarity: "album" as Rarity, grader: "", gradeScore: "", gradeCert: "", condition: "", location: "", depositor: "" };
 
 // 入庫：實物鑑定通過後拍正反面、填卡片資料和倉位，建立金庫卡並鑄造 NFT。
 // 寄存人留空就是平台自有庫存（之後可以放進卡包卡池）
@@ -105,9 +106,23 @@ export default function VaultIntake() {
             <Select value={form.rarity} onChange={setValue("rarity")} options={RARITY_LIST.map((r) => ({ value: r, label: tRarity(r) }))} className={field} />
           </label>
           <label className={label}>
-            {t("fieldGrade")}
-            <input type="number" min={1} max={10} value={form.grade} onChange={set("grade")} className={field} />
+            {t("fieldGrader")}
+            <Select value={form.grader} onChange={setValue("grader")} options={[{ value: "", label: t("noGrade") }, ...GRADERS.map((g) => ({ value: g.id, label: g.name }))]} className={field} />
           </label>
+          {form.grader && (
+            <>
+              <label className={label}>
+                {t("fieldGradeScore")}
+                <input required type="number" min={1} max={10} step={0.5} value={form.gradeScore} onChange={set("gradeScore")} className={field} />
+              </label>
+              {!GRADERS.find((g) => g.id === form.grader)?.inHouse && (
+                <label className={label}>
+                  {t("fieldGradeCert")}
+                  <input required value={form.gradeCert} onChange={set("gradeCert")} maxLength={40} className={field} />
+                </label>
+              )}
+            </>
+          )}
           <label className={label}>
             {t("fieldLocation")}
             <input required value={form.location} onChange={set("location")} placeholder="SEL-A03-12" className={field} />

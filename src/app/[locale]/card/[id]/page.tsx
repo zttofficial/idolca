@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { SITE_URL, jsonLd, pageMetadata } from "@/lib/seo";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -15,6 +15,7 @@ import { CHAIN } from "@/lib/chain";
 import { getDb } from "@/lib/server/db";
 import { getVaultRow, toCard } from "@/lib/server/vault-cards";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
+import { gradeLabel, gradeLookupUrl, isInHouse, type Grade } from "@/lib/grading";
 
 async function findCard(id: string) {
   await connection();
@@ -61,15 +62,15 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
   const tRarity = await getTranslations("Rarity");
 
   // 這些都是鑄造時寫進 NFT Attributes 的資料
-  const attributes = [
+  const attributes: [string, ReactNode][] = [
     [tCard("serial"), card.serial],
     [tCard("group"), card.group],
     [tCard("member"), card.member],
     [tCard("album"), card.album],
     [tCard("version"), card.version],
     [tCard("type"), tRarity(card.rarity)],
-    ...(card.grade ? [[tCard("grade"), String(card.grade)]] : []),
-    ...(card.condition ? [[tCard("condition"), card.condition]] : []),
+    ...(card.grade ? [[tCard("grade"), <GradeValue key="grade" grade={card.grade} inHouseNote={tCard("inHouseGrade")} />] as [string, ReactNode]] : []),
+    ...(card.condition ? [[tCard("condition"), card.condition] as [string, ReactNode]] : []),
     [tCard("intakeDate"), card.intakeDate],
     [t("custodyLocation"), card.location],
   ];
@@ -87,7 +88,7 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
           brand: { "@type": "Brand", name: card.group },
           description: `${card.group} ${card.member} · ${card.album} · ${card.version}`,
           ...(card.image ? { image: `${SITE_URL}${card.image.front}` } : {}),
-          ...(card.grade ? { additionalProperty: [{ "@type": "PropertyValue", name: "Grade", value: card.grade }] } : {}),
+          ...(card.grade ? { additionalProperty: [{ "@type": "PropertyValue", name: "Grade", value: gradeLabel(card.grade) }] } : {}),
         })}
       />
       <nav aria-label="breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs text-ink-3">
@@ -149,6 +150,24 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
           </section>
         </div>
       </div>
+    </>
+  );
+}
+
+// 評級：機構和分數，加上鑑定編號；機構有公開查詢頁時編號連過去。自家評級（IDG）另起一行註明不是第三方
+function GradeValue({ grade, inHouseNote }: { grade: Grade; inHouseNote: string }) {
+  const url = gradeLookupUrl(grade);
+  return (
+    <>
+      {gradeLabel(grade)} ·{" "}
+      {url ? (
+        <a href={url} target="_blank" rel="noreferrer" className="underline hover:text-ink">
+          #{grade.cert} ↗
+        </a>
+      ) : (
+        `#${grade.cert}`
+      )}
+      {isInHouse(grade) && <span className="block text-[11px] text-ink-3">{inHouseNote}</span>}
     </>
   );
 }

@@ -5,6 +5,7 @@ import { collectorItems, users, vaultCards } from "@/lib/server/schema";
 import { burnCollectorNft, mintVaultNft } from "@/lib/server/chain";
 import { invalidateVaultCards, newVaultCardId, nextSerial, toCard } from "@/lib/server/vault-cards";
 import { RARITY_LIST, type Rarity } from "@/lib/cards";
+import { parseGrade } from "@/lib/grading";
 
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
@@ -21,18 +22,20 @@ export async function POST(request: Request, ctx: RouteContext<"/api/admin/items
   if (!cardId) {
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const rarity = body.rarity as Rarity;
-    const grade = body.grade === undefined || body.grade === null || body.grade === "" ? null : Number(body.grade);
+    // 自家評級的鑑定編號就是這張卡的金庫編號，所以先取編號
+    const serial = await nextSerial(a.db);
+    const parsed = parseGrade(body, serial);
     const location = text(body.location, 40);
     const album = text(body.album, 80) || item.album || "";
     const version = text(body.version, 80) || item.version || "";
     if (!RARITY_LIST.includes(rarity)) return fail("invalid_rarity");
-    if (grade !== null && !(Number.isInteger(grade) && grade >= 1 && grade <= 10)) return fail("invalid_grade");
+    if ("error" in parsed) return fail(parsed.error);
+    const { grade } = parsed;
     if (!location || !album || !version) return fail("missing_fields");
     const [owner] = await a.db.select({ wallet: users.walletAddress }).from(users).where(eq(users.id, item.userId));
     if (!owner?.wallet) return fail("depositor_no_wallet", 409);
 
     cardId = newVaultCardId();
-    const serial = await nextSerial(a.db);
     const intakeDate = new Date().toISOString().slice(0, 10);
     let minted: { asset: string; tx: string };
     try {
@@ -49,7 +52,9 @@ export async function POST(request: Request, ctx: RouteContext<"/api/admin/items
       album,
       version,
       rarity,
-      grade,
+      grader: grade?.grader ?? null,
+      grade: grade?.score ?? null,
+      gradeCert: grade?.cert ?? null,
       condition: text(body.condition, 300) || null,
       imageFront: item.photo,
       imageBack: item.photoBack,

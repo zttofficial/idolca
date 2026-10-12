@@ -17,12 +17,21 @@ check("non-admin blocked", (await api("GET", "/api/admin/packs", undefined, B)).
 check("anonymous blocked", (await api("GET", "/api/admin/orders")).status === 401);
 
 step("入庫");
-const intake = await api("POST", "/api/admin/vault", { photos: [await photo(300), await photo(120)], group: "ITZY", member: "Yuna", album: "BORN TO BE", version: "Fansign Event", rarity: "fansign", grade: 9, condition: "Sharp corners", location: "SEL-E2E-01" }, AD);
+const intake = await api("POST", "/api/admin/vault", { photos: [await photo(300), await photo(120)], group: "ITZY", member: "Yuna", album: "BORN TO BE", version: "Fansign Event", rarity: "fansign", grader: "psa", gradeScore: 9, gradeCert: "E2E12345678", condition: "Sharp corners", location: "SEL-E2E-01" }, AD);
 check("intake minted", intake.ok && Boolean(intake.json.mintTx), intake.json.card?.serial ?? JSON.stringify(intake.json));
 const fresh = intake.json.card;
 check("in vault list", (await must("GET", "/api/vault/cards")).cards.some((c) => c.id === fresh.id));
 const meta = (await api("GET", `/api/meta/card/${fresh.id}`)).json;
-check("metadata has grade", meta.attributes?.some((a) => a.trait_type === "Grade" && a.value === "9"), meta.name);
+check("metadata has grade", meta.attributes?.some((a) => a.trait_type === "Grade" && a.value === "PSA 9"), meta.name);
+const regrade = await api("POST", `/api/admin/vault/${fresh.id}/grade`, { grader: "idolca", gradeScore: 10 }, AD);
+check("regraded in-house", regrade.ok && regrade.json.card?.grade?.grader === "idolca" && regrade.json.card.grade.cert === fresh.serial, JSON.stringify(regrade.json.card?.grade ?? regrade.json));
+const onchain = await import("@metaplex-foundation/mpl-core").then(async ({ fetchAsset }) => {
+  const { createUmi } = await import("@metaplex-foundation/umi-bundle-defaults");
+  return fetchAsset(createUmi(conn.rpcEndpoint), fresh.asset);
+});
+const attrs = Object.fromEntries((onchain.attributes?.attributeList ?? []).map((x) => [x.key, x.value]));
+check("on-chain grade replaced", attrs.grader === "IDG" && attrs.grade === "10" && attrs.grade_cert === fresh.serial && attrs.serial === fresh.serial, JSON.stringify(attrs));
+check("non-admin can't grade", (await api("POST", `/api/admin/vault/${fresh.id}/grade`, { grader: "idolca", gradeScore: 1 }, B)).status === 403);
 check("bad rarity refused", (await api("POST", "/api/admin/vault", { photos: [await photo(), await photo()], group: "x", member: "y", album: "z", version: "v", rarity: "nope", location: "a" }, AD)).status === 400);
 
 step("建卡包、放卡");
@@ -108,7 +117,7 @@ check("relisting refused while requested", (await api("PATCH", `/api/items/${min
 check("other users can't request it", (await api("POST", `/api/items/${minted.id}/vault`, undefined, AD)).status === 409);
 const adminItems = (await must("GET", "/api/admin/items", undefined, AD)).items;
 check("admin sees request first", adminItems[0]?.id === minted.id);
-const conv = await api("POST", `/api/admin/items/${minted.id}/vault`, { rarity: "luckydraw", grade: 8, location: "SEL-E2E-04", condition: "Clean" }, AD);
+const conv = await api("POST", `/api/admin/items/${minted.id}/vault`, { rarity: "luckydraw", grader: "brg", gradeScore: 8.5, gradeCert: "BRG-E2E-01", location: "SEL-E2E-04", condition: "Clean" }, AD);
 check("converted to vault card", conv.ok && conv.json.card?.serial?.startsWith("IC-") && Boolean(conv.json.burnTx), conv.json.card?.serial ?? JSON.stringify(conv.json));
 const vc = conv.json.card;
 check("photos carried over", vc.image?.front === minted.photo && vc.image?.back === minted.photoBack);
