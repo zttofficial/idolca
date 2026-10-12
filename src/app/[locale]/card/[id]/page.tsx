@@ -15,7 +15,7 @@ import { CHAIN } from "@/lib/chain";
 import { getDb } from "@/lib/server/db";
 import { getVaultRow, toCard } from "@/lib/server/vault-cards";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
-import { gradeLabel, gradeLookupUrl, type Grade } from "@/lib/grading";
+import { gradeLabel, gradeLookupUrl, isInHouse, type Grade } from "@/lib/grading";
 
 async function findCard(id: string) {
   await connection();
@@ -69,7 +69,7 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
     [tCard("album"), card.album],
     [tCard("version"), card.version],
     [tCard("type"), tRarity(card.rarity)],
-    ...(card.grade ? [[tCard("grade"), <GradeValue key="grade" grade={card.grade} />] as [string, ReactNode]] : []),
+    ...(card.grade ? [[tCard("grade"), <GradeValue key="grade" grade={card.grade} inHouseNote={tCard("inHouseGrade")} />] as [string, ReactNode]] : []),
     ...(card.condition ? [[tCard("condition"), card.condition] as [string, ReactNode]] : []),
     [tCard("intakeDate"), card.intakeDate],
     [t("custodyLocation"), card.location],
@@ -154,8 +154,8 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
   );
 }
 
-// 評級：機構和分數，加上鑑定編號；機構有公開查詢頁時編號連過去
-function GradeValue({ grade }: { grade: Grade }) {
+// 評級：機構和分數，加上鑑定編號；機構有公開查詢頁時編號連過去。自家評級（IDG）另起一行註明不是第三方
+function GradeValue({ grade, inHouseNote }: { grade: Grade; inHouseNote: string }) {
   const url = gradeLookupUrl(grade);
   return (
     <>
@@ -167,6 +167,7 @@ function GradeValue({ grade }: { grade: Grade }) {
       ) : (
         `#${grade.cert}`
       )}
+      {isInHouse(grade) && <span className="block text-[11px] text-ink-3">{inHouseNote}</span>}
     </>
   );
 }

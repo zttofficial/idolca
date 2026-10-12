@@ -24,7 +24,9 @@ export async function POST(request: Request) {
   const location = text(body.location, 40);
   const condition = text(body.condition, 300) || null;
   const rarity = body.rarity as Rarity;
-  const parsed = parseGrade(body);
+  // 自家評級的鑑定編號就是這張卡的金庫編號，所以先取編號
+  const serial = await nextSerial(a.db);
+  const parsed = parseGrade(body, serial);
   if (!group || !member || !album || !version || !location) return fail("missing_fields");
   if (!RARITY_LIST.includes(rarity)) return fail("invalid_rarity");
   if ("error" in parsed) return fail(parsed.error);
@@ -49,7 +51,6 @@ export async function POST(request: Request) {
   if (!urls) return fail("invalid_photo");
 
   const id = newVaultCardId();
-  const serial = await nextSerial(a.db);
   const intakeDate = new Date().toISOString().slice(0, 10);
   let minted: { asset: string; tx: string };
   try {

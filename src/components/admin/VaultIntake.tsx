@@ -115,10 +115,12 @@ export default function VaultIntake() {
                 {t("fieldGradeScore")}
                 <input required type="number" min={1} max={10} step={0.5} value={form.gradeScore} onChange={set("gradeScore")} className={field} />
               </label>
-              <label className={label}>
-                {t("fieldGradeCert")}
-                <input required value={form.gradeCert} onChange={set("gradeCert")} maxLength={40} className={field} />
-              </label>
+              {!GRADERS.find((g) => g.id === form.grader)?.inHouse && (
+                <label className={label}>
+                  {t("fieldGradeCert")}
+                  <input required value={form.gradeCert} onChange={set("gradeCert")} maxLength={40} className={field} />
+                </label>
+              )}
             </>
           )}
           <label className={label}>

@@ -31,7 +31,7 @@ export default function VaultConvert({ item, busy, onConvert, onReturn }: { item
       {f.grader && (
         <>
           <input required type="number" min={1} max={10} step={0.5} placeholder={t("fieldGradeScore")} value={f.gradeScore} onChange={set("gradeScore")} className={`${field} w-20`} />
-          <input required placeholder={t("fieldGradeCert")} value={f.gradeCert} onChange={set("gradeCert")} maxLength={40} className={`${field} w-32`} />
+          {!GRADERS.find((g) => g.id === f.grader)?.inHouse && <input required placeholder={t("fieldGradeCert")} value={f.gradeCert} onChange={set("gradeCert")} maxLength={40} className={`${field} w-32`} />}
         </>
       )}
       <input required placeholder={t("fieldLocation")} value={f.location} onChange={set("location")} className={`${field} w-28`} />

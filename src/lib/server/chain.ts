@@ -87,6 +87,17 @@ export async function markFakeOnChain(assetAddress: string, attrs: CollectorAttr
   return base58.deserialize(signature)[0];
 }
 
+// 評級寫進 NFT 屬性的三項：機構、分數、鑑定編號；沒有評級時都不寫
+const GRADE_KEYS = ["grader", "grade", "grade_cert"];
+const gradeAttributes = (grade: Grade | null): [string, string][] =>
+  grade
+    ? [
+        ["grader", GRADERS.find((g) => g.id === grade.grader)?.name ?? grade.grader],
+        ["grade", String(grade.score)],
+        ["grade_cert", grade.cert],
+      ]
+    : [];
+
 export type VaultAttributes = { serial: string; group: string; member: string; album: string; version: string; rarity: string; grade: Grade | null; location: string; intakeDate: string };
 
 // 實物入庫鑑定通過後鑄造金庫 NFT：持有人是寄存人的錢包，平台自有庫存（卡包卡池）鑄給平台錢包。
@@ -103,9 +114,7 @@ export async function mintVaultNft(cardId: string, card: VaultAttributes, owner:
     ["album", card.album],
     ["version", card.version],
     ["rarity", card.rarity],
-    ["grader", card.grade ? (GRADERS.find((g) => g.id === card.grade!.grader)?.name ?? "") : ""],
-    ["grade", card.grade ? String(card.grade.score) : ""],
-    ["grade_cert", card.grade?.cert ?? ""],
+    ...gradeAttributes(card.grade),
     ["location", card.location],
     ["intake_date", card.intakeDate],
     ["custody", "vault"],
@@ -122,6 +131,21 @@ export async function mintVaultNft(cardId: string, card: VaultAttributes, owner:
     plugins: [{ type: "Attributes", attributeList }],
   }).sendAndConfirm(umi, { confirm: { commitment: "confirmed" } });
   return { asset: asset.publicKey.toString(), tx: base58.deserialize(signature)[0] };
+}
+
+// 已入庫的卡評級或改評級（例如送評回來）：換掉 NFT 屬性裡的評級三項，其他屬性不動；grade 為 null 時刪掉評級
+export async function setVaultGradeOnChain(assetAddress: string, grade: Grade | null) {
+  const umi = platformUmi();
+  if (!umi || !CHAIN.vaultCollection) throw new Error("not_configured");
+  const asset = await fetchAsset(umi, publicKey(assetAddress));
+  const collection = await fetchCollection(umi, publicKey(CHAIN.vaultCollection));
+  const kept = (asset.attributes?.attributeList ?? []).filter((a) => !GRADE_KEYS.includes(a.key));
+  const at = Math.max(0, kept.findIndex((a) => a.key === "location"));
+  const attributeList = [...kept.slice(0, at), ...gradeAttributes(grade).map(([key, value]) => ({ key, value })), ...kept.slice(at)];
+  const { signature } = await updatePlugin(umi, { asset: asset.publicKey, collection: collection.publicKey, plugin: { type: "Attributes", attributeList } }).sendAndConfirm(umi, {
+    confirm: { commitment: "confirmed" },
+  });
+  return base58.deserialize(signature)[0];
 }
 
 // 收藏卡轉成金庫卡後銷毀原本的收藏 NFT：持有人不是平台時，先用集合的 PermanentTransferDelegate 收回，同一筆交易裡再銷毀

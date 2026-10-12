@@ -23,6 +23,15 @@ const fresh = intake.json.card;
 check("in vault list", (await must("GET", "/api/vault/cards")).cards.some((c) => c.id === fresh.id));
 const meta = (await api("GET", `/api/meta/card/${fresh.id}`)).json;
 check("metadata has grade", meta.attributes?.some((a) => a.trait_type === "Grade" && a.value === "PSA 9"), meta.name);
+const regrade = await api("POST", `/api/admin/vault/${fresh.id}/grade`, { grader: "idolca", gradeScore: 10 }, AD);
+check("regraded in-house", regrade.ok && regrade.json.card?.grade?.grader === "idolca" && regrade.json.card.grade.cert === fresh.serial, JSON.stringify(regrade.json.card?.grade ?? regrade.json));
+const onchain = await import("@metaplex-foundation/mpl-core").then(async ({ fetchAsset }) => {
+  const { createUmi } = await import("@metaplex-foundation/umi-bundle-defaults");
+  return fetchAsset(createUmi(conn.rpcEndpoint), fresh.asset);
+});
+const attrs = Object.fromEntries((onchain.attributes?.attributeList ?? []).map((x) => [x.key, x.value]));
+check("on-chain grade replaced", attrs.grader === "IDG" && attrs.grade === "10" && attrs.grade_cert === fresh.serial && attrs.serial === fresh.serial, JSON.stringify(attrs));
+check("non-admin can't grade", (await api("POST", `/api/admin/vault/${fresh.id}/grade`, { grader: "idolca", gradeScore: 1 }, B)).status === 403);
 check("bad rarity refused", (await api("POST", "/api/admin/vault", { photos: [await photo(), await photo()], group: "x", member: "y", album: "z", version: "v", rarity: "nope", location: "a" }, AD)).status === 400);
 
 step("建卡包、放卡");

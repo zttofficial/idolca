@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/AuthContext";
 import { formatUsdt } from "@/lib/fx";
 import { formatAddress, type ShippingAddress } from "@/lib/shipping";
 import VaultIntake from "./VaultIntake";
+import VaultGrade from "./VaultGrade";
 import AdminPacks from "./AdminPacks";
 import VaultConvert from "./VaultConvert";
 import { itemTitle } from "@/lib/item-title";
@@ -122,6 +123,8 @@ export default function AdminConsole() {
       {error && <p className="rounded-xl bg-down/10 px-4 py-2 text-sm text-down">{t("error", { error })}</p>}
 
       <VaultIntake />
+
+      <VaultGrade />
 
       <AdminPacks call={call} />
 

@@ -22,7 +22,9 @@ export async function POST(request: Request, ctx: RouteContext<"/api/admin/items
   if (!cardId) {
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const rarity = body.rarity as Rarity;
-    const parsed = parseGrade(body);
+    // 自家評級的鑑定編號就是這張卡的金庫編號，所以先取編號
+    const serial = await nextSerial(a.db);
+    const parsed = parseGrade(body, serial);
     const location = text(body.location, 40);
     const album = text(body.album, 80) || item.album || "";
     const version = text(body.version, 80) || item.version || "";
@@ -34,7 +36,6 @@ export async function POST(request: Request, ctx: RouteContext<"/api/admin/items
     if (!owner?.wallet) return fail("depositor_no_wallet", 409);
 
     cardId = newVaultCardId();
-    const serial = await nextSerial(a.db);
     const intakeDate = new Date().toISOString().slice(0, 10);
     let minted: { asset: string; tx: string };
     try {
