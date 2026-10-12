@@ -5,6 +5,9 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { RARITY_LIST, type Card, type Rarity } from "@/lib/cards";
 import { GROUPS, TEMPLATES } from "@/lib/catalog";
+import { findDirectoryGroup, groupOptions } from "@/lib/kpop-groups";
+import Combobox from "@/components/ui/Combobox";
+import Select from "@/components/ui/Select";
 import { cropToCard } from "@/lib/crop-card";
 import { refreshVaultCards } from "@/lib/chain-client";
 import { solscanUrl } from "@/lib/solana/config";
@@ -24,9 +27,11 @@ export default function VaultIntake() {
   const [done, setDone] = useState<{ card: Card; mintTx: string }>();
   const set = (k: keyof typeof EMPTY) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  const g = GROUPS.find((x) => x.name.toLowerCase() === form.group.trim().toLowerCase());
-  const members = g ? g.members : unique(GROUPS.flatMap((x) => x.members));
-  const albums = g ? g.albums.map((a) => a.title) : unique(GROUPS.flatMap((x) => x.albums.map((a) => a.title)));
+  const known = findDirectoryGroup(form.group);
+  const g = GROUPS.find((x) => x.name.toLowerCase() === (known?.name ?? form.group).trim().toLowerCase());
+  const members = known?.members ?? [];
+  const albums = g ? g.albums.map((a) => a.title) : form.group.trim() ? [] : unique(GROUPS.flatMap((x) => x.albums.map((a) => a.title)));
+  const setValue = (k: keyof typeof EMPTY) => (value: string) => setForm((f) => ({ ...f, [k]: value }));
   const versions = unique(TEMPLATES.map((x) => x.version));
 
   const pick = (i: number) => async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,29 +86,23 @@ export default function VaultIntake() {
         <div className="grid content-start gap-3 sm:grid-cols-2">
           <label className={label}>
             {t("fieldGroup")}
-            <input required list="intake-groups" value={form.group} onChange={set("group")} className={field} />
+            <Combobox required value={form.group} onChange={setValue("group")} options={groupOptions} className={field} />
           </label>
           <label className={label}>
             {t("fieldMember")}
-            <input required list="intake-members" value={form.member} onChange={set("member")} className={field} />
+            <Combobox required value={form.member} onChange={setValue("member")} options={members} className={field} />
           </label>
           <label className={label}>
             {t("fieldAlbum")}
-            <input required list="intake-albums" value={form.album} onChange={set("album")} className={field} />
+            <Combobox required value={form.album} onChange={setValue("album")} options={albums} className={field} />
           </label>
           <label className={label}>
             {t("fieldVersion")}
-            <input required list="intake-versions" value={form.version} onChange={set("version")} className={field} />
+            <Combobox required value={form.version} onChange={setValue("version")} options={versions} className={field} />
           </label>
           <label className={label}>
             {t("fieldRarity")}
-            <select value={form.rarity} onChange={set("rarity")} className={field}>
-              {RARITY_LIST.map((r) => (
-                <option key={r} value={r}>
-                  {tRarity(r)}
-                </option>
-              ))}
-            </select>
+            <Select value={form.rarity} onChange={setValue("rarity")} options={RARITY_LIST.map((r) => ({ value: r, label: tRarity(r) }))} className={field} />
           </label>
           <label className={label}>
             {t("fieldGrade")}
@@ -121,26 +120,6 @@ export default function VaultIntake() {
             {t("fieldCondition")}
             <input value={form.condition} onChange={set("condition")} maxLength={300} className={field} />
           </label>
-          <datalist id="intake-groups">
-            {GROUPS.map((x) => (
-              <option key={x.id} value={x.name} />
-            ))}
-          </datalist>
-          <datalist id="intake-members">
-            {members.map((m) => (
-              <option key={m} value={m} />
-            ))}
-          </datalist>
-          <datalist id="intake-albums">
-            {albums.map((a) => (
-              <option key={a} value={a} />
-            ))}
-          </datalist>
-          <datalist id="intake-versions">
-            {versions.map((v) => (
-              <option key={v} value={v} />
-            ))}
-          </datalist>
           <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
             <button disabled={busy || !photos[0] || !photos[1]} className="btn-primary rounded-full px-5 py-2 text-sm font-semibold disabled:opacity-50">
               {busy ? t("minting") : t("intakeSubmit")}

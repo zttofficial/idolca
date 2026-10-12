@@ -60,6 +60,12 @@ export function swapPockets(layout: BinderLayout, from: number, to: number): Bin
   return { ...layout, order: trimEmpty(order) };
 }
 
+// 只是記錄的卡（"card:" 鍵，手動標記的卡款）鏈上沒有，不收進卡盒，移除就是刪掉標記
+export const isTrackedOnly = (key: string) => key.startsWith("card:");
+
+// 從冊子裡清掉一張卡的位置（原卡套留空），不放進卡盒
+export const clearPocket = (layout: BinderLayout, key: string): BinderLayout => ({ ...layout, order: trimEmpty(layout.order.map((k) => (k === key ? "" : k))) });
+
 // 拿出冊子：原卡套留空
 export function takeOut(layout: BinderLayout, key: string): BinderLayout {
   return {

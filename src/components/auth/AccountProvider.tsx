@@ -16,7 +16,7 @@ export default function AccountProvider({ children }: { children: React.ReactNod
   const signedIn = useCallback((user: AuthUser) => {
     setMe({ configured: true, user });
     setOpen(false);
-    attachAccount().catch(() => {});
+    attachAccount(user.id).catch(() => {});
     refreshItems().catch(() => {});
   }, []);
 
@@ -28,7 +28,7 @@ export default function AccountProvider({ children }: { children: React.ReactNod
         if (cancelled) return;
         setMe(data);
         if (data.user) {
-          attachAccount().catch(() => {});
+          attachAccount(data.user.id).catch(() => {});
           refreshItems().catch(() => {});
         }
       })

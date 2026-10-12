@@ -49,3 +49,18 @@ export function getDb() {
   });
   return shared.__idolcaDb;
 }
+
+// 幾條寫入要嘛全部生效、要嘛全部不生效。Neon 的 HTTP 驅動不支援互動式交易，用 batch（整批在同一個交易裡執行）；
+// PGlite 用一般交易。build 拿到的 q 用來組查詢，組好先不要 await
+type Query = PromiseLike<unknown>;
+export async function atomic(db: Db, build: (q: Db) => Query[]) {
+  const batch = (db as unknown as { batch?: (queries: Query[]) => Promise<unknown> }).batch;
+  if (batch) {
+    const queries = build(db);
+    if (queries.length) await batch.call(db, queries);
+    return;
+  }
+  await db.transaction(async (tx) => {
+    for (const q of build(tx as unknown as Db)) await q;
+  });
+}

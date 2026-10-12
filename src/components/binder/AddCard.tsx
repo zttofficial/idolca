@@ -6,6 +6,9 @@ import { cropToCard } from "@/lib/crop-card";
 import { useAuth } from "@/components/auth/AuthContext";
 import { Link } from "@/i18n/navigation";
 import { GROUPS, TEMPLATES } from "@/lib/catalog";
+import { findDirectoryGroup, groupOptions } from "@/lib/kpop-groups";
+import Combobox from "@/components/ui/Combobox";
+import Select from "@/components/ui/Select";
 import { mintItem, type CollectorItem } from "@/lib/items";
 import { solscanUrl } from "@/lib/solana/config";
 import { CARD_SOURCES, type CardSource } from "@/lib/sources";
@@ -77,10 +80,11 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // 圖鑑只用來給輸入建議，填什麼都可以
-  const g = GROUPS.find((x) => x.name.toLowerCase() === group.trim().toLowerCase());
-  const memberOptions = g ? g.members : unique(GROUPS.flatMap((x) => x.members));
-  const albumOptions = unique((g ? TEMPLATES.filter((x) => x.groupId === g.id) : TEMPLATES).map((x) => x.album));
+  // 團體名錄和圖鑑只用來給輸入建議，填什麼都可以。認得的團體列出它的成員；圖鑑裡有的團體列出它的專輯
+  const known = findDirectoryGroup(group);
+  const g = GROUPS.find((x) => x.name.toLowerCase() === (known?.name ?? group).trim().toLowerCase());
+  const memberOptions = known?.members ?? [];
+  const albumOptions = unique((g ? TEMPLATES.filter((x) => x.groupId === g.id) : group.trim() ? [] : TEMPLATES).map((x) => x.album));
   const versionOptions = unique(TEMPLATES.map((x) => x.version));
   const priceValue = Number(price);
   const priceOk = !sell || (price !== "" && priceValue > 0 && priceValue <= 100_000);
@@ -173,29 +177,23 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
                 </label>
                 <label className="text-xs font-medium text-ink-2">
                   {t("group")} *
-                  <input value={group} onChange={(e) => setGroup(e.target.value)} list="add-groups" maxLength={60} placeholder="IVE" className={field} />
+                  <Combobox value={group} onChange={setGroup} options={groupOptions} maxLength={60} placeholder="IVE" className={field} />
                 </label>
                 <label className="text-xs font-medium text-ink-2">
                   {t("member")} *
-                  <input value={member} onChange={(e) => setMember(e.target.value)} list="add-members" maxLength={60} placeholder="Wonyoung" className={field} />
+                  <Combobox value={member} onChange={setMember} options={memberOptions} maxLength={60} placeholder="Wonyoung" className={field} />
                 </label>
                 <label className="col-span-2 text-xs font-medium text-ink-2">
                   {t("source")} *
-                  <select value={source} onChange={(e) => setSource(e.target.value as CardSource)} className={field}>
-                    {CARD_SOURCES.map((x) => (
-                      <option key={x} value={x}>
-                        {tSource(x)}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={source} onChange={setSource} options={CARD_SOURCES.map((x) => ({ value: x, label: tSource(x) }))} className={field} />
                 </label>
                 <label className="text-xs font-medium text-ink-2">
                   {t("releaseName")}
-                  <input value={album} onChange={(e) => setAlbum(e.target.value)} list="add-albums" maxLength={80} placeholder={t(`releasePlaceholder_${source === "album" || source === "pob" || source === "luckydraw" || source === "fansign" ? "album" : "event"}`)} className={field} />
+                  <Combobox value={album} onChange={setAlbum} options={albumOptions} maxLength={80} placeholder={t(`releasePlaceholder_${source === "album" || source === "pob" || source === "luckydraw" || source === "fansign" ? "album" : "event"}`)} className={field} />
                 </label>
                 <label className="text-xs font-medium text-ink-2">
                   {t("detail")}
-                  <input value={version} onChange={(e) => setVersion(e.target.value)} list="add-versions" maxLength={80} className={field} />
+                  <Combobox value={version} onChange={setVersion} options={versionOptions} maxLength={80} className={field} />
                 </label>
                 <label className="col-span-2 text-xs font-medium text-ink-2">
                   {t("descriptionLabel")}
@@ -209,10 +207,6 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
                   />
                 </label>
               </div>
-              <datalist id="add-groups">{GROUPS.map((x) => <option key={x.id} value={x.name} />)}</datalist>
-              <datalist id="add-members">{memberOptions.map((m) => <option key={m} value={m} />)}</datalist>
-              <datalist id="add-albums">{albumOptions.map((a) => <option key={a} value={a} />)}</datalist>
-              <datalist id="add-versions">{versionOptions.map((v) => <option key={v} value={v} />)}</datalist>
 
               <div className="mt-4 rounded-xl border border-line p-3">
                 <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">

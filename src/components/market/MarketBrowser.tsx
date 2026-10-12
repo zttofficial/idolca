@@ -8,6 +8,7 @@ import ListingTile from "./ListingTile";
 import { openAddCard } from "@/components/binder/AddCard";
 import type { Listing } from "@/lib/items";
 import { useVaultCards } from "@/lib/chain-client";
+import Select from "@/components/ui/Select";
 import { LANES, RARITIES, SORTS, applyListingQuery, applyQuery, facetCounts, parseQuery, toSearch, type MarketQuery } from "@/lib/market";
 
 // 市場頁：金庫卡 / 自由刊登兩條線；搜尋、團體 → 成員、類型、價格、只看在售、排序、分頁，狀態全在網址裡
@@ -176,13 +177,13 @@ export default function MarketBrowser() {
         </button>
         <label className="flex items-center gap-2 text-sm text-ink-2">
           <span className="hidden sm:inline">{t("sortLabel")}</span>
-          <select value={q.sort} onChange={(e) => go({ sort: e.target.value as MarketQuery["sort"] })} className="rounded-full border border-line bg-surface px-3 py-2.5 text-sm text-ink outline-none">
-            {SORTS.map((s) => (
-              <option key={s} value={s}>
-                {t(`sort_${s}`)}
-              </option>
-            ))}
-          </select>
+          <Select
+            value={q.sort}
+            onChange={(sort) => go({ sort })}
+            options={SORTS.map((s) => ({ value: s, label: t(`sort_${s}`) }))}
+            ariaLabel={t("sortLabel")}
+            className="rounded-full border border-line bg-surface px-4 py-2.5 text-sm text-ink outline-none hover:bg-surface-2"
+          />
         </label>
       </div>
 

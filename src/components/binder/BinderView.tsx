@@ -7,7 +7,7 @@ import { AddCardButton, openAddCard } from "./AddCard";
 import VerificationBadge from "./VerificationBadge";
 import BinderBook from "./BinderBook";
 import BinderArranger from "./BinderArranger";
-import { arrange, EMPTY_LAYOUT, takeOut } from "@/lib/binder-layout";
+import { arrange, clearPocket, EMPTY_LAYOUT, isTrackedOnly, takeOut } from "@/lib/binder-layout";
 import { OnChainCards, Orders } from "./BinderChain";
 import { refreshChainState, useTemplateMarket, useVaultCards } from "@/lib/chain-client";
 import { useAuth } from "@/components/auth/AuthContext";
@@ -74,14 +74,6 @@ export default function BinderView() {
     );
   }
 
-  const copies = owned.reduce((n, o) => n + o.entry.count, 0) + items.length + myVault.length;
-  const groups = new Set([...owned.map((o) => o.template.group), ...items.map((i) => i.group.trim())].map((g) => g.toLowerCase())).size;
-  const stats = [
-    { label: t("statCards"), value: copies.toLocaleString("en-US") },
-    { label: t("statGroups"), value: groups },
-    { label: t("statMinted"), value: items.length },
-  ];
-
   // 真實的卡排前面：錢包裡的金庫卡、開卡包抽到的卡、自己上鏈的卡；圖鑑標記的卡款裡，有照片的排在沒照片的前面
   const withPhoto = (o: Owned) => Boolean(ownedCard(o, vault).image);
   const slots: Slot[] = [
@@ -91,9 +83,25 @@ export default function BinderView() {
   ];
   const byKey = new Map(slots.map((slot) => [slotKey(slot), slot]));
   const keys = [...byKey.keys()];
-  const { layout, pockets, hiddenCards } = arrange(keys, binder.layout);
+  // 只是記錄的卡不進卡盒；以前被拿出冊子的放回冊子
+  const { layout, pockets, hiddenCards } = arrange(keys, { ...binder.layout, hidden: binder.layout.hidden.filter((k) => !isTrackedOnly(k)) });
   const present = new Set(keys);
-  const takeOutCard = (key: string) => binderActions.setLayout(takeOut(layout, key));
+  // 統計冊子裡的卡（拿出收藏冊的不算）：張數、團體數、自己上鏈的張數，跟著擺法即時變
+  const inBinder = slots.filter((slot) => !hiddenCards.includes(slotKey(slot)));
+  const copies = inBinder.reduce((n, slot) => n + (slot.kind === "card" ? slot.owned.entry.count : 1), 0);
+  const groupOf = (slot: Slot) => (slot.kind === "vault" ? slot.card.group : slot.kind === "item" ? slot.item.group : slot.owned.template.group);
+  const groups = new Set(inBinder.map((slot) => groupOf(slot).trim().toLowerCase())).size;
+  const stats = [
+    { label: t("statCards"), value: copies.toLocaleString("en-US") },
+    { label: t("statGroups"), value: groups },
+    { label: t("statMinted"), value: inBinder.filter((slot) => slot.kind === "item").length },
+  ];
+  // 鏈上的卡拿出冊子放進卡盒；只是記錄的卡直接刪掉標記和它的位置
+  const takeOutCard = (key: string) => {
+    if (!isTrackedOnly(key)) return binderActions.setLayout(takeOut(layout, key));
+    binderActions.setLayout(clearPocket(layout, key));
+    binderActions.setCount(key.slice("card:".length), 0);
+  };
   const selectedOwned = owned.find((o) => o.template.id === selected);
   const pickedItem = items.find((i) => i.id === selectedItem);
   const pickedVault = myVault.find((c) => c.id === selectedVault);
@@ -159,6 +167,7 @@ export default function BinderView() {
               present={present}
               render={(key) => <SlotView slot={byKey.get(key)!} />}
               onChange={binderActions.setLayout}
+              onTakeOut={takeOutCard}
             />
           ) : (
             <BinderBook
@@ -253,13 +262,14 @@ function ownedCard({ template, entry }: Owned, vault: Card[] | null) {
   return entry.photo ? { ...base, image: { front: entry.photo } } : base;
 }
 
-// 卡套裡的卡。沒給 onSelect 時只畫卡面，不能點（整理收藏冊時用）
+// 手動標記的卡（不是鏈上的卡）：虛線框加「僅記錄」標籤，和真卡分開。沒給 onSelect 時只畫卡面，不能點（整理收藏冊時用）
 function Pocket({ owned, onSelect }: { owned: Owned; onSelect?: () => void }) {
+  const t = useTranslations("Binder");
   const tRarity = useTranslations("Rarity");
   const card = ownedCard(owned, useVaultCards());
   const Tag = onSelect ? "button" : "span";
   return (
-    <Tag onClick={onSelect} className="group relative block h-full w-full overflow-hidden text-left">
+    <Tag onClick={onSelect} className="group relative block h-full w-full overflow-hidden rounded-[5px] border-2 border-dashed border-ink-3/60 text-left">
       {card.image ? (
         <CardArt card={card} rarityLabel={tRarity(owned.template.rarity)} className="block h-full w-full" />
       ) : (
@@ -274,6 +284,7 @@ function Pocket({ owned, onSelect }: { owned: Owned; onSelect?: () => void }) {
         </span>
       )}
       {owned.entry.count > 1 && <span className="absolute top-1 right-1 rounded-full bg-ink/80 px-1.5 text-[10px] font-bold text-white">×{owned.entry.count}</span>}
+      <span className="absolute inset-x-0 bottom-0 bg-ink/55 py-0.5 text-center text-[9px] font-semibold tracking-wide text-white">{t("trackedOnly")}</span>
       <span className="absolute inset-0 bg-ink/0 transition group-hover:bg-ink/10" />
     </Tag>
   );
@@ -321,7 +332,7 @@ function CardSheet({ owned, onClose, onTakeOut }: { owned: Owned; onClose: () =>
             >
               {t("mint")}
             </button>
-            <TakeOutButton onTakeOut={onTakeOut} />
+            <TakeOutButton onTakeOut={onTakeOut} label="removeFromBinder" />
             <button onClick={onClose} className="py-1 text-xs text-ink-3 hover:text-ink">
               {t("close")}
             </button>
@@ -716,12 +727,12 @@ function VaultSheet({ card, onClose, onTakeOut }: { card: Card; onClose: () => v
   );
 }
 
-// 拿出收藏冊：卡還是你的（鏈上持有不變），只是不放在冊子裡顯示，整理收藏冊時可以放回
-function TakeOutButton({ onTakeOut }: { onTakeOut: () => void }) {
+// 拿出收藏冊：鏈上的卡還是你的，只是不放在冊子裡顯示，整理收藏冊時可以放回；只是記錄的卡則是移除標記
+function TakeOutButton({ onTakeOut, label = "takeOut" }: { onTakeOut: () => void; label?: "takeOut" | "removeFromBinder" }) {
   const t = useTranslations("Binder");
   return (
     <button onClick={onTakeOut} className="py-1 text-xs text-ink-3 hover:text-ink">
-      {t("takeOut")}
+      {t(label)}
     </button>
   );
 }

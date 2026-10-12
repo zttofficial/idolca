@@ -13,6 +13,7 @@
     "homeTitle": "Idolca · すべてのトレカが、愛してくれるファンのもとへ",
     "marketTitle": "K-POP トレカ販売中",
     "marketDescription": "Idolca 金庫の鑑定済み K-POP トレカと、エスクローで保護されたファンの出品を探せます。グループ、メンバー、アルバム、バージョン、価格で絞り込み。",
+    "chartsTitle": "アルバム売上チャート",
     "chartsDescription": "韓国公式アルバムチャート Circle Chart の今週のトップ 10 K-POP アルバム。週間・累計販売数つき。",
     "groupTitle": "{group} トレカ図鑑",
     "groupDescription": "{group} のトレカをアルバム・メンバー・バージョン別に網羅。持っているカードを記録し、欲しいカードと販売中のカードを探せます。",
@@ -440,7 +441,9 @@
     "putBack": "戻す",
     "hiddenCount": "{count} 枚がバインダーの外",
     "resetLayout": "最初の並びに戻す",
-    "resetLayoutConfirm": "すべてのカードをバインダーに戻し、最初の並びにしますか？"
+    "resetLayoutConfirm": "すべてのカードをバインダーに戻し、最初の並びにしますか？",
+    "trackedOnly": "記録のみ",
+    "removeFromBinder": "バインダーから外す"
   },
   "Mint": {
     "title": "手元のカードをデジタルコレクティブルに",

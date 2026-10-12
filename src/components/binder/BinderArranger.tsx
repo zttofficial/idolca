@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { POCKETS } from "./BinderBook";
-import { putBack, swapPockets, takeOut, type BinderLayout } from "@/lib/binder-layout";
+import { isTrackedOnly, putBack, swapPockets, type BinderLayout } from "@/lib/binder-layout";
 
 // 整理收藏冊：所有內頁攤開，像實體卡冊一樣把卡拿起來換到別的卡套；拿出冊子的卡放在下面的卡盒，隨時放回。
 // 點一張卡拿起、再點卡套放下（手機和電腦都能用），電腦上也能直接拖曳。
@@ -16,6 +16,7 @@ export default function BinderArranger({
   present,
   render,
   onChange,
+  onTakeOut,
 }: {
   layout: BinderLayout;
   pockets: (string | null)[];
@@ -23,6 +24,8 @@ export default function BinderArranger({
   present: Set<string>;
   render: (key: string) => React.ReactNode;
   onChange: (layout: BinderLayout) => void;
+  // 拿出冊子：鏈上的卡收進卡盒，只是記錄的卡直接刪掉標記（由收藏冊決定）
+  onTakeOut: (key: string) => void;
 }) {
   const t = useTranslations("Binder");
   const [picked, setPicked] = useState<Picked>(null);
@@ -86,10 +89,10 @@ export default function BinderArranger({
                     {key && (
                       <button
                         type="button"
-                        title={t("takeOut")}
-                        aria-label={t("takeOut")}
+                        title={t(isTrackedOnly(key) ? "removeFromBinder" : "takeOut")}
+                        aria-label={t(isTrackedOnly(key) ? "removeFromBinder" : "takeOut")}
                         onClick={() => {
-                          onChange(takeOut(layout, key));
+                          onTakeOut(key);
                           setPicked(null);
                         }}
                         className="absolute -top-1.5 -right-1.5 grid h-5 w-5 place-items-center rounded-full bg-ink/80 text-[11px] leading-none text-white opacity-80 hover:bg-down hover:opacity-100"
@@ -111,7 +114,7 @@ export default function BinderArranger({
         onDrop={(e) => {
           e.preventDefault();
           const from = readDrag(e);
-          if (from?.from === "pocket") onChange(takeOut(layout, from.key));
+          if (from?.from === "pocket") onTakeOut(from.key);
           setPicked(null);
         }}
         className="mt-6 rounded-2xl border border-dashed border-line p-4"

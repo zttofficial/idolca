@@ -13,6 +13,7 @@
     "homeTitle": "Idolca · Setiap photocard menemukan penggemarnya",
     "marketTitle": "Photocard K-pop dijual",
     "marketDescription": "Belanja photocard K-pop yang sudah diautentikasi dari brankas Idolca dan listing fan yang dilindungi escrow. Filter berdasarkan grup, anggota, album, versi, dan harga.",
+    "chartsTitle": "Chart penjualan album",
     "chartsDescription": "10 album K-pop teratas minggu ini di Circle Chart, tangga album resmi Korea, lengkap dengan penjualan mingguan dan total.",
     "groupTitle": "Photocard {group}",
     "groupDescription": "Semua photocard {group} berdasarkan album, anggota, dan versi. Tandai yang kamu punya, temukan yang kamu inginkan, dan lihat yang sedang dijual.",
@@ -440,7 +441,9 @@
     "putBack": "Masukkan kembali",
     "hiddenCount": "{count} kartu di luar binder",
     "resetLayout": "Kembali ke urutan awal",
-    "resetLayoutConfirm": "Masukkan semua kartu kembali ke binder dengan urutan awal?"
+    "resetLayoutConfirm": "Masukkan semua kartu kembali ke binder dengan urutan awal?",
+    "trackedOnly": "Hanya dicatat",
+    "removeFromBinder": "Hapus dari binder"
   },
   "Mint": {
     "title": "Jadikan kartumu koleksi digital",

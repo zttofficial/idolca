@@ -13,6 +13,7 @@
     "homeTitle": "Idolca · 모든 포카가 아껴줄 팬을 만나도록",
     "marketTitle": "판매 중인 K-pop 포카",
     "marketDescription": "Idolca 금고의 감정된 K-pop 포카와 에스크로로 보호되는 팬 판매를 둘러보세요. 그룹, 멤버, 앨범, 버전, 가격으로 필터링할 수 있어요.",
+    "chartsTitle": "앨범 판매량 차트",
     "chartsDescription": "한국 공식 앨범 차트인 써클차트의 이번 주 K-pop 앨범 TOP 10과 주간·누적 판매량.",
     "groupTitle": "{group} 포카 도감",
     "groupDescription": "{group}의 모든 포카를 앨범, 멤버, 버전별로 정리했어요. 가진 카드를 표시하고 원하는 카드와 판매 중인 카드를 찾아보세요.",
@@ -440,7 +441,9 @@
     "putBack": "다시 넣기",
     "hiddenCount": "바인더 밖 카드 {count}장",
     "resetLayout": "기본 순서로 되돌리기",
-    "resetLayoutConfirm": "모든 카드를 바인더에 다시 넣고 기본 순서로 정렬할까요?"
+    "resetLayoutConfirm": "모든 카드를 바인더에 다시 넣고 기본 순서로 정렬할까요?",
+    "trackedOnly": "기록만",
+    "removeFromBinder": "바인더에서 빼기"
   },
   "Mint": {
     "title": "가진 카드를 디지털 컬렉터블로",

@@ -48,6 +48,7 @@ npm run admin:grant -- you@example.com     # 或錢包地址；加 --revoke 撤�
 PGLITE_DIR=.data/pglite-e2e npm run dev   # 另開一個終端
 npm run test:e2e:vault     # 入庫、卡包、公平性核對、回購、提貨和取消、收藏卡轉金庫卡
 npm run test:e2e:ui        # 無頭 Chrome 點完主要流程並截圖（CHROME_PATH 指定 Chrome）
+npm run test:e2e:binder    # 收藏冊同步：刪掉的卡換裝置也不會回來，沒送出的改動會補傳
 # 擔保交易要用縮短的期限啟動網站：
 #   PGLITE_DIR=.data/pglite-e2e ESCROW_SHIP_DAYS=0.0003 ESCROW_CONFIRM_DAYS=0.0003 CRON_SECRET=testcron npm run dev
 E2E_CRON_SECRET=testcron npm run test:e2e:escrow

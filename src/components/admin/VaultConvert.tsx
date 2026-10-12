@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { RARITY_LIST, type Rarity } from "@/lib/cards";
 import type { CollectorItem } from "@/lib/items";
+import Select from "@/components/ui/Select";
 
 // 申請寄進金庫的收藏卡：實物寄到後鑑定。真品就填類型、評級、倉位，轉成金庫卡（照片和資料沿用）；
 // 不收就退回；假卡用外面的「標成假卡」
@@ -24,13 +25,7 @@ export default function VaultConvert({ item, busy, onConvert, onReturn }: { item
       <span className="w-full text-xs font-semibold text-notice-ink">{t("vaultRequestAt", { date: item.vaultRequestedAt!.slice(0, 10), ref: `IDOLCA-${item.id.slice(0, 8).toUpperCase()}` })}</span>
       {!item.album && <input required placeholder={t("fieldAlbum")} value={f.album} onChange={set("album")} className={field} />}
       {!item.version && <input required placeholder={t("fieldVersion")} value={f.version} onChange={set("version")} className={field} />}
-      <select value={f.rarity} onChange={set("rarity")} aria-label={t("fieldRarity")} className={field}>
-        {RARITY_LIST.map((r) => (
-          <option key={r} value={r}>
-            {tRarity(r)}
-          </option>
-        ))}
-      </select>
+      <Select value={f.rarity} onChange={(rarity) => setF((x) => ({ ...x, rarity }))} options={RARITY_LIST.map((r) => ({ value: r, label: tRarity(r) }))} ariaLabel={t("fieldRarity")} className={field} />
       <input type="number" min={1} max={10} placeholder={t("fieldGrade")} value={f.grade} onChange={set("grade")} className={`${field} w-24`} />
       <input required placeholder={t("fieldLocation")} value={f.location} onChange={set("location")} className={`${field} w-28`} />
       <input placeholder={t("fieldCondition")} value={f.condition} onChange={set("condition")} className={`${field} min-w-40 flex-1`} />

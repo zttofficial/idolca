@@ -108,6 +108,7 @@ End-to-end suites run against a live site and devnet with real transactions. Sta
 ```bash
 npm run test:e2e:vault       # intake, packs, fairness check, buyback, redemption and cancel, vault conversion
 npm run test:e2e:ui          # headless Chrome with an injected Wallet Standard test wallet, clicking through every flow
+npm run test:e2e:binder      # binder sync: deletions stay deleted across devices, unsent changes are uploaded
 E2E_CRON_SECRET=testcron npm run test:e2e:escrow   # needs shortened deadlines, see README.zh-Hant.md
 ```
 

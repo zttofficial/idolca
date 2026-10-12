@@ -13,6 +13,7 @@
     "homeTitle": "Idolca · 讓每一張小卡，都找到懂它的人",
     "marketTitle": "K-pop 小卡市場",
     "marketDescription": "選購 Idolca 金庫裡鑑定過的 K-pop 小卡，以及全程擔保的粉絲出卡。可按團體、成員、專輯、版本和價格篩選。",
+    "chartsTitle": "專輯銷量榜",
     "chartsDescription": "Circle Chart（韓國官方專輯榜）本週前 10 名 K-pop 專輯，附本週和累計銷量。",
     "groupTitle": "{group} 小卡圖鑑",
     "groupDescription": "{group} 每張小卡，按專輯、成員和版本整理。標記你有的、找到你想要的，看看哪些在賣。",
@@ -440,7 +441,9 @@
     "putBack": "放回",
     "hiddenCount": "{count} 張卡不在冊子裡",
     "resetLayout": "恢復預設排法",
-    "resetLayoutConfirm": "要把所有卡放回冊子，按預設順序排好嗎？"
+    "resetLayoutConfirm": "要把所有卡放回冊子，按預設順序排好嗎？",
+    "trackedOnly": "僅記錄",
+    "removeFromBinder": "從收藏冊移除"
   },
   "Mint": {
     "title": "把手上的卡做成數位珍藏",

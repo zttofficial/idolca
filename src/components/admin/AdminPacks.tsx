@@ -6,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import type { Card } from "@/lib/cards";
 import { formatUsdt } from "@/lib/fx";
 import { TIERS, packStats, type Pack, type Tier } from "@/lib/packs";
+import Select from "@/components/ui/Select";
 
 type Call = <T>(method: string, path: string, body?: unknown) => Promise<T>;
 
@@ -94,13 +95,7 @@ function NewPack({ onCreate, busy }: { onCreate: (body: unknown) => Promise<void
       </label>
       <label className={label}>
         {t("packMaxQty")}
-        <select value={f.maxQty} onChange={set("maxQty")} className={field}>
-          {["1", "5", "10"].map((q) => (
-            <option key={q} value={q}>
-              {q === "1" ? t("singlePull") : `×${q}`}
-            </option>
-          ))}
-        </select>
+        <Select value={f.maxQty} onChange={(maxQty) => setF((x) => ({ ...x, maxQty }))} options={["1", "5", "10"].map((q) => ({ value: q, label: q === "1" ? t("singlePull") : `×${q}` }))} className={field} />
       </label>
       <label className={label}>
         {t("packStarts")}
@@ -174,11 +169,7 @@ function PackPool({
           <div className="flex flex-wrap items-end gap-3">
             <label className={label}>
               {t("tier")}
-              <select value={tier} onChange={(e) => setTier(e.target.value as Tier)} className={field}>
-                {TIERS.map((x) => (
-                  <option key={x}>{x}</option>
-                ))}
-              </select>
+              <Select value={tier} onChange={setTier} options={TIERS.map((x) => ({ value: x, label: x }))} className={field} />
             </label>
             <label className={label}>
               {t("cardValue")}

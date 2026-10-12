@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { requireUser } from "@/lib/server/require-user";
+import { atomic } from "@/lib/server/db";
 import { binderEntries, binderLayouts, binderWants } from "@/lib/server/schema";
 import { findTemplate } from "@/lib/catalog";
 import { isLayoutKey, MAX_LAYOUT_KEYS } from "@/lib/binder-layout";
@@ -36,25 +37,28 @@ export async function PUT(request: Request) {
   const have = Object.entries(body.have ?? {}).filter(([id, e]) => findTemplate(id) && Number.isInteger(e.count) && e.count > 0 && e.count < 1000);
   const want = Object.keys(body.want ?? {}).filter((id) => findTemplate(id));
 
-  await a.db.delete(binderEntries).where(eq(binderEntries.userId, a.user.id));
-  await a.db.delete(binderWants).where(eq(binderWants.userId, a.user.id));
-  if (have.length) {
-    await a.db.insert(binderEntries).values(
-      have.map(([templateId, e]) => ({
-        userId: a.user.id,
-        templateId,
-        count: e.count,
-        photo: e.photo && e.photo.length <= MAX_PHOTO && e.photo.startsWith("data:image/") ? e.photo : null,
-        mint: e.mint ?? null,
-      })),
-    );
-  }
-  if (want.length) await a.db.insert(binderWants).values(want.map((templateId) => ({ userId: a.user.id, templateId })));
   const orderKeys = JSON.stringify(keyList(body.layout?.order, true));
   const hiddenKeys = JSON.stringify(keyList(body.layout?.hidden, false));
-  await a.db
-    .insert(binderLayouts)
-    .values({ userId: a.user.id, orderKeys, hiddenKeys })
-    .onConflictDoUpdate({ target: binderLayouts.userId, set: { orderKeys, hiddenKeys } });
+  const userId = a.user.id;
+  // 刪掉舊的、寫入新的在同一個交易裡，中途失敗不會留下半本空的收藏冊
+  await atomic(a.db, (q) => [
+    q.delete(binderEntries).where(eq(binderEntries.userId, userId)),
+    q.delete(binderWants).where(eq(binderWants.userId, userId)),
+    ...(have.length
+      ? [
+          q.insert(binderEntries).values(
+            have.map(([templateId, e]) => ({
+              userId,
+              templateId,
+              count: e.count,
+              photo: e.photo && e.photo.length <= MAX_PHOTO && e.photo.startsWith("data:image/") ? e.photo : null,
+              mint: e.mint ?? null,
+            })),
+          ),
+        ]
+      : []),
+    ...(want.length ? [q.insert(binderWants).values(want.map((templateId) => ({ userId, templateId })))] : []),
+    q.insert(binderLayouts).values({ userId, orderKeys, hiddenKeys }).onConflictDoUpdate({ target: binderLayouts.userId, set: { orderKeys, hiddenKeys } }),
+  ]);
   return Response.json({ ok: true });
 }

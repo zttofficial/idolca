@@ -13,6 +13,7 @@
     "homeTitle": "Idolca · Every photocard finds its fan",
     "marketTitle": "K-pop photocards for sale",
     "marketDescription": "Shop authenticated K-pop photocards from the Idolca vault and escrow-protected fan listings. Filter by group, member, album, version and price.",
+    "chartsTitle": "Album sales chart",
     "chartsDescription": "This week's top 10 K-pop albums on Circle Chart, Korea's official album chart, with weekly and total sales.",
     "groupTitle": "{group} photocards",
     "groupDescription": "Every {group} photocard by album, member and version. Mark the ones you have, find the ones you want, and see what's for sale.",
@@ -440,7 +441,9 @@
     "putBack": "Put back",
     "hiddenCount": "{count, plural, one {# card} other {# cards}} out of the binder",
     "resetLayout": "Reset to default order",
-    "resetLayoutConfirm": "Put every card back into the binder in the default order?"
+    "resetLayoutConfirm": "Put every card back into the binder in the default order?",
+    "trackedOnly": "Tracked only",
+    "removeFromBinder": "Remove from binder"
   },
   "Mint": {
     "title": "Make a digital collectible of your card",

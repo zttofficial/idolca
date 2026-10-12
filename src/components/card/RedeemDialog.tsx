@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { formatUsdt } from "@/lib/fx";
+import Select from "@/components/ui/Select";
 import { EMPTY_ADDRESS, REDEEM_FEE_USDT, SHIP_COUNTRIES, parseAddress, type ShippingAddress } from "@/lib/shipping";
 
 const DRAFT_KEY = "idolca:shipping-address";
@@ -85,14 +86,7 @@ export default function RedeemDialog({ busy, onSubmit, onClose }: { busy: boolea
           </label>
           <label className={label}>
             {t("addrCountry")}
-            <select required autoComplete="country" value={a.country} onChange={set("country")} className={field}>
-              <option value="" />
-              {countries.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <Select required searchable value={a.country} onChange={(country) => setA((x) => ({ ...x, country }))} options={countries.map((c) => ({ value: c.code, label: c.name }))} className={field} />
           </label>
         </div>
         <p className="mt-5 rounded-xl bg-surface-2 px-4 py-3 text-xs leading-relaxed text-ink-2">{t("redeemFee", { fee: formatUsdt(REDEEM_FEE_USDT, 2) })}</p>

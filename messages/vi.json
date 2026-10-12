@@ -13,6 +13,7 @@
     "homeTitle": "Idolca · Mỗi tấm thẻ đều tìm được người hiểu nó",
     "marketTitle": "Thẻ K-pop đang bán",
     "marketDescription": "Mua thẻ K-pop đã kiểm định từ kho Idolca và tin đăng của fan được bảo vệ ký quỹ. Lọc theo nhóm, thành viên, album, phiên bản và giá.",
+    "chartsTitle": "Bảng xếp hạng doanh số album",
     "chartsDescription": "Top 10 album K-pop tuần này trên Circle Chart, bảng xếp hạng album chính thức của Hàn Quốc, kèm doanh số tuần và tổng.",
     "groupTitle": "Thẻ {group}",
     "groupDescription": "Mọi thẻ {group} theo album, thành viên và phiên bản. Đánh dấu thẻ bạn có, tìm thẻ bạn muốn và xem thẻ nào đang bán.",
@@ -440,7 +441,9 @@
     "putBack": "Đặt lại",
     "hiddenCount": "{count} thẻ ngoài binder",
     "resetLayout": "Về thứ tự mặc định",
-    "resetLayoutConfirm": "Đặt tất cả thẻ trở lại binder theo thứ tự mặc định?"
+    "resetLayoutConfirm": "Đặt tất cả thẻ trở lại binder theo thứ tự mặc định?",
+    "trackedOnly": "Chỉ ghi lại",
+    "removeFromBinder": "Gỡ khỏi binder"
   },
   "Mint": {
     "title": "Tạo vật phẩm sưu tầm số cho thẻ của bạn",
