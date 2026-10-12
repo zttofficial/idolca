@@ -5,7 +5,7 @@ import { PublicKey } from "@solana/web3.js";
 import type { Db } from "./db";
 import { packOrders, packPulls, vaultCards } from "./schema";
 import { buildBuybackTx, buildPayment, payout, transferVaultNft, verifyPayment } from "./funds";
-import { confirmSignature, invalidateVaultState, vaultState } from "./vault-chain";
+import { confirmSignature, invalidateVaultState, vaultState, type VaultCardState } from "./vault-chain";
 import { getPackRow } from "./pack-pool";
 import { invalidateVaultCards, toCard } from "./vault-cards";
 import { CHAIN } from "@/lib/chain";
@@ -21,7 +21,10 @@ const memoOf = (orderId: string) => `idolca:pack:${orderId}`;
 
 const isLive = (p: { startsAt: Date; endsAt: Date }) => p.startsAt.getTime() <= Date.now() && Date.now() < p.endsAt.getTime();
 
-// 現在能抽的卡：在卡池裡、沒被抽走，而且鏈上確實還在平台錢包（沒掛單、沒在提貨）
+// 鏈上確實能抽：還在平台錢包，沒掛單、沒在提貨、沒銷毀
+export const drawable = (s: VaultCardState | undefined) => Boolean(s && s.owner === CHAIN.platform && !s.listing && !s.redeeming && !s.burned);
+
+// 現在能抽的卡：在卡池裡、沒被抽走，而且鏈上確實能抽
 async function available(db: Db, packId: string) {
   const [rows, state] = await Promise.all([
     db
@@ -30,10 +33,7 @@ async function available(db: Db, packId: string) {
       .where(and(eq(vaultCards.packId, packId), isNull(vaultCards.packOrder), isNull(vaultCards.burnedAt))),
     vaultState(),
   ]);
-  return rows.filter((r) => {
-    const s = state[r.id];
-    return s && s.owner === CHAIN.platform && !s.listing && !s.redeeming && !s.burned;
-  });
+  return rows.filter((r) => drawable(state[r.id]));
 }
 
 export async function createPackOrder(db: Db, userId: string, wallet: string, packId: string, qty: number, rail: PayRail = "solana") {
