@@ -6,13 +6,13 @@ import PackArt from "./PackArt";
 import { usePackPhase } from "./Countdown";
 import { HoloCardFace } from "@/components/market/HoloTile";
 import { CardBackArt } from "@/components/market/CardArt";
-import { formatStable, formatPrice } from "@/lib/fx";
+import { formatPrice } from "@/lib/fx";
 import { BUYBACK_RATE, TIER_COLOR, entryCard, type Pack, type PoolEntry } from "@/lib/packs";
 import { useAuth } from "@/components/auth/AuthContext";
 import { payAndConfirm, payOnArc, postAction, refreshChainState, useChainState } from "@/lib/chain-client";
 import { arcExplorerUrl } from "@/lib/arc";
 import type { EvmWallet } from "@/lib/evm/arc-wallet";
-import ArcPayButton from "@/components/pay/ArcPayButton";
+import PaymentPicker from "@/components/pay/PaymentPicker";
 import { signAndSend } from "@/lib/solana/wallets";
 import { solscanUrl } from "@/lib/solana/config";
 
@@ -28,7 +28,6 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 // 卡池不夠時沒交付的張數自動退款，退回原來付款的通道
 export default function PackOpener({ pack, regionBlocked }: { pack: Pack; regionBlocked: boolean }) {
   const t = useTranslations("Packs");
-  const tArc = useTranslations("Arc");
   const { phase } = usePackPhase(pack.startsAt, pack.endsAt);
   const [qty, setQty] = useState<(typeof QUANTITIES)[number]>(1);
   const quantities = QUANTITIES.filter((q) => q <= pack.maxQty);
@@ -41,8 +40,8 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
   const wallet = user?.walletAddress;
   const [pool, setPool] = useState(pack.pool);
   const [minted, setMinted] = useState<Minted[]>([]);
-  const [paying, setPaying] = useState(false);
-  const [payError, setPayError] = useState<string>();
+  // 付款方式面板開著
+  const [picking, setPicking] = useState(false);
   const [paySig, setPaySig] = useState<string>();
   const [payRail, setPayRail] = useState<"solana" | "arc">("solana");
   const [refundTx, setRefundTx] = useState<string | null>(null);
@@ -90,24 +89,12 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
     return true;
   };
 
-  const open = async () => {
-    if (!ready()) return;
-    setPaying(true);
-    setPayError(undefined);
-    try {
-      const { signature, result } = await payAndConfirm<Drawn>(`/api/packs/${pack.id}/order`, { qty }, (id) => `/api/packs/orders/${id}/confirm`, wallet!);
-      drawn("solana", signature, result);
-    } catch (e) {
-      setPayError(e instanceof Error ? e.message : "network");
-    } finally {
-      setPaying(false);
-    }
+  // 兩種付款方式，由付款方式面板呼叫；失敗時丟錯，面板顯示說明
+  const openOnSolana = async () => {
+    const { signature, result } = await payAndConfirm<Drawn>(`/api/packs/${pack.id}/order`, { qty }, (id) => `/api/packs/orders/${id}/confirm`, wallet!);
+    drawn("solana", signature, result);
   };
-
-  // 在 Arc 上付款：錯誤由按鈕自己顯示
   const openOnArc = async (evm: EvmWallet) => {
-    if (!ready()) return;
-    setPayError(undefined);
     const { payTx, result } = await payOnArc<Drawn>(`/api/packs/${pack.id}/order`, { qty }, (id) => `/api/packs/orders/${id}/confirm`, evm);
     drawn("arc", payTx, result);
   };
@@ -143,9 +130,7 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
     setAgeAsk(false);
   };
 
-  const label = paying
-    ? t("paying")
-    : regionBlocked
+  const label = regionBlocked
       ? t("regionBlocked")
       : !live
         ? t("unavailable")
@@ -179,13 +164,12 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
         </div>
       )}
       <button
-        onClick={open}
-        disabled={!canOpen || paying || (live && Boolean(user) && !wallet)}
+        onClick={() => ready() && setPicking(true)}
+        disabled={!canOpen || picking || (live && Boolean(user) && !wallet)}
         className="btn-primary mt-3 w-full rounded-full px-6 py-3.5 text-base font-bold disabled:cursor-not-allowed disabled:opacity-50"
       >
         {label}
       </button>
-      {live && user && wallet && canOpen && <ArcPayButton label={tArc("pay", { total: formatStable(round2(qty * pack.priceUsdt), "USDC") })} disabled={paying} pay={openOnArc} />}
       {live && user && !wallet && <p className="mt-2 text-center text-xs text-ink-2">{t("linkWalletToOpen")}</p>}
       {ageAsk && (
         <div className="mt-3 rounded-xl border border-line bg-surface-2 p-4 text-sm">
@@ -198,7 +182,14 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
           </button>
         </div>
       )}
-      {payError && <p className="mt-2 text-center text-xs text-down">{t.has(`error_${payError}`) ? t(`error_${payError}`) : t("error_generic")}</p>}
+      {picking && (
+        <PaymentPicker
+          amountUsd={round2(qty * pack.priceUsdt)}
+          run={{ solana: openOnSolana, arc: openOnArc }}
+          describeError={(code) => (t.has(`error_${code}`) ? t(`error_${code}`) : null)}
+          onClose={() => setPicking(false)}
+        />
+      )}
       <p className="mt-3 rounded-lg border border-notice-line bg-notice-bg px-3 py-2 text-[11px] leading-relaxed text-notice-ink">{t("chainNote")}</p>
 
       {stage !== "closed" && (

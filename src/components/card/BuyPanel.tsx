@@ -10,6 +10,7 @@ import { CURRENCY, formatPrice } from "@/lib/fx";
 import type { Card } from "@/lib/cards";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 import { useChainState, vaultAction, type VaultAction, type VaultCardState } from "@/lib/chain-client";
+import PaymentPicker from "@/components/pay/PaymentPicker";
 
 const PRIMARY = "btn-primary flex-1 rounded-full px-6 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 const SECONDARY =
@@ -66,6 +67,8 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
   const [done, setDone] = useState<{ action: VaultAction; signature: string }>();
   const [price, setPrice] = useState(card.priceUsdt ? String(card.priceUsdt) : "");
   const [redeeming, setRedeeming] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const tPay = useTranslations("Pay");
 
   const run = async (action: VaultAction, priceUsdt?: number, address?: ShippingAddress) => {
     if (!me) return;
@@ -80,6 +83,11 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
     } finally {
       setBusy(null);
     }
+  };
+
+  // 金庫卡成交只能在 Solana 上付款（卡和款項同一筆交易原子交換），由付款方式面板呼叫；失敗時丟錯，面板顯示說明
+  const buyOnSolana = async () => {
+    setDone({ action: "buy", signature: await vaultAction("buy", card.id, me!) });
   };
 
   const note = (key: string) => <p className="rounded-xl bg-surface-2 px-4 py-3 text-center text-sm text-ink-2">{t(key)}</p>;
@@ -103,9 +111,20 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
     ) : !me ? (
       note("linkWalletToBuy")
     ) : (
-      <button className={PRIMARY + " w-full"} disabled={busy !== null} onClick={() => run("buy")}>
-        {busy === "buy" ? t("confirmInWallet") : t("buyNowFor", { price: formatPrice(live.listing.priceUsdt) })}
-      </button>
+      <>
+        <button className={PRIMARY + " w-full"} disabled={busy !== null || picking} onClick={() => setPicking(true)}>
+          {t("buyNowFor", { price: formatPrice(live.listing.priceUsdt) })}
+        </button>
+        {picking && (
+          <PaymentPicker
+            amountUsd={live.listing.priceUsdt}
+            run={{ solana: buyOnSolana, arc: null }}
+            arcUnavailableNote={tPay("arcVaultOnly")}
+            describeError={(code) => (t.has(`error_${code}`) ? t(`error_${code}`) : null)}
+            onClose={() => setPicking(false)}
+          />
+        )}
+      </>
     );
   } else if (live.owner === me) {
     const value = Number(price);

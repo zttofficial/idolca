@@ -25,6 +25,8 @@
 
 ## 哪些流程走 Arc
 
+價格一律標 USD，付款時才選用哪種方式、扣哪種穩定幣（Solana 上的 USDT 或 Arc 上的 USDC，1:1）。
+
 | 流程 | Arc 通道 | 說明 |
 |---|---|---|
 | 開卡包 | 支援 | 在 Arc 上付款，卡在 Solana 上交付；卡池不夠時，沒交付的部分在 Arc 上退回付款地址 |
@@ -63,7 +65,7 @@ Arc 上的 USDC 原生支援 EIP-3009 的 `transferWithAuthorization`（主網�
 | 訂單的收款通道 | `orders`、`pack_orders` 表的 `rail`、`payer`（Arc 付款地址），`pack_orders.pay_proof`（抽卡用的付款證明） |
 | 開卡包、擔保交易 | `src/lib/server/packs.ts`、`orders.ts`，建單時帶 `rail: "arc"` |
 | 瀏覽器 EVM 錢包（EIP-6963 偵測、切到 Arc、簽授權） | `src/lib/evm/arc-wallet.ts` |
-| 付款按鈕 | `src/components/pay/ArcPayButton.tsx`，放在開卡包和擔保交易的結帳處 |
+| 付款方式面板 | `src/components/pay/PaymentPicker.tsx`：開卡包、擔保交易、金庫卡購買都只有一顆購買按鈕，按下後在面板裡選 Solana 錢包、Arc 上的 USDC，或信用卡（先佔位，顯示「即將推出」）；不適用的方式顯示原因，例如金庫卡成交只能用 Solana 錢包 |
 | 測試 | `tests/arc.test.ts`（EIP-712 網域和鏈上一致）、`e2e/arc.mjs`（`npm run test:e2e:arc`，測試網真實交易） |
 
 ### 環境變數
