@@ -89,30 +89,11 @@ Arc 上的 USDC 原生支援 EIP-3009 的 `transferWithAuthorization`（主網�
 
 ## 現況
 
-**已完成，測試網驗證過**
-
-- 開卡包、擔保交易的 Arc 付款和退款。
-- `e2e/arc.mjs` 17 項全過：
-  - 買家沒有任何 SOL 也能開包，扣款剛好是包價。
-  - 卡交付到 Solana 錢包。
-  - 偽造金額的授權被拒。
-  - 重複回報結果不變。
-  - 卡池不夠時在 Arc 上退款；擔保交易的後台退款退回 Arc。
-- 原有的金庫端到端測試照樣全過。
-
-**上線前還要做**
-
-1. 前台文案按設定顯示幣種，不再寫死 USDT。
-2. 生成主網平台熱錢包，寫進 `arc-mainnet.json`，存入約 20 USDC。
-3. 新開一個 Vercel 專案和資料庫，部署這個分支：Solana devnet 加 Arc 主網，設 `ARC_PAY_ADMIN_ONLY=1`。
-4. 用真錢在 Arc 主網走一遍開卡包，寫參賽說明並提交。
-
-**為什麼主網要限管理員**：Solana 那邊是 devnet 樣本卡，不是真的實物，不能對公眾收真錢。評委看到的是公開的頁面和 Arc 主網上的真實付款紀錄。
-
-## 需要用戶準備
-
-- **約 20 USDC 到 Arc 主網平台錢包**（地址生成後給出）：從支援 Arc 的交易所直接提幣（Backpack 已支援），或者先提到 Base、Solana，再用 CCTP 跨到 Arc。
-- **DoraHacks 帳號，以及代碼怎麼給評委看**：倉庫目前是私有的，要確認活動是否接受私有倉庫，或者把這個分支公開。
+- **線上**：<https://idolca.vercel.app> 接 Arc 主網、只限管理員付款（`ARC_PAY_ADMIN_ONLY=1`）。卡片那邊還是 Solana devnet。
+- **主網平台錢包**：`0x7a6c4D22fb05f715Cc47F4feC38d615a9369eF32`，私鑰在本機 `.data/arc-platform-mainnet.json` 和 Vercel 的 `ARC_PLATFORM_KEY`。
+- **體驗包**：正式站的 Idolca Trial Pack（`/packs/idolca-trial`），每包 0.01 USD，三張平台自有的 ITZY 卡，用樣本照片。
+- **第一筆主網付款**：[`0x800ef7da…6b9ee`](https://explorer.arc.io/tx/0x800ef7da983f4407793c335f7097b31dc5f06090afdbd39b3bc1f3221316b9ee)。這是一筆 0.01 USDC 的授權轉帳，由平台代送，gas 約 0.0017 USDC；抽到的 IC-001891 交付到 Solana。
+- **測試**：測試網端到端（`npm run test:e2e:arc`）和原有的金庫測試都通過。
 
 ## 之後
 
