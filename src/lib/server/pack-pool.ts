@@ -6,7 +6,7 @@ import { packPulls, packs, users, vaultCards, packOrders } from "./schema";
 import { toCard } from "./vault-cards";
 import type { Pack, PoolEntry, Tier } from "@/lib/packs";
 
-// 卡包和卡池的資料庫查詢，只讀資料庫；頁面要顯示按鏈上狀態核過的剩餘張數時，再套 packs.ts 的 withLiveRemaining。
+// 卡包和卡池的資料庫查詢，不碰鏈上依賴，頁面可以直接用；要顯示按鏈上持有人核過的剩餘張數時，再套 pack-live.ts 的 withLiveRemaining。
 // 卡池 = pack_id 是這個卡包、還沒提貨銷毀的金庫卡；pack_order 為空的還在卡池裡
 type PackRow = typeof packs.$inferSelect;
 

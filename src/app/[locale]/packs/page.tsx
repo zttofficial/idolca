@@ -11,7 +11,7 @@ import { Link } from "@/i18n/navigation";
 import { packStats } from "@/lib/packs";
 import { getDb } from "@/lib/server/db";
 import { listPacks } from "@/lib/server/pack-pool";
-import { withLiveRemaining } from "@/lib/server/packs";
+import { withLiveRemaining } from "@/lib/server/pack-live";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Meta");

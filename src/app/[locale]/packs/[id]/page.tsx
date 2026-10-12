@@ -17,7 +17,7 @@ import { packsBlockedIn } from "@/lib/server/region";
 import { BUYBACK_RATE, TIERS, TIER_COLOR, entryCard, packStats } from "@/lib/packs";
 import { getDb } from "@/lib/server/db";
 import { getPack, recentPackPulls } from "@/lib/server/pack-pool";
-import { withLiveRemaining } from "@/lib/server/packs";
+import { withLiveRemaining } from "@/lib/server/pack-live";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 
 async function findPack(id: string) {
