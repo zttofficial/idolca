@@ -37,7 +37,7 @@ K-pop fandoms have loudly rejected NFT projects before. Idolca keeps the technol
 
 | Feature | How it works |
 |---|---|
-| Sign in | Email and password, or a Solana wallet signature (Wallet Standard: MetaMask, Phantom, Solflare, Backpack). Email users get custodied collectibles and can link a wallet later. |
+| Sign in | Email and password, or a Solana wallet signature (Wallet Standard: MetaMask, Phantom, Solflare, Backpack). Email accounts can link a wallet later to pay and to hold collectibles. |
 | Vault intake | Admins photograph the card front and back, record version, grade and shelf location, and mint a Metaplex Core NFT to the depositor's wallet. |
 | Vault trading | Anchor escrow program: listing moves the NFT into a PDA, `buy` pays the seller and a 2.5% fee and transfers the NFT in one transaction. |
 | Redemption | One signed transaction freezes the NFT, delegates burn authority to Idolca and pays the shipping fee. Shipping burns the NFT; cancelling unfreezes it and refunds the fee. Redeemed cards stay visible with their full history. |

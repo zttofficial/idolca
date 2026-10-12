@@ -71,6 +71,7 @@ KOCA 的貨量來自 Facebook 社團：它把社團裡的出卡、收卡貼文�
 - 寄送接 7-ELEVEN 賣貨便，運費最低 NT$38。
 - 賣家要實名驗證，發現詐騙立刻停權；但卡不經平台查驗。
 - 只有 App，網頁體驗弱。
+- 有競標：賣家設起標價、加價幅度和起訖時間；截止前 5 分鐘內有出價就延長 5 分鐘；競標中匿名、出價不能取消；最低 20 元，同時能參與的場數看完成過的訂單數。得標後 24 小時內結帳，逾時算惡意棄標、停權。手續費目前和一般交易一樣是 2%（優惠），2027-01-01 起一般交易 3.2%、競標 3.8%。首波只開放給開通信用卡收款的賣家。
 
 **這正是粉絲日常的交易習慣**：拍一張多卡合照、寫「出 XX 團小卡一組」。刊登門檻越低，貨越多。
 
@@ -304,6 +305,9 @@ KOCA 的貨量來自 Facebook 社團：它把社團裡的出卡、收卡貼文�
 - [Pocagrades 評級服務](https://b2b.pocamarket.com/blogs/news/pocamarket-launches-photocard-grading-service-pocagrades-generating-high-expectations-among-photocard-collectors)
 - [KOCA – Google Play](https://play.google.com/store/apps/details?id=shop.koca.app)
 - [KOCA 官網](https://koca.shop/en)
+- [KOCA 競標功能上線公告](https://koca.shop/zh-TW/products/549230)
+- [KOCA 競標商品規則與說明](https://koca.shop/help-center/bid-rules/)
+- [KOCA 平台服務費及金流處理費說明](https://koca.shop/zh-TW/help-center/platform-fee-payment-fee)
 - [Pocamarket 自我鑑別指南](https://pocamarket.oopy.io/2e9d1453-8861-819e-8d59-d832ae51be0d)
 - [Pocamarket FAQ：購買與退款](https://pocamarket.oopy.io/faq/buy-refund)
 

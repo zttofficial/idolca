@@ -95,4 +95,5 @@
 - 自己的網域（idolca.com、idolca.app 查過可註冊）；接上後改 `NEXT_PUBLIC_SITE_URL`。
 - 法幣入金（MoonPay 這類）、提現和 KYC、Google 和 Apple 登入、郵箱驗證。
 - 專輯代購代拆。
+- 拍賣：設計見 tech-stack.md「拍賣」，先做自由刊登（沿用擔保訂單和兩條付款通道），再擴充託管程序做金庫卡的鏈上拍賣。
 - 主網部署，清單見 tech-stack.md「上線主網」。資金、定價、庫存和法務的待辦見 [business.md](business.md)。
