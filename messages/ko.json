@@ -599,7 +599,8 @@
     "error_sold_out_refunded": "다른 사람이 먼저 샀어요. 결제 금액은 환불됐어요.",
     "error_payment_not_found": "결제를 찾지 못했어요. 지갑에 USDT와 SOL이 충분한지 확인해 주세요.",
     "error_wallet_not_found": "이 계정에 연결한 지갑을 열고 다시 시도해 주세요.",
-    "sellerNotes": "판매자 설명"
+    "sellerNotes": "판매자 설명",
+    "ownListing": "내가 올린 판매글이에요. 컬렉션북에서 관리할 수 있어요."
   },
   "Admin": {
     "title": "관리자 콘솔",

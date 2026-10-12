@@ -12,7 +12,8 @@ import type { EvmWallet } from "@/lib/evm/arc-wallet";
 import PaymentPicker from "@/components/pay/PaymentPicker";
 
 // 自由刊登的購買：按下購買先選付款方式（Solana 錢包或 Arc 上的 USDC），貨款付進平台託管，賣家寄出、買家確認收貨後才放款
-export default function EscrowBuy({ itemId, priceUsdt }: { itemId: string; priceUsdt: number }) {
+// ownerAddress 是收藏品現在的持有錢包：和登入帳號的錢包相同就是自己的刊登，不給買
+export default function EscrowBuy({ itemId, priceUsdt, ownerAddress }: { itemId: string; priceUsdt: number; ownerAddress: string | null }) {
   const t = useTranslations("Listing");
   const { user, login } = useAuth();
   const [picking, setPicking] = useState(false);
@@ -51,6 +52,8 @@ export default function EscrowBuy({ itemId, priceUsdt }: { itemId: string; price
         <button className={button} onClick={login}>
           {t("loginToBuy")}
         </button>
+      ) : ownerAddress && wallet === ownerAddress ? (
+        <p className="mt-4 rounded-xl bg-surface-2 px-4 py-3 text-center text-sm text-ink-2">{t("ownListing")}</p>
       ) : !wallet ? (
         <p className="mt-4 rounded-xl bg-surface-2 px-4 py-3 text-center text-sm text-ink-2">{t("linkWalletToBuy")}</p>
       ) : (

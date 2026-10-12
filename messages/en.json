@@ -599,7 +599,8 @@
     "error_sold_out_refunded": "Someone bought it first. Your payment was refunded.",
     "error_payment_not_found": "We couldn't find your payment. Check that your wallet has enough USDT and SOL.",
     "error_wallet_not_found": "Open the wallet you linked to this account and try again.",
-    "sellerNotes": "From the seller"
+    "sellerNotes": "From the seller",
+    "ownListing": "This is your own listing. Manage it from your binder."
   },
   "Admin": {
     "title": "Admin console",

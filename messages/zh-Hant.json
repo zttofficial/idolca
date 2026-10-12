@@ -599,7 +599,8 @@
     "error_sold_out_refunded": "已被別人先買走，你的款項已退回。",
     "error_payment_not_found": "找不到你的付款，請確認錢包裡有足夠的 USDT 和 SOL。",
     "error_wallet_not_found": "請打開綁定這個帳號的那個錢包再試一次。",
-    "sellerNotes": "賣家描述"
+    "sellerNotes": "賣家描述",
+    "ownListing": "這是你自己的刊登，可以到收藏冊管理。"
   },
   "Admin": {
     "title": "平台後台",

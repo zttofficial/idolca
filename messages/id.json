@@ -599,7 +599,8 @@
     "error_sold_out_refunded": "Sudah dibeli orang lain lebih dulu. Pembayaranmu dikembalikan.",
     "error_payment_not_found": "Pembayaranmu tidak ditemukan. Pastikan dompetmu punya cukup USDT dan SOL.",
     "error_wallet_not_found": "Buka dompet yang terhubung ke akun ini lalu coba lagi.",
-    "sellerNotes": "Dari penjual"
+    "sellerNotes": "Dari penjual",
+    "ownListing": "Ini listing milikmu sendiri. Kelola dari binder."
   },
   "Admin": {
     "title": "Konsol admin",

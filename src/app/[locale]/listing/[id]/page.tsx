@@ -95,7 +95,7 @@ async function ListingContent({ params }: { params: PageProps<"/[locale]/listing
             <p className="text-xs text-ink-3">{t("price")}</p>
             <Price amount={listing.priceUsdt ?? 0} className="mt-1 text-3xl font-bold tabular-nums" />
             <p className="mt-3 text-sm text-ink-2">{t("seller", { name: listing.seller })}</p>
-            <EscrowBuy itemId={listing.id} priceUsdt={listing.priceUsdt ?? 0} />
+            <EscrowBuy itemId={listing.id} priceUsdt={listing.priceUsdt ?? 0} ownerAddress={listing.ownerAddress} />
             <ol className="mt-4 space-y-1.5 text-xs leading-relaxed text-ink-2">
               {(["step1", "step2", "step3"] as const).map((k, i) => (
                 <li key={k} className="flex gap-2">

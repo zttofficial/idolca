@@ -599,7 +599,8 @@
     "error_sold_out_refunded": "Đã có người mua trước. Tiền của bạn đã được hoàn lại.",
     "error_payment_not_found": "Không tìm thấy khoản thanh toán. Hãy kiểm tra ví có đủ USDT và SOL.",
     "error_wallet_not_found": "Mở ví đã liên kết với tài khoản này rồi thử lại.",
-    "sellerNotes": "Từ người bán"
+    "sellerNotes": "Từ người bán",
+    "ownListing": "Đây là tin đăng của chính bạn. Quản lý trong sổ sưu tập."
   },
   "Admin": {
     "title": "Trang quản trị",

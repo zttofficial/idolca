@@ -599,7 +599,8 @@
     "error_sold_out_refunded": "先に購入されました。お支払いは返金されました。",
     "error_payment_not_found": "お支払いが見つかりません。ウォレットに十分な USDT と SOL があるか確認してください。",
     "error_wallet_not_found": "このアカウントに連携したウォレットを開いて、もう一度お試しください。",
-    "sellerNotes": "出品者より"
+    "sellerNotes": "出品者より",
+    "ownListing": "あなた自身の出品です。コレクションブックから管理できます。"
   },
   "Admin": {
     "title": "管理コンソール",
