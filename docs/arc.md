@@ -1,6 +1,6 @@
-# Arc 版本計劃
+# Arc 結算通道計劃
 
-在 Arc 主網上部署一套 Idolca，參加 Circle 的 Arc Microgrants。只在 `arc-settlement` 分支上做；main 和線上的 Solana 版本不動。
+用 Arc 參加 Circle 的 Arc Microgrants。分工是**卡片留在 Solana，錢在 Arc 結算**：在現有的 Solana 付款之外，加一條「用 Arc 上的 USDC 付款」的通道。只在 `arc-settlement` 分支上做，main 和線上不動。
 
 ## 參賽要求
 
@@ -13,21 +13,58 @@
 
 ## 定位與敘事
 
-- Idolca 支援多條鏈、多種穩定幣。**鏈和結算幣都是部署時的配置**，不寫死在代碼和文案裡。
-- 每個司法管轄區決定收哪些穩定幣：Arc 版本用 USDC 結算；之後要加 USDT、EURC 或其他穩定幣，只改配置，合約和代碼都不用動。
-- 參賽敘事：
-  - 收藏品交易用受監管的美元穩定幣結算，可以在加拿大、美國這類只接受 USDC 的市場合規營運。
-  - Arc 上 gas 也用 USDC 付，粉絲只需要持有一種資產；用 Circle Wallets 郵箱登入，連錢包擴充套件都不用裝。
-- Arc 版本裡所有東西都在 Arc 上：卡片 NFT、掛單託管、付款和放款。不做 NFT 在 Solana、付款在 Arc 的混合方案，那樣用戶要開兩個錢包，金庫卡交易也做不到原子交換。
+- **兩條鏈各做擅長的事**：
+  - Solana 是交易層：卡片 NFT、金庫卡的原子交換、外部市場的流動性。
+  - Arc 是結算層：粉絲付款、平台收入、退款和放款。
+- **Arc 帶來 Solana 給不了的**：
+  - 粉絲不用碰 gas 幣：Arc 的手續費也用 USDC 付，錢包裡只要有 USDC 就能買，不用先弄 SOL。
+  - 合規結算：錢落在受監管的穩定幣發行方自己的鏈上。
+- **穩定幣按司法管轄區配置**：Arc 通道收 USDC；之後要收 USDT、EURC 或其他穩定幣，只改配置，合約和代碼不動。前台文案不寫死幣種。
+- **對評委的一句話**：收藏品留在流動性最好的鏈上交易，錢在 Arc 上合規結算。
 
-## 穩定幣配置
+## 哪些流程走 Arc
 
-- 每份鏈配置（`src/lib/chain/<network>.json`）列出：
-  - 可用的結算代幣：符號、地址、小數位。
-  - 預設顯示幣種。
-- 託管市場合約維護一份代幣白名單。掛單時賣家選定代幣，買家用同一種代幣付款。
-- 前台和多語言文案不再寫「USDT」，改用 `{currency}` 參數，取自當前部署的預設幣種。目前 8 種語言各有 19 處要改。
-- 資料庫的金額欄位（`priceUsdt` 等）語義改成「以美元穩定幣計的金額，6 位小數」。欄位名這次不改。
+現有的付款大多是「付款進平台 → 伺服器對帳 → 交付」，付款這一步本來就跟資產分開，換一條收款通道就行。
+
+| 流程 | Arc 通道 | 說明 |
+|---|---|---|
+| 開卡包 | **支援** | 在 Arc 上付款，對帳後照常在 Solana 上把抽到的卡轉給買家；卡池不夠時，沒交付的部分在 Arc 上退回付款地址 |
+| 自由刊登的擔保交易 | **支援** | 買家在 Arc 上付款；退款退回付款地址；放款給賣家按賣家的收款設定 |
+| 金庫卡掛單成交 | 不支援 | 卡和錢在同一筆 Solana 交易裡原子交換，拆開就不是原子交換了 |
+| 提貨運費、即時回購 | 不支援 | 和凍結、轉移 NFT 綁在同一筆 Solana 交易裡 |
+
+## 設計
+
+### 收款通道
+
+- 訂單多記兩項：收款通道（`solana` 或 `arc`）和付款地址。對帳、退款、放款都按訂單的通道走。
+- **在 Arc 上付款不需要先綁定 EVM 地址**：訂單編號寫進付款事件，誰付的都對得上這張訂單；退款退回付款地址。
+- 卡照樣交付到帳號綁定的 Solana 錢包。郵箱帳號沒有錢包時，維持現在的平台代管。
+- 賣家可以在帳號設定裡填一個 Arc 收款地址。有填的話，擔保交易的貨款在 Arc 上放款；沒填就照舊在 Solana 上放款。
+
+### 合約：`IdolcaPay`（Arc）
+
+- `pay(token, amount, ref)`：從付款人那裡轉入代幣到平台收款地址，發出 `Paid(ref, payer, token, amount)` 事件。`ref` 是訂單編號的雜湊。
+- 代幣白名單，目前只有 USDC。
+- 放款和退款不經過合約，平台熱錢包直接轉 ERC-20。
+- USDC 支援 EIP-2612 permit 的話，加一個 `payWithPermit`，付款只要一筆交易；不支援就是先 `approve` 再 `pay` 兩筆。
+- 用 Solidity、OpenZeppelin、Foundry 開發。Foundry 裝在 `C:\Software\Foundry`，原始碼放在 `onchain-evm/`，要有單元測試，覆蓋正常路徑、白名單和金額檢查。
+
+### 伺服器
+
+- `src/lib/server/arc.ts`：用 viem 讀 Arc 交易回執，按 `Paid` 事件對帳（合約地址、`ref`、代幣、金額都要對上）；用平台熱錢包放款和退款。
+- 熱錢包金鑰放在 `ARC_PLATFORM_KEY`；合約和代幣地址寫進 `src/lib/chain/arc-mainnet.json`、`arc-testnet.json`。
+- 金額一律走 USDC 的 ERC-20 介面，6 位小數。
+
+### 前台
+
+- 開卡包和擔保交易的結帳畫面多一個付款方式：「用 Arc 上的 USDC 付款」。
+- 用 EIP-6963 偵測瀏覽器裡的 EVM 錢包（MetaMask、Rabby 等），自動切到 Arc 網路，送出 `approve` 和 `pay`。
+- 鏈上紀錄的連結指向 Arc 的區塊瀏覽器。
+
+### Circle Wallets（時間夠再做）
+
+Circle 的用戶自控錢包同時支援 Arc 和 Solana，同一個用戶可以各開一個。粉絲用郵箱或 Google 登入後，Solana 錢包收卡、Arc 錢包付款，完全感覺不到兩條鏈。
 
 ## Arc 網路
 
@@ -36,106 +73,49 @@
 | 主網鏈 ID | 5042 |
 | 主網 RPC | `https://rpc.mainnet.arc.io` |
 | USDC | `0x3600000000000000000000000000000000000000`（主網和測試網相同） |
-| USDC 小數位 | 作為原生 gas 是 18 位，透過 ERC-20 介面是 6 位。合約和伺服器一律走 ERC-20 介面（6 位）；顯示 gas 餘額時要換算 10¹² 倍 |
+| USDC 小數位 | 作為原生 gas 是 18 位，透過 ERC-20 介面是 6 位 |
 | 測試幣 | Circle Faucet |
 
-開工前要在 [docs.arc.io](https://docs.arc.io) 核對：測試網鏈 ID、RPC、瀏覽器網址；USDC 是否支援 EIP-2612 permit；Arc 上有沒有 USDT；Circle Wallets 用戶自控錢包是否已支援 Arc 主網，以及 Web SDK 的版本。
-
-## 架構
-
-### 鏈的選擇
-
-- `NEXT_PUBLIC_CHAIN` 取 `solana` 或 `arc`；網路沿用現有變數（devnet/mainnet、testnet/mainnet）。
-- 伺服器端抽出鏈適配器介面，Solana 的現有實作搬進 `src/lib/server/chains/solana/`，Arc 的實作放在 `src/lib/server/chains/arc/`。介面的方法對應現在的函數：
-  - 鑄卡：`mintVaultNft`、`mintCollectorNft`
-  - 鏈上狀態：`vaultState`
-  - 組交易：`buildBuy`、`buildList`、`buildCancel`、`buildRedeemRequest`、`buildPayment`、`buildBuybackTx`
-  - 對帳：`verifyPayment`
-  - 平台動作：`payout`、`transferVaultNft`、`transferCollectorNft`、`shipRedemption`、`cancelRedemption`、`markFakeOnChain`、`burnCollectorNft`
-  - 讀取：`balances`、`assetHistory`
-- 前台的 `solscanUrl`、`shortAddress`、`CLUSTER` 改從適配器取，例如 `explorerUrl`、網路名稱。
-
-### 錢包與登入
-
-用戶在登入框裡二選一，兩種錢包可以並存，帳號都落在同一張 `users` 表裡。
-
-- **自己的錢包**：
-  - 用 EIP-6963 偵測瀏覽器裡的 EVM 錢包（MetaMask、Rabby、Coinbase Wallet 等），延續現在 Wallet Standard 的做法。
-  - 登入用 SIWE（EIP-4361）訊息加 `personal_sign`，伺服器用 viem 的 `verifyMessage` 驗簽。nonce 流程和 `login_nonces` 表沿用。
-- **Circle Wallets**（用戶自控錢包）：
-  - 用郵箱或 Google 登入後，Circle 為用戶開一個 Arc 上的錢包，私鑰由用戶設的 PIN 保護，平台拿不到。
-  - 前台用 Circle 的 Web SDK 處理登入和 PIN；伺服器用 Circle 的 API 金鑰建立用戶、查錢包地址。
-  - 不用裝任何擴充套件，粉絲第一次就能直接買。
-  - 現有郵箱密碼帳號可以在帳號選單裡開一個 Circle 錢包並綁定。之後上鏈卡鑄進這個錢包，不再放平台代管錢包。
-- 地址一律存成 EIP-55 校驗格式。`addressBytes` 按鏈分開驗證格式。
-
-### 交易流程
-
-- 維持「伺服器組交易、錢包簽名送出、伺服器確認」的流程，伺服器回傳一串呼叫 `{to, data}`（例如先 `approve`、再 `buy`）。
-- 自己的錢包：前台依序用 `eth_sendTransaction` 送出，回報最後一筆的交易哈希。
-- Circle Wallets：伺服器用 Circle API 為這串呼叫建立合約執行請求，拿到 challenge；前台交給 Web SDK，用戶輸入 PIN 確認後由 Circle 送出，伺服器再查交易哈希。
-- 伺服器用交易回執（receipt）的事件對帳，取代 Solana 的 Memo。
-
-## 合約
-
-用 Solidity、OpenZeppelin、Foundry 開發。Foundry 裝在 `C:\Software\Foundry`，原始碼放在 `onchain-evm/`。
-
-| 合約 | 職責 | 對應 Solana |
-|---|---|---|
-| `IdolcaCards`（ERC-721，部署兩份：金庫卡、收藏卡） | 平台鑄造；平台可凍結（假卡、提貨中）；收藏卡由平台代轉（擔保交易成交）；持有人呼叫 `requestRedeem(tokenId, token, fee)` 凍結卡片並付運費；平台 `ship` 銷毀、`cancelRedeem` 解凍；`tokenURI` 指向 `/api/meta/card/{id}` 和 `/api/meta/item/{id}` | Metaplex Core 的兩個集合、PermanentFreezeDelegate、PermanentTransferDelegate、BurnDelegate |
-| `IdolcaMarket` | 金庫卡掛單託管：`list`（卡轉進合約）、`buy`（代幣付給賣家，同時扣平台抽成，抽成上限 10%，卡轉給買家）、`cancel`；代幣白名單；抽成收款地址 | Anchor 託管程序 |
-| `IdolcaPayments` | `pay(token, amount, ref)`：把款項轉進平台收款地址並發出 `Paid(ref, payer, token, amount)` 事件；開卡包、擔保交易都用它；平台簽 EIP-712 報價後，持有人可以呼叫 `sellBack` 即時回購 | 轉帳加 Memo、回購的雙簽交易 |
-
-- 合約要有 Foundry 單元測試，覆蓋每個函數的正常路徑和權限檢查。
-- 部署腳本把地址寫進 `src/lib/chain/arc-testnet.json` 和 `arc-mainnet.json`。
+開工前要在 [docs.arc.io](https://docs.arc.io) 核對：測試網鏈 ID、RPC、區塊瀏覽器網址，以及 USDC 是否支援 EIP-2612 permit。
 
 ## 範圍
 
-**必須上線（參賽門檻）**
+**必須上線**
 
-- 三個合約部署到 Arc 測試網和主網。
-- 登入和綁定：自己的 EVM 錢包、Circle Wallets 兩種都要支援。
-- 後台入庫，鑄造金庫卡。
-- 金庫卡掛單、購買、取消，金庫頁和卡片頁顯示鏈上即時狀態。
-- 開卡包：付款、對帳、把抽到的卡轉給買家。
-- 文案改成按配置顯示幣種；區塊瀏覽器連結指向 Arc。
-- 新建一個 Vercel 專案和一個 Neon 資料庫，部署 Arc 版本。
+- `IdolcaPay` 部署到 Arc 測試網和主網。
+- 開卡包可以用 Arc 付款；卡池不夠時在 Arc 上退款。
+- 擔保交易可以用 Arc 付款；退款在 Arc 上退回付款地址。
+- 前台文案按配置顯示幣種，不寫死 USDT。
+- Arc 版本部署上線：新開一個 Vercel 專案，連 Solana devnet 和 Arc 主網。
 
 **時間夠再做**
 
-- 提貨（凍結、付運費、出貨銷毀、取消）。
-- 即時回購。
-- 自由上鏈和擔保交易。
-- 標記假卡。
-- 卡片頁的鏈上紀錄（從合約事件讀取）。
+- 賣家的 Arc 收款地址，擔保交易在 Arc 上放款。
+- Circle Wallets 郵箱登入。
+- 用 CCTP 接收其他鏈的 USDC。
 
 **這次不做**
 
-- 透過 CCTP、Gateway 接收其他鏈的 USDC。
-- 資料庫欄位改名。
-- 合併回 main。
+- 金庫卡掛單、提貨、回購改走 Arc。
+- 合併回 main。開卡包和擔保交易的 Arc 通道等比賽結束後再評估。
 
 ## 時程
 
 | 日期 | 工作 |
 |---|---|
-| 10/12 | 安裝 Foundry；寫三個合約和測試，部署到 Arc 測試網；搭好鏈適配器的骨架；完成 EVM 錢包登入 |
-| 10/13 | 實作 Arc 適配器的必做範圍；接上 Circle Wallets；兩種錢包都在測試網上跑端到端流程；改文案 |
-| 10/14 | 部署合約到 Arc 主網；Vercel 上線；入庫真實卡片；寫參賽說明並提交（美東 23:59 前） |
+| 10/12 | 安裝 Foundry；寫 `IdolcaPay` 和測試，部署到 Arc 測試網；訂單加上收款通道 |
+| 10/13 | 伺服器對帳、退款；前台結帳接 EVM 錢包；在測試網上跑開卡包和擔保交易的端到端流程；改文案 |
+| 10/14 | 部署合約到 Arc 主網；Vercel 上線；用真錢走一遍開卡包；寫參賽說明並提交（美東 23:59 前） |
 
 ## 需要用戶準備
 
 - **Arc 主網錢包和約 20 USDC**：
-  - 平台錢包和抽成收款錢包各一個。平台錢包放約 20 USDC，夠付部署、鑄卡的 gas 和幾次自買自賣的測試。
-  - 測試購買的貨款會回到自己的錢包，只有 gas 是真正花掉的。
-  - USDC 的來源：從支援 Arc 網路的交易所直接提到 Arc（Backpack 已支援）；或者先提到 Base、Solana 等鏈，再用 CCTP 跨到 Arc。
+  - 一個平台熱錢包，一個收款錢包。熱錢包放約 20 USDC，夠付部署的 gas、退款和幾次自己測試付款。
+  - USDC 的來源：從支援 Arc 的交易所直接提幣（Backpack 已支援），或者先提到 Base、Solana，再用 CCTP 跨到 Arc。
 - **測試網 USDC**：從 Circle Faucet 領。
-- **Circle 開發者帳號**：在 Circle Developer Console 開用戶自控錢包的 App，給一份測試網和一份主網的 API 金鑰、App ID；用 Google 登入還要一個 Google OAuth Client ID。
-- **主網要上架的實物卡**：只用真實存在的卡，延續不放假數據的原則。
 - **DoraHacks 帳號，以及代碼怎麼給評委看**：倉庫目前是私有的，要確認活動是否接受私有倉庫，或者把 Arc 分支公開。
+- **Circle 開發者帳號**：只有做 Circle Wallets 時才需要。
 
-## 參賽說明要點
+## 下一步方向（寫進參賽說明，這次不做）
 
-- 產品原型最早在 Solana devnet 上做，參加了 Colosseum Crypto World's Fair。
-- 這次在 Arc 上做的工作：三個合約、EVM 錢包和 Circle Wallets 兩種登入、鏈適配器，以及按司法管轄區配置結算幣種的設計。
-- 選 Arc 的理由照「定位與敘事」寫，再加一點：Arc 的定位就是支付和機構結算，跟實物資產代幣化很合得來。
+**跨鏈的實物卡登記表**：每張實物卡的金庫編號、照片指紋、評級（IDG 或第三方）、目前由哪條鏈上的哪個代幣代表，都登記在 Arc 上的一份公開登記表裡。這樣同一張卡就不會在不同的鏈或平台上重複被代表，也解決了「同一張卡在不同項目重複鑄造，證明不了唯一性」的問題。
