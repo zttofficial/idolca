@@ -699,5 +699,19 @@
     "new": "NEW",
     "failed": "써클차트에서 이번 주 차트를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
     "source": "데이터 출처: 써클차트(한국음악콘텐츠협회). 순위와 판매량은 써클차트 발표 기준이에요."
+  },
+  "Arc": {
+    "pay": "Arc의 USDC로 {total} 결제",
+    "note": "Arc에서 USDC로 결제: 지갑에서 서명만 하면 됩니다. 가스비 준비도, 수수료도 없습니다.",
+    "chooseWallet": "지갑 선택",
+    "signing": "지갑에서 서명해 주세요…",
+    "viewPayment": "Arc 결제 내역",
+    "error_no_evm_wallet": "Arc에서 결제하려면 MetaMask, Rabby 같은 EVM 지갑을 설치해 주세요.",
+    "error_rejected": "서명을 취소했습니다.",
+    "error_arc_not_open": "Arc 결제는 아직 모두에게 열려 있지 않습니다.",
+    "error_arc_not_configured": "지금은 Arc 결제를 사용할 수 없습니다.",
+    "error_authorization_expired": "결제 요청이 만료되었습니다. 다시 시도해 주세요.",
+    "error_authorization_rejected": "서명이 결제 내용과 맞지 않거나, 지갑의 Arc USDC 잔액이 부족합니다.",
+    "error_generic": "결제가 완료되지 않았습니다. 다시 시도해 주세요."
   }
 }

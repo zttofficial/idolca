@@ -204,6 +204,8 @@ export const media = pgTable("media", {
 // 賣家沒有綁定錢包時貨款先留在平台（payout_held），綁定後補發；cancelled 是兩人同時付款時後到的那筆（已自動退款）
 export const ORDER_STATUS = ["pending", "paid", "shipped", "disputed", "refunding", "releasing", "completed", "refunded", "cancelled"] as const;
 export type OrderStatus = (typeof ORDER_STATUS)[number];
+export type PayRail = "solana" | "arc";
+
 export const orders = pgTable("orders", {
   id: text("id").primaryKey(),
   itemId: text("item_id").notNull(),
@@ -217,6 +219,10 @@ export const orders = pgTable("orders", {
   feeCents: integer("fee_cents").notNull(),
   status: text("status").$type<OrderStatus>().notNull().default("pending"),
   buyerWallet: text("buyer_wallet").notNull(),
+  // 收款通道：solana（買家錢包轉帳加備註）或 arc（Arc 上的 USDC 授權轉帳，見 src/lib/arc.ts）；
+  // payer 是 Arc 上的付款地址，退款退回這裡
+  rail: text("rail").$type<PayRail>().notNull().default("solana"),
+  payer: text("payer"),
   payTx: text("pay_tx").unique(),
   payoutTx: text("payout_tx"),
   payoutHeld: integer("payout_held").notNull().default(0),
@@ -241,7 +247,11 @@ export const packOrders = pgTable("pack_orders", {
   qty: integer("qty").notNull(),
   amountCents: integer("amount_cents").notNull(),
   wallet: text("wallet").notNull(),
+  // 收款通道和 Arc 付款地址，同 orders。payProof 是 Arc 訂單買家的授權簽名，抽卡的隨機數用它（平台事先算不出來）
+  rail: text("rail").$type<PayRail>().notNull().default("solana"),
+  payer: text("payer"),
   payTx: text("pay_tx").unique(),
+  payProof: text("pay_proof"),
   pulls: text("pulls"),
   status: text("status").$type<(typeof PACK_ORDER_STATUS)[number]>().notNull().default("pending"),
   refundTx: text("refund_tx"),
@@ -380,6 +390,8 @@ export const BOOTSTRAP_SQL = [
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS dispute_reason text`,
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid_at timestamptz`,
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipped_at timestamptz`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS rail text NOT NULL DEFAULT 'solana'`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS payer text`,
   `CREATE TABLE IF NOT EXISTS pack_orders (
     id text PRIMARY KEY,
     user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -468,6 +480,9 @@ export const BOOTSTRAP_SQL = [
   `CREATE INDEX IF NOT EXISTS pack_pulls_pack_idx ON pack_pulls(pack_id, created_at)`,
   `ALTER TABLE pack_orders ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'pending'`,
   `ALTER TABLE pack_orders ADD COLUMN IF NOT EXISTS refund_tx text`,
+  `ALTER TABLE pack_orders ADD COLUMN IF NOT EXISTS rail text NOT NULL DEFAULT 'solana'`,
+  `ALTER TABLE pack_orders ADD COLUMN IF NOT EXISTS payer text`,
+  `ALTER TABLE pack_orders ADD COLUMN IF NOT EXISTS pay_proof text`,
   `UPDATE pack_orders SET status = 'legacy' WHERE pulls IS NOT NULL AND status = 'pending'`,
   `CREATE TABLE IF NOT EXISTS rate_limits (
     key text PRIMARY KEY,

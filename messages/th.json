@@ -699,5 +699,19 @@
     "new": "ใหม่",
     "failed": "โหลดชาร์ตสัปดาห์นี้จาก Circle Chart ไม่ได้ ลองใหม่ภายหลัง",
     "source": "ข้อมูลจาก Circle Chart (สมาคมคอนเทนต์ดนตรีเกาหลี) อันดับและยอดขายอ้างอิงตามที่ Circle Chart ประกาศ"
+  },
+  "Arc": {
+    "pay": "ชำระ {total} ด้วย USDC บน Arc",
+    "note": "ชำระด้วย USDC บน Arc: แค่เซ็นในวอลเล็ต ไม่ต้องเตรียมค่าแก๊สและไม่มีค่าธรรมเนียม",
+    "chooseWallet": "เลือกวอลเล็ต",
+    "signing": "กรุณาเซ็นในวอลเล็ต…",
+    "viewPayment": "การชำระเงินบน Arc",
+    "error_no_evm_wallet": "ติดตั้งวอลเล็ต EVM เช่น MetaMask หรือ Rabby เพื่อชำระเงินบน Arc",
+    "error_rejected": "คุณยกเลิกการเซ็นแล้ว",
+    "error_arc_not_open": "การชำระเงินบน Arc ยังไม่เปิดให้ทุกคนใช้",
+    "error_arc_not_configured": "ขณะนี้ไม่สามารถชำระเงินบน Arc ได้",
+    "error_authorization_expired": "คำขอชำระเงินหมดอายุแล้ว กรุณาลองอีกครั้ง",
+    "error_authorization_rejected": "ลายเซ็นไม่ตรงกับรายการชำระเงิน หรือ USDC บน Arc ในวอลเล็ตไม่พอ",
+    "error_generic": "การชำระเงินไม่สำเร็จ กรุณาลองอีกครั้ง"
   }
 }

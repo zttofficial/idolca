@@ -8,6 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { formatUsdt } from "@/lib/fx";
 import { postAction, useVaultCards } from "@/lib/chain-client";
 import { solscanUrl } from "@/lib/solana/config";
+import { arcExplorerUrl } from "@/lib/arc";
 
 
 // 收藏冊的「鏈上卡」：我錢包裡的金庫卡（買來的、開卡包抽到的）
@@ -47,6 +48,7 @@ type Order = {
   photo: string | null;
   priceUsdt: number;
   feeUsdt: number;
+  rail: "solana" | "arc";
   payTx: string | null;
   payoutTx: string | null;
   payoutHeld: boolean;
@@ -98,9 +100,10 @@ export function Orders() {
 
   if (!orders) return <div className="mt-6 h-32 animate-pulse rounded-2xl bg-surface-2" />;
   if (!orders.length) return <p className="mt-6 text-sm text-ink-3">{t("ordersEmpty")}</p>;
-  const tx = (label: string, sig: string | null) =>
+  // 付款和退款走 Arc 的訂單，交易連到 Arc 區塊瀏覽器；其他都在 Solana
+  const tx = (label: string, sig: string | null, onArc = false) =>
     sig && (
-      <a href={solscanUrl("tx", sig)} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
+      <a href={onArc ? arcExplorerUrl("tx", sig) : solscanUrl("tx", sig)} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
         {label} ↗
       </a>
     );
@@ -119,9 +122,9 @@ export function Orders() {
               {o.role === "seller" && o.status === "completed" && o.payoutHeld && <span className="text-notice-ink"> · {t("payoutHeld")}</span>}
             </p>
             <p className="mt-0.5 flex flex-wrap gap-3 text-[11px] text-ink-3">
-              {tx(t("txPayment"), o.payTx)}
+              {tx(t("txPayment"), o.payTx, o.rail === "arc")}
               {tx(t("txTransfer"), o.transferTx)}
-              {tx(t("txRefund"), o.refundTx ?? (o.status === "cancelled" ? o.payoutTx : null))}
+              {tx(t("txRefund"), o.refundTx ?? (o.status === "cancelled" ? o.payoutTx : null), o.rail === "arc")}
               {o.status !== "cancelled" && tx(t("txPayout"), o.payoutTx)}
             </p>
             {o.status === "paid" && o.shipBy && <p className="mt-0.5 text-[11px] text-ink-3">{t(o.role === "seller" ? "shipBySeller" : "shipByBuyer", { date: dateOf(o.shipBy) })}</p>}

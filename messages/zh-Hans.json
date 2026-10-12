@@ -699,5 +699,19 @@
     "new": "新进",
     "failed": "暂时读不到 Circle Chart 的本周榜单，请稍后再试。",
     "source": "数据来源：Circle Chart（韩国音乐内容协会）。名次和销量数字以 Circle Chart 公布为准。"
+  },
+  "Arc": {
+    "pay": "用 Arc 上的 USDC 付款 {total}",
+    "note": "在 Arc 上用 USDC 付款：只要在钱包签名，不用准备手续费，也不收手续费。",
+    "chooseWallet": "选择钱包",
+    "signing": "请在钱包里签名…",
+    "viewPayment": "Arc 付款记录",
+    "error_no_evm_wallet": "要在 Arc 上付款，请先安装 MetaMask、Rabby 等 EVM 钱包。",
+    "error_rejected": "你取消了签名。",
+    "error_arc_not_open": "Arc 付款还没有对所有人开放。",
+    "error_arc_not_configured": "目前无法使用 Arc 付款。",
+    "error_authorization_expired": "付款请求已过期，请再试一次。",
+    "error_authorization_rejected": "签名和付款内容对不上，或钱包在 Arc 上的 USDC 不够。",
+    "error_generic": "付款没有成功，请再试一次。"
   }
 }

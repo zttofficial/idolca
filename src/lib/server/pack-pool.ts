@@ -78,16 +78,16 @@ export async function recentPackPulls(db: Db, pack: Pack, limit = 10) {
   });
 }
 
-// 每一抽的公開紀錄，用來核對公平性：付款交易、序號、當時卡池大小、抽中的位置、隨機數
+// 每一抽的公開紀錄，用來核對公平性：付款通道和付款交易、付款證明（見 pack-draw.ts）、序號、當時卡池大小、抽中的位置、隨機數
 export async function packDraws(db: Db, packId: string) {
   const rows = await db
-    .select({ pull: packPulls, payTx: packOrders.payTx, serial: vaultCards.serial })
+    .select({ pull: packPulls, rail: packOrders.rail, payTx: packOrders.payTx, payProof: packOrders.payProof, serial: vaultCards.serial })
     .from(packPulls)
     .innerJoin(packOrders, eq(packOrders.id, packPulls.orderId))
     .innerJoin(vaultCards, eq(vaultCards.id, packPulls.cardId))
     .where(eq(packPulls.packId, packId))
     .orderBy(packPulls.createdAt, packPulls.idx);
-  return rows.map(({ pull, payTx, serial }) => ({ payTx, idx: pull.idx, poolSize: pull.poolSize, pick: pull.pick, r: pull.r, serial, at: pull.createdAt.toISOString() }));
+  return rows.map(({ pull, rail, payTx, payProof, serial }) => ({ rail, payTx, proof: payProof ?? payTx ?? "", idx: pull.idx, poolSize: pull.poolSize, pick: pull.pick, r: pull.r, serial, at: pull.createdAt.toISOString() }));
 }
 
 // 我開卡包抽到、還沒賣回的卡

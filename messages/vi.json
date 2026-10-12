@@ -699,5 +699,19 @@
     "new": "MỚI",
     "failed": "Chưa tải được bảng xếp hạng tuần này từ Circle Chart. Hãy thử lại sau.",
     "source": "Nguồn dữ liệu: Circle Chart (Hiệp hội Nội dung Âm nhạc Hàn Quốc). Thứ hạng và doanh số theo công bố của Circle Chart."
+  },
+  "Arc": {
+    "pay": "Thanh toán {total} bằng USDC trên Arc",
+    "note": "Thanh toán bằng USDC trên Arc: chỉ cần ký trong ví, không cần chuẩn bị phí gas và không mất phí.",
+    "chooseWallet": "Chọn ví",
+    "signing": "Vui lòng ký trong ví…",
+    "viewPayment": "Thanh toán trên Arc",
+    "error_no_evm_wallet": "Hãy cài ví EVM như MetaMask hoặc Rabby để thanh toán trên Arc.",
+    "error_rejected": "Bạn đã hủy ký.",
+    "error_arc_not_open": "Thanh toán trên Arc chưa mở cho tất cả mọi người.",
+    "error_arc_not_configured": "Hiện không thể thanh toán trên Arc.",
+    "error_authorization_expired": "Yêu cầu thanh toán đã hết hạn. Vui lòng thử lại.",
+    "error_authorization_rejected": "Chữ ký không khớp với khoản thanh toán, hoặc ví không đủ USDC trên Arc.",
+    "error_generic": "Thanh toán không thành công. Vui lòng thử lại."
   }
 }

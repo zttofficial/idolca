@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import type { Card } from "./cards";
 import { isTemplateOf, type Template } from "./catalog";
 import { signAndSend } from "./solana/wallets";
+import { signArcPayment, type EvmWallet } from "./evm/arc-wallet";
+import type { ArcPaymentRequest } from "./arc";
 
 export type VaultCardState = {
   owner: string;
@@ -109,6 +111,15 @@ export async function payAndConfirm<T>(createUrl: string, createBody: unknown, c
   const signature = await signAndSend(order.tx, wallet);
   const result = await postJson<T>(confirmUrl(order.id), { signature });
   return { signature, result };
+}
+
+// 在 Arc 上付款：建單（rail: "arc"）拿到授權內容 → 買家在 EVM 錢包簽名 → 回報給伺服器，伺服器代送上鏈並對帳。
+// 回傳 Arc 上的付款交易哈希和確認結果
+export async function payOnArc<T extends { payTx: string }>(createUrl: string, createBody: object, confirmUrl: (id: string) => string, wallet: EvmWallet) {
+  const order = await postJson<{ id: string; arc: ArcPaymentRequest }>(createUrl, { ...createBody, rail: "arc" });
+  const signed = await signArcPayment(wallet, order.arc);
+  const result = await postJson<T>(confirmUrl(order.id), signed);
+  return { payTx: result.payTx, result };
 }
 
 export const claimFaucet = () => postJson<{ tx: string; sol: number; usdt: number }>("/api/chain/faucet");

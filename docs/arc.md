@@ -1,6 +1,6 @@
-# Arc 結算通道計劃
+# Arc 結算通道
 
-用 Arc 參加 Circle 的 Arc Microgrants。分工是**卡片留在 Solana，錢在 Arc 結算**：在現有的 Solana 付款之外，加一條「用 Arc 上的 USDC 付款」的通道。只在 `arc-settlement` 分支上做，main 和線上不動。
+用 Arc 參加 Circle 的 Arc Microgrants。分工是**卡片留在 Solana，錢在 Arc 結算**：在現有的 Solana 付款之外，加一條「用 Arc 上的 USDC 付款」的通道。只在 `arc-settlement` 分支上，main 和線上不動。
 
 ## 參賽要求
 
@@ -15,107 +15,106 @@
 
 - **兩條鏈各做擅長的事**：
   - Solana 是交易層：卡片 NFT、金庫卡的原子交換、外部市場的流動性。
-  - Arc 是結算層：粉絲付款、平台收入、退款和放款。
+  - Arc 是結算層：粉絲付款、退款，平台收入落在這裡。
 - **Arc 帶來 Solana 給不了的**：
-  - 粉絲不用碰 gas 幣：Arc 的手續費也用 USDC 付，錢包裡只要有 USDC 就能買，不用先弄 SOL。
+  - 粉絲付款只要在錢包裡簽一個名：不用準備 gas 幣，也不付手續費（平台代付，每筆不到 1 美分）。
   - 合規結算：錢落在受監管的穩定幣發行方自己的鏈上。
-- **穩定幣按司法管轄區配置**：Arc 通道收 USDC；之後要收 USDT、EURC 或其他穩定幣，只改配置，合約和代碼不動。前台文案不寫死幣種。
-- **對評委的一句話**：收藏品留在流動性最好的鏈上交易，錢在 Arc 上合規結算。
+- **限制**：Arc 只解決付款。抽到的卡在 Solana 上，收卡仍然要一個 Solana 錢包（或平台代管）。要讓郵箱用戶完全無感，還要接 Circle Wallets，見「之後」。
+- **穩定幣按司法管轄區配置**：Arc 通道收 USDC；之後要收別的穩定幣，加進設定就行。
+- **對評委的一句話**：收藏品留在流動性最好的鏈上交易，錢在 Arc 上合規結算，粉絲付款只要簽個名。
 
 ## 哪些流程走 Arc
 
-現有的付款大多是「付款進平台 → 伺服器對帳 → 交付」，付款這一步本來就跟資產分開，換一條收款通道就行。
-
 | 流程 | Arc 通道 | 說明 |
 |---|---|---|
-| 開卡包 | **支援** | 在 Arc 上付款，對帳後照常在 Solana 上把抽到的卡轉給買家；卡池不夠時，沒交付的部分在 Arc 上退回付款地址 |
-| 自由刊登的擔保交易 | **支援** | 買家在 Arc 上付款；退款退回付款地址；放款給賣家按賣家的收款設定 |
-| 金庫卡掛單成交 | 不支援 | 卡和錢在同一筆 Solana 交易裡原子交換，拆開就不是原子交換了 |
+| 開卡包 | 支援 | 在 Arc 上付款，卡在 Solana 上交付；卡池不夠時，沒交付的部分在 Arc 上退回付款地址 |
+| 自由刊登的擔保交易 | 支援 | 買家在 Arc 上付款，退款退回付款地址；放款給賣家目前在 Solana 上 |
+| 金庫卡掛單成交 | 不支援 | 卡和錢在同一筆 Solana 交易裡原子交換 |
 | 提貨運費、即時回購 | 不支援 | 和凍結、轉移 NFT 綁在同一筆 Solana 交易裡 |
 
 ## 設計
 
-### 收款通道
+### 付款方式：USDC 授權轉帳（EIP-3009），不寫合約
 
-- 訂單多記兩項：收款通道（`solana` 或 `arc`）和付款地址。對帳、退款、放款都按訂單的通道走。
-- **在 Arc 上付款不需要先綁定 EVM 地址**：訂單編號寫進付款事件，誰付的都對得上這張訂單；退款退回付款地址。
-- 卡照樣交付到帳號綁定的 Solana 錢包。郵箱帳號沒有錢包時，維持現在的平台代管。
-- 賣家可以在帳號設定裡填一個 Arc 收款地址。有填的話，擔保交易的貨款在 Arc 上放款；沒填就照舊在 Solana 上放款。
+Arc 上的 USDC 原生支援 EIP-3009 的 `transferWithAuthorization`（主網、測試網都查過）。付款流程：
 
-### 合約：`IdolcaPay`（Arc）
+1. 建單時伺服器給出要簽的授權：收款人是平台錢包、金額、30 分鐘有效期，nonce 是訂單編號的雜湊（一張訂單只能付一次）。
+2. 買家在 EVM 錢包裡簽 EIP-712 訊息。只是簽名，不發交易。
+3. 伺服器逐項核對後，用平台熱錢包把授權送上鏈，再從回執確認 USDC 進了平台錢包、這個 nonce 已經用掉。
+4. 重複回報時（例如送出後連線中斷），從最近的區塊找出用掉這個 nonce 的交易照樣對帳，不會重複扣款。
 
-- `pay(token, amount, ref)`：從付款人那裡轉入代幣到平台收款地址，發出 `Paid(ref, payer, token, amount)` 事件。`ref` 是訂單編號的雜湊。
-- 代幣白名單，目前只有 USDC。
-- 放款和退款不經過合約，平台熱錢包直接轉 ERC-20。
-- USDC 支援 EIP-2612 permit 的話，加一個 `payWithPermit`，付款只要一筆交易；不支援就是先 `approve` 再 `pay` 兩筆。
-- 用 Solidity、OpenZeppelin、Foundry 開發。Foundry 裝在 `C:\Software\Foundry`，原始碼放在 `onchain-evm/`，要有單元測試，覆蓋正常路徑、白名單和金額檢查。
+和自寫收款合約相比，少了一份要審計的合約，也省掉 `approve` 那一步。買家只簽一次名，不付手續費。
 
-### 伺服器
+### 抽卡公平性
 
-- `src/lib/server/arc.ts`：用 viem 讀 Arc 交易回執，按 `Paid` 事件對帳（合約地址、`ref`、代幣、金額都要對上）；用平台熱錢包放款和退款。
-- 熱錢包金鑰放在 `ARC_PLATFORM_KEY`；合約和代幣地址寫進 `src/lib/chain/arc-mainnet.json`、`arc-testnet.json`。
-- 金額一律走 USDC 的 ERC-20 介面，6 位小數。
+開卡包的隨機數照舊是 `HMAC-SHA256(種子, 付款證明:序號)`。付款證明要是買家產生、平台事先算不出來的值：
 
-### 前台
+- Solana 付款：付款交易的簽名。
+- Arc 付款：買家對授權的簽名。Arc 上的交易是平台送出的，平台可以反覆試不同的交易哈希，所以不能用交易哈希。
 
-- 開卡包和擔保交易的結帳畫面多一個付款方式：「用 Arc 上的 USDC 付款」。
-- 用 EIP-6963 偵測瀏覽器裡的 EVM 錢包（MetaMask、Rabby 等），自動切到 Arc 網路，送出 `approve` 和 `pay`。
-- 鏈上紀錄的連結指向 Arc 的區塊瀏覽器。
+`/api/packs/[id]/draws` 每一抽都列出 `rail`、`payTx` 和 `proof`，任何人都能重算。
 
-### Circle Wallets（時間夠再做）
+### 代碼
 
-Circle 的用戶自控錢包同時支援 Arc 和 Solana，同一個用戶可以各開一個。粉絲用郵箱或 Google 登入後，Solana 錢包收卡、Arc 錢包付款，完全感覺不到兩條鏈。
+| | 位置 |
+|---|---|
+| 公開設定（網路、USDC、平台收款地址、EIP-712 內容） | `src/lib/arc.ts`，平台地址在 `src/lib/chain/arc-testnet.json`、`arc-mainnet.json` |
+| 發出授權、送上鏈對帳、退款 | `src/lib/server/arc-pay.ts`；開通檢查在 `arc-gate.ts` |
+| 訂單的收款通道 | `orders`、`pack_orders` 表的 `rail`、`payer`（Arc 付款地址），`pack_orders.pay_proof`（抽卡用的付款證明） |
+| 開卡包、擔保交易 | `src/lib/server/packs.ts`、`orders.ts`，建單時帶 `rail: "arc"` |
+| 瀏覽器 EVM 錢包（EIP-6963 偵測、切到 Arc、簽授權） | `src/lib/evm/arc-wallet.ts` |
+| 付款按鈕 | `src/components/pay/ArcPayButton.tsx`，放在開卡包和擔保交易的結帳處 |
+| 測試 | `tests/arc.test.ts`（EIP-712 網域和鏈上一致）、`e2e/arc.mjs`（`npm run test:e2e:arc`，測試網真實交易） |
+
+### 環境變數
+
+- `NEXT_PUBLIC_ARC_NETWORK`：`testnet` 或 `mainnet`，留空時只有 Solana 付款。
+- `ARC_PLATFORM_KEY`：平台熱錢包私鑰，代送授權、付手續費、退款；本機可以用 `ARC_PLATFORM_KEYFILE` 指向金鑰檔。地址必須和 `arc-<網路>.json` 的 `platform` 一致，否則通道不開通。
+- `ARC_PAY_ADMIN_ONLY=1`：只有管理員能用 Arc 付款。
+- `ARC_RPC_URL`：伺服器端 RPC，留空用官方公共端點。
 
 ## Arc 網路
 
-| | 值 |
-|---|---|
-| 主網鏈 ID | 5042 |
-| 主網 RPC | `https://rpc.mainnet.arc.io` |
-| USDC | `0x3600000000000000000000000000000000000000`（主網和測試網相同） |
-| USDC 小數位 | 作為原生 gas 是 18 位，透過 ERC-20 介面是 6 位 |
-| 測試幣 | Circle Faucet |
+| | 主網 | 測試網 |
+|---|---|---|
+| 鏈 ID | 5042 | 5042002 |
+| RPC | `https://rpc.mainnet.arc.io` | `https://rpc.testnet.arc.io` |
+| 區塊瀏覽器 | `https://explorer.arc.io` | `https://explorer.testnet.arc.io` |
+| USDC | `0x3600000000000000000000000000000000000000`，ERC-20 介面 6 位小數；作為 gas 是 18 位 | 同左 |
+| 測試幣 | — | <https://faucet.circle.com> |
 
-開工前要在 [docs.arc.io](https://docs.arc.io) 核對：測試網鏈 ID、RPC、區塊瀏覽器網址，以及 USDC 是否支援 EIP-2612 permit。
+出塊約 0.5 秒。手續費每筆不到 0.01 USDC。
 
-## 範圍
+## 現況
 
-**必須上線**
+**已完成，測試網驗證過**
 
-- `IdolcaPay` 部署到 Arc 測試網和主網。
-- 開卡包可以用 Arc 付款；卡池不夠時在 Arc 上退款。
-- 擔保交易可以用 Arc 付款；退款在 Arc 上退回付款地址。
-- 前台文案按配置顯示幣種，不寫死 USDT。
-- Arc 版本部署上線：新開一個 Vercel 專案，連 Solana devnet 和 Arc 主網。
+- 開卡包、擔保交易的 Arc 付款和退款。
+- `e2e/arc.mjs` 17 項全過：
+  - 買家沒有任何 SOL 也能開包，扣款剛好是包價。
+  - 卡交付到 Solana 錢包。
+  - 偽造金額的授權被拒。
+  - 重複回報結果不變。
+  - 卡池不夠時在 Arc 上退款；擔保交易的後台退款退回 Arc。
+- 原有的金庫端到端測試照樣全過。
 
-**時間夠再做**
+**上線前還要做**
 
-- 賣家的 Arc 收款地址，擔保交易在 Arc 上放款。
-- Circle Wallets 郵箱登入。
-- 用 CCTP 接收其他鏈的 USDC。
+1. 前台文案按設定顯示幣種，不再寫死 USDT。
+2. 生成主網平台熱錢包，寫進 `arc-mainnet.json`，存入約 20 USDC。
+3. 新開一個 Vercel 專案和資料庫，部署這個分支：Solana devnet 加 Arc 主網，設 `ARC_PAY_ADMIN_ONLY=1`。
+4. 用真錢在 Arc 主網走一遍開卡包，寫參賽說明並提交。
 
-**這次不做**
-
-- 金庫卡掛單、提貨、回購改走 Arc。
-- 合併回 main。開卡包和擔保交易的 Arc 通道等比賽結束後再評估。
-
-## 時程
-
-| 日期 | 工作 |
-|---|---|
-| 10/12 | 安裝 Foundry；寫 `IdolcaPay` 和測試，部署到 Arc 測試網；訂單加上收款通道 |
-| 10/13 | 伺服器對帳、退款；前台結帳接 EVM 錢包；在測試網上跑開卡包和擔保交易的端到端流程；改文案 |
-| 10/14 | 部署合約到 Arc 主網；Vercel 上線；用真錢走一遍開卡包；寫參賽說明並提交（美東 23:59 前） |
+**為什麼主網要限管理員**：Solana 那邊是 devnet 樣本卡，不是真的實物，不能對公眾收真錢。評委看到的是公開的頁面和 Arc 主網上的真實付款紀錄。
 
 ## 需要用戶準備
 
-- **Arc 主網錢包和約 20 USDC**：
-  - 一個平台熱錢包，一個收款錢包。熱錢包放約 20 USDC，夠付部署的 gas、退款和幾次自己測試付款。
-  - USDC 的來源：從支援 Arc 的交易所直接提幣（Backpack 已支援），或者先提到 Base、Solana，再用 CCTP 跨到 Arc。
-- **測試網 USDC**：從 Circle Faucet 領。
-- **DoraHacks 帳號，以及代碼怎麼給評委看**：倉庫目前是私有的，要確認活動是否接受私有倉庫，或者把 Arc 分支公開。
-- **Circle 開發者帳號**：只有做 Circle Wallets 時才需要。
+- **約 20 USDC 到 Arc 主網平台錢包**（地址生成後給出）：從支援 Arc 的交易所直接提幣（Backpack 已支援），或者先提到 Base、Solana，再用 CCTP 跨到 Arc。
+- **DoraHacks 帳號，以及代碼怎麼給評委看**：倉庫目前是私有的，要確認活動是否接受私有倉庫，或者把這個分支公開。
 
-## 下一步方向（寫進參賽說明，這次不做）
+## 之後
 
-**跨鏈的實物卡登記表**：每張實物卡的金庫編號、照片指紋、評級（IDG 或第三方）、目前由哪條鏈上的哪個代幣代表，都登記在 Arc 上的一份公開登記表裡。這樣同一張卡就不會在不同的鏈或平台上重複被代表，也解決了「同一張卡在不同項目重複鑄造，證明不了唯一性」的問題。
+- **Circle Wallets**：Circle 的用戶自控錢包同時支援 Arc 和 Solana，同一個用戶可以各開一個。郵箱或 Google 登入後，Solana 錢包收卡、Arc 錢包付款，粉絲完全感覺不到兩條鏈。
+- **賣家在 Arc 上收款**：賣家填 Arc 收款地址，擔保交易的貨款在 Arc 上放款。
+- **CCTP**：接收其他鏈的 USDC，在 Arc 上結算。
+- **跨鏈的實物卡登記表**：每張實物卡的金庫編號、照片指紋、評級、目前由哪條鏈上的哪個代幣代表，登記在 Arc 上的公開登記表裡，同一張卡就不會在不同的鏈或平台上重複被代表。

@@ -11,9 +11,12 @@ import { invalidateVaultCards, toCard } from "./vault-cards";
 import { CHAIN } from "@/lib/chain";
 import { BUYBACK_RATE, MAX_QTY, pickIndex, poolOrder } from "@/lib/packs";
 import { drawRandom } from "@/lib/pack-draw";
+import { arcPaymentRequest, arcPayout, settleArcPayment } from "./arc-pay";
+import type { PayRail } from "./schema";
 
 // 開卡包：付款進平台錢包 → 對帳 → 按承諾的種子抽卡 → 抽到的金庫卡 NFT 從平台錢包轉給買家。
-// 卡池不夠或轉移失敗時，沒交付的張數自動退款
+// 付款有兩條通道：Solana（買家錢包轉帳加備註）或 Arc（買家簽 USDC 授權轉帳，平台代送）；卡一律在 Solana 上交付。
+// 卡池不夠或轉移失敗時，沒交付的張數自動退款，退回原來付款的那條通道
 const memoOf = (orderId: string) => `idolca:pack:${orderId}`;
 
 const isLive = (p: { startsAt: Date; endsAt: Date }) => p.startsAt.getTime() <= Date.now() && Date.now() < p.endsAt.getTime();
@@ -33,7 +36,7 @@ async function available(db: Db, packId: string) {
   });
 }
 
-export async function createPackOrder(db: Db, userId: string, wallet: string, packId: string, qty: number) {
+export async function createPackOrder(db: Db, userId: string, wallet: string, packId: string, qty: number, rail: PayRail = "solana") {
   const pack = await getPackRow(db, packId);
   if (!pack) return { error: "not_found" as const };
   if (!isLive(pack)) return { error: "not_live" as const };
@@ -41,7 +44,8 @@ export async function createPackOrder(db: Db, userId: string, wallet: string, pa
   if ((await available(db, packId)).length < qty) return { error: "sold_out" as const };
   const id = randomUUID();
   const amountCents = pack.priceCents * qty;
-  await db.insert(packOrders).values({ id, userId, packId, qty, amountCents, wallet });
+  await db.insert(packOrders).values({ id, userId, packId, qty, amountCents, wallet, rail });
+  if (rail === "arc") return { id, amountUsdt: amountCents / 100, arc: arcPaymentRequest(memoOf(id), amountCents) };
   return { id, amountUsdt: amountCents / 100, tx: await buildPayment(new PublicKey(wallet), amountCents / 100, memoOf(id)) };
 }
 
@@ -55,17 +59,29 @@ async function pullsOf(db: Db, orderId: string) {
   return rows.map(({ pull, card }) => ({ cardId: card.id, asset: card.asset, tx: pull.transferTx, buybackTx: pull.buybackTx, card: toCard(card) }));
 }
 
-// 付款確認後抽卡並轉移。訂單先從 pending 鎖成 drawing，同一筆只會抽一次
-export async function confirmPackOrder(db: Db, userId: string, orderId: string, signature: string) {
+// 買家回報的付款：Solana 通道是付款交易簽名；Arc 通道是付款地址、授權有效期和授權簽名
+export type PackPayment = { signature: string; from?: unknown; validBefore?: unknown };
+
+// 付款確認後抽卡並轉移。訂單先從 pending 鎖成 drawing，同一筆只會抽一次。
+// 抽卡的隨機數來自買家產生、平台事先算不出來的簽名：Solana 是付款交易簽名，Arc 是買家的授權簽名
+export async function confirmPackOrder(db: Db, userId: string, orderId: string, payment: PackPayment) {
   const [order] = await db.select().from(packOrders).where(and(eq(packOrders.id, orderId), eq(packOrders.userId, userId)));
   if (!order) return { error: "not_found" as const };
-  if (order.status === "drawn") return { pulls: await pullsOf(db, orderId), refundTx: order.refundTx };
+  if (order.status === "drawn") return { pulls: await pullsOf(db, orderId), refundTx: order.refundTx, payTx: order.payTx };
   if (order.status !== "pending") return { error: "in_progress" as const };
-  const ok = await verifyPayment(signature, new PublicKey(order.wallet), order.amountCents / 100, memoOf(orderId));
-  if (!ok) return { error: "payment_not_found" as const };
+  const signature = payment.signature;
+  let paid: { payTx: string; payer: string | null; payProof: string | null };
+  if (order.rail === "arc") {
+    const { hash, from } = await settleArcPayment(memoOf(orderId), order.amountCents, payment);
+    paid = { payTx: hash, payer: from, payProof: signature };
+  } else {
+    const ok = await verifyPayment(signature, new PublicKey(order.wallet), order.amountCents / 100, memoOf(orderId));
+    if (!ok) return { error: "payment_not_found" as const };
+    paid = { payTx: signature, payer: null, payProof: null };
+  }
   const [locked] = await db
     .update(packOrders)
-    .set({ status: "drawing", payTx: signature })
+    .set({ status: "drawing", ...paid })
     .where(and(eq(packOrders.id, orderId), eq(packOrders.status, "pending")))
     .returning();
   if (!locked) return { error: "in_progress" as const };
@@ -100,12 +116,13 @@ export async function confirmPackOrder(db: Db, userId: string, orderId: string, 
 
   let refundTx: string | null = null;
   if (delivered < order.qty) {
-    refundTx = await payout(new PublicKey(order.wallet), ((order.qty - delivered) * pack.priceCents) / 100);
+    const cents = (order.qty - delivered) * pack.priceCents;
+    refundTx = order.rail === "arc" ? await arcPayout(locked.payer!, cents) : await payout(new PublicKey(order.wallet), cents / 100);
   }
   await db.update(packOrders).set({ status: "drawn", refundTx }).where(eq(packOrders.id, orderId));
   invalidateVaultState();
   invalidateVaultCards();
-  return { pulls: await pullsOf(db, orderId), refundTx };
+  return { pulls: await pullsOf(db, orderId), refundTx, payTx: locked.payTx };
 }
 
 // 這張卡是我開卡包抽到、還沒賣回的嗎

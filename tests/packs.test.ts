@@ -74,7 +74,7 @@ describe("fair draw", () => {
 
   it("verifyDraw accepts a genuine record and rejects tampered ones", () => {
     const r = drawRandom(seed, "sig", 2);
-    const d = { payTx: "sig", idx: 2, poolSize: 13, pick: pickIndex(r, 13), r };
+    const d = { proof: "sig", idx: 2, poolSize: 13, pick: pickIndex(r, 13), r };
     expect(verifyDraw(seed, d)).toBe(true);
     expect(verifyDraw(seed, { ...d, pick: (d.pick + 1) % 13 })).toBe(false);
     expect(verifyDraw("c".repeat(64), d)).toBe(false);

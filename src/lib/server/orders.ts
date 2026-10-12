@@ -1,28 +1,31 @@
 import "server-only";
 import { ESCROW_CONFIRM_DAYS, ESCROW_SHIP_DAYS, FEE_BPS } from "@/lib/policy";
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray, isNotNull, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import { PublicKey } from "@solana/web3.js";
 import type { Db } from "./db";
-import { collectorItems, orders, users, type OrderStatus } from "./schema";
+import { collectorItems, orders, users, type OrderStatus, type PayRail } from "./schema";
+import { arcPaymentRequest, arcPayout, settleArcPayment } from "./arc-pay";
 import { buildPayment, payout, transferCollectorNft, verifyPayment } from "./funds";
 import { itemTitle } from "@/lib/item-title";
 
 // 自由刊登的擔保交易。貨款先進平台錢包，買家確認收貨後才放給賣家，NFT 同時由平台轉給買家。
+// 買家可以在 Solana 或 Arc 上付款（見 packs.ts），退款退回原來的通道；放款給賣家目前一律在 Solana 上。
 // 平台抽成和金庫卡一樣是 2.5%
 export { FEE_BPS };
 const memoOf = (orderId: string) => `idolca:order:${orderId}`;
 
 export type OrderRow = typeof orders.$inferSelect;
 
-// 建立待付款訂單並組好付款交易
-export async function createOrder(db: Db, buyerId: string, buyerWallet: string, itemId: string) {
+// 建立待付款訂單：Solana 付款組好付款交易，Arc 付款給出要買家簽名的 USDC 授權轉帳內容
+export async function createOrder(db: Db, buyerId: string, buyerWallet: string, itemId: string, rail: PayRail = "solana") {
   const [item] = await db.select().from(collectorItems).where(eq(collectorItems.id, itemId));
   if (!item || item.priceCents === null || item.verification !== "unverified") return { error: "not_listed" as const };
   if (item.userId === buyerId) return { error: "own_listing" as const };
   const id = randomUUID();
   const feeCents = Math.round((item.priceCents * FEE_BPS) / 10_000);
-  await db.insert(orders).values({ id, itemId, buyerId, sellerId: item.userId, priceCents: item.priceCents, feeCents, buyerWallet });
+  await db.insert(orders).values({ id, itemId, buyerId, sellerId: item.userId, priceCents: item.priceCents, feeCents, buyerWallet, rail });
+  if (rail === "arc") return { id, arc: arcPaymentRequest(memoOf(id), item.priceCents) };
   const tx = await buildPayment(new PublicKey(buyerWallet), item.priceCents / 100, memoOf(id));
   return { id, tx };
 }
@@ -39,12 +42,31 @@ export const CONFIRM_DAYS = days("ESCROW_CONFIRM_DAYS", ESCROW_CONFIRM_DAYS);
 const shipDeadline = (o: OrderRow) => (o.paidAt ? new Date(o.paidAt.getTime() + SHIP_DAYS * DAY) : null);
 const releaseAt = (o: OrderRow) => (o.shippedAt ? new Date(o.shippedAt.getTime() + CONFIRM_DAYS * DAY) : null);
 
-// 付款交易確認：對帳成功就下架商品、訂單變成已付款。商品已被別人先買走時退款並取消
-export async function confirmOrderPayment(db: Db, buyerId: string, orderId: string, signature: string) {
-  const [order] = await db.select().from(orders).where(and(eq(orders.id, orderId), eq(orders.buyerId, buyerId)));
-  if (!order || order.status !== "pending") return { error: "not_pending" as const };
-  const ok = await verifyPayment(signature, new PublicKey(order.buyerWallet), order.priceCents / 100, memoOf(orderId));
-  if (!ok) return { error: "payment_not_found" as const };
+// 退款給買家：退回原來付款的那條通道
+const refundBuyer = (order: OrderRow) => (order.rail === "arc" ? arcPayout(order.payer!, order.priceCents) : payout(new PublicKey(order.buyerWallet), order.priceCents / 100));
+
+// 付款確認：對帳成功就下架商品、訂單變成已付款。商品已被別人先買走時退款並取消。
+// Solana 付款回報付款交易簽名；Arc 付款回報付款地址、授權有效期和授權簽名，伺服器代為送上鏈
+export async function confirmOrderPayment(db: Db, buyerId: string, orderId: string, payment: { signature: string; from?: unknown; validBefore?: unknown }) {
+  const [found] = await db.select().from(orders).where(and(eq(orders.id, orderId), eq(orders.buyerId, buyerId)));
+  if (!found || found.status !== "pending") return { error: "not_pending" as const };
+  let signature = payment.signature;
+  let payer: string | null = null;
+  if (found.rail === "arc") {
+    const settled = await settleArcPayment(memoOf(orderId), found.priceCents, payment);
+    signature = settled.hash;
+    payer = settled.from;
+  } else {
+    const ok = await verifyPayment(signature, new PublicKey(found.buyerWallet), found.priceCents / 100, memoOf(orderId));
+    if (!ok) return { error: "payment_not_found" as const };
+  }
+  // 先把付款記到訂單上，搶到的那一次才往下處理：同一筆付款重複回報時不會既成交又退款
+  const [order] = await db
+    .update(orders)
+    .set({ payTx: signature, payer })
+    .where(and(eq(orders.id, orderId), eq(orders.status, "pending"), isNull(orders.payTx)))
+    .returning();
+  if (!order) return { error: "not_pending" as const };
 
   const [item] = await db
     .update(collectorItems)
@@ -52,13 +74,13 @@ export async function confirmOrderPayment(db: Db, buyerId: string, orderId: stri
     .where(and(eq(collectorItems.id, order.itemId), isNotNull(collectorItems.priceCents)))
     .returning();
   if (!item) {
-    const refund = await payout(new PublicKey(order.buyerWallet), order.priceCents / 100);
+    const refund = await refundBuyer(order);
     await db.update(orders).set({ status: "cancelled", payTx: signature, refundTx: refund, updatedAt: new Date() }).where(eq(orders.id, orderId));
     return { error: "sold_out_refunded" as const };
   }
   const now = new Date();
   await db.update(orders).set({ status: "paid", payTx: signature, paidAt: now, updatedAt: now }).where(eq(orders.id, orderId));
-  return { ok: true as const };
+  return { ok: true as const, payTx: signature };
 }
 
 export async function markShipped(db: Db, sellerId: string, orderId: string) {
@@ -90,7 +112,7 @@ export async function refundOrder(db: Db, orderId: string, from: OrderStatus[] =
   if (!order) return { error: "not_refundable" as const };
   let refundTx: string;
   try {
-    refundTx = await payout(new PublicKey(order.buyerWallet), order.priceCents / 100);
+    refundTx = await refundBuyer(order);
   } catch (err) {
     await unlock(db, before);
     throw err;
@@ -184,6 +206,8 @@ export type PublicOrder = {
   id: string;
   role: "buyer" | "seller";
   status: OrderStatus;
+  // 買家付款和退款的通道；放款一律在 Solana
+  rail: PayRail;
   itemId: string;
   title: string;
   photo: string | null;
@@ -205,6 +229,7 @@ const toPublic = (o: OrderRow, item: typeof collectorItems.$inferSelect | null, 
   id: o.id,
   role,
   status: o.status,
+  rail: o.rail,
   itemId: o.itemId,
   title: item ? itemTitle({ title: item.title, group: item.groupName, member: item.member, version: item.version }) : "",
   photo: item?.photo ?? null,

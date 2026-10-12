@@ -13,6 +13,7 @@ import VaultConvert from "./VaultConvert";
 import { itemTitle } from "@/lib/item-title";
 import type { CollectorItem } from "@/lib/items";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
+import { arcExplorerUrl } from "@/lib/arc";
 
 type Redemption = {
   cardId: string;
@@ -36,6 +37,7 @@ type Order = {
   title: string;
   photo: string | null;
   priceUsdt: number;
+  rail: "solana" | "arc";
   payTx: string | null;
   payoutTx: string | null;
   transferTx: string | null;
@@ -111,9 +113,10 @@ export default function AdminConsole() {
   }
   if (!user.isAdmin) return <p className="mt-8 rounded-xl bg-surface-2 px-4 py-3 text-sm text-ink-2">{t("forbidden")}</p>;
 
-  const tx = (label: string, sig: string | null) =>
+  // 付款和退款走 Arc 的訂單，交易連到 Arc 區塊瀏覽器；其他都在 Solana
+  const tx = (label: string, sig: string | null, onArc = false) =>
     sig && (
-      <a href={solscanUrl("tx", sig)} target="_blank" rel="noreferrer" className="text-accent-ink hover:underline">
+      <a href={onArc ? arcExplorerUrl("tx", sig) : solscanUrl("tx", sig)} target="_blank" rel="noreferrer" className="text-accent-ink hover:underline">
         {label} ↗
       </a>
     );
@@ -150,10 +153,10 @@ export default function AdminConsole() {
                       {o.disputeReason && <span> · {o.disputeReason}</span>}
                     </p>
                     <p className="mt-0.5 flex flex-wrap gap-3 text-xs text-ink-3">
-                      {tx(tb("txPayment"), o.payTx)}
+                      {tx(tb("txPayment"), o.payTx, o.rail === "arc")}
                       {tx(tb("txTransfer"), o.transferTx)}
                       {tx(tb("txPayout"), o.payoutTx)}
-                      {tx(tb("txRefund"), o.refundTx)}
+                      {tx(tb("txRefund"), o.refundTx, o.rail === "arc")}
                     </p>
                   </div>
                   {open && (

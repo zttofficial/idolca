@@ -699,5 +699,19 @@
     "new": "NEW",
     "failed": "Circle Chart から今週のチャートを読み込めませんでした。しばらくしてからお試しください。",
     "source": "データ出典：Circle Chart（韓国音楽コンテンツ協会）。順位と販売数は Circle Chart の発表に基づきます。"
+  },
+  "Arc": {
+    "pay": "Arc の USDC で {total} を支払う",
+    "note": "Arc で USDC 払い：ウォレットで署名するだけ。ガス代の用意も手数料も不要です。",
+    "chooseWallet": "ウォレットを選択",
+    "signing": "ウォレットで署名してください…",
+    "viewPayment": "Arc での支払い",
+    "error_no_evm_wallet": "Arc で支払うには MetaMask や Rabby などの EVM ウォレットをインストールしてください。",
+    "error_rejected": "署名がキャンセルされました。",
+    "error_arc_not_open": "Arc での支払いはまだ一般公開されていません。",
+    "error_arc_not_configured": "現在 Arc での支払いはご利用いただけません。",
+    "error_authorization_expired": "支払いリクエストの有効期限が切れました。もう一度お試しください。",
+    "error_authorization_rejected": "署名が支払い内容と一致しないか、ウォレットの Arc 上の USDC が不足しています。",
+    "error_generic": "支払いに失敗しました。もう一度お試しください。"
   }
 }

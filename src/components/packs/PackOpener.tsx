@@ -6,10 +6,13 @@ import PackArt from "./PackArt";
 import { usePackPhase } from "./Countdown";
 import { HoloCardFace } from "@/components/market/HoloTile";
 import { CardBackArt } from "@/components/market/CardArt";
-import { formatUsdt } from "@/lib/fx";
+import { formatStable, formatUsdt } from "@/lib/fx";
 import { BUYBACK_RATE, TIER_COLOR, entryCard, type Pack, type PoolEntry } from "@/lib/packs";
 import { useAuth } from "@/components/auth/AuthContext";
-import { payAndConfirm, postAction, refreshChainState, useChainState } from "@/lib/chain-client";
+import { payAndConfirm, payOnArc, postAction, refreshChainState, useChainState } from "@/lib/chain-client";
+import { arcExplorerUrl } from "@/lib/arc";
+import type { EvmWallet } from "@/lib/evm/arc-wallet";
+import ArcPayButton from "@/components/pay/ArcPayButton";
 import { signAndSend } from "@/lib/solana/wallets";
 import { solscanUrl } from "@/lib/solana/config";
 
@@ -21,10 +24,11 @@ type Minted = { cardId: string; asset: string; tx: string | null; buybackTx?: st
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-// 用錢包付 USDT → 伺服器對帳後按承諾的種子抽卡 → 抽到的金庫卡 NFT 轉進錢包，可以即時賣回。
-// 卡池不夠時沒交付的張數自動退款
+// 用 Solana 錢包付款，或在 Arc 上用 USDC 簽名付款 → 伺服器對帳後按承諾的種子抽卡 → 抽到的金庫卡 NFT 轉進 Solana 錢包，可以即時賣回。
+// 卡池不夠時沒交付的張數自動退款，退回原來付款的通道
 export default function PackOpener({ pack, regionBlocked }: { pack: Pack; regionBlocked: boolean }) {
   const t = useTranslations("Packs");
+  const tArc = useTranslations("Arc");
   const { phase } = usePackPhase(pack.startsAt, pack.endsAt);
   const [qty, setQty] = useState<(typeof QUANTITIES)[number]>(1);
   const quantities = QUANTITIES.filter((q) => q <= pack.maxQty);
@@ -40,6 +44,7 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string>();
   const [paySig, setPaySig] = useState<string>();
+  const [payRail, setPayRail] = useState<"solana" | "arc">("solana");
   const [refundTx, setRefundTx] = useState<string | null>(null);
 
   // 卡池剩餘張數以伺服器為準（扣掉所有人已開出的）；關掉開包畫面時重新讀
@@ -65,32 +70,46 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
     setStage("pack");
   };
 
+  type Drawn = { pulls: Minted[]; refundTx: string | null; payTx: string };
+  const drawn = (rail: "solana" | "arc", payTx: string, result: Drawn) => {
+    setPaySig(payTx);
+    setPayRail(rail);
+    setMinted(result.pulls.map(({ cardId, asset, tx }) => ({ cardId, asset, tx })));
+    setRefundTx(result.refundTx);
+    // 抽到的卡已轉進錢包，重讀鏈上持有人，收藏冊和市場立刻看得到
+    refreshChainState();
+    reveal(result.pulls.map((p) => pool.find((e) => e.id === p.cardId) ?? pack.pool.find((e) => e.id === p.cardId)).filter((e): e is PoolEntry => Boolean(e)));
+  };
+
+  // 開包前的檢查：要登入、綁 Solana 錢包（卡交付到這裡），第一次開包要確認已滿 18 歲
+  const ready = () => {
+    if (!live) return false;
+    if (!user) return login(), false;
+    if (!wallet) return false;
+    if (!user.ageConfirmed) return setAgeAsk(true), false;
+    return true;
+  };
+
   const open = async () => {
-    if (!live) return;
-    if (!user) return login();
-    if (!wallet) return;
-    // 第一次開包要確認已滿 18 歲
-    if (!user.ageConfirmed) return setAgeAsk(true);
+    if (!ready()) return;
     setPaying(true);
     setPayError(undefined);
     try {
-      const { signature, result } = await payAndConfirm<{ pulls: Minted[]; refundTx: string | null }>(
-        `/api/packs/${pack.id}/order`,
-        { qty },
-        (id) => `/api/packs/orders/${id}/confirm`,
-        wallet,
-      );
-      setPaySig(signature);
-      setMinted(result.pulls.map(({ cardId, asset, tx }) => ({ cardId, asset, tx })));
-      setRefundTx(result.refundTx);
-      // 抽到的卡已轉進錢包，重讀鏈上持有人，收藏冊和市場立刻看得到
-      refreshChainState();
-      reveal(result.pulls.map((p) => pool.find((e) => e.id === p.cardId) ?? pack.pool.find((e) => e.id === p.cardId)).filter((e): e is PoolEntry => Boolean(e)));
+      const { signature, result } = await payAndConfirm<Drawn>(`/api/packs/${pack.id}/order`, { qty }, (id) => `/api/packs/orders/${id}/confirm`, wallet!);
+      drawn("solana", signature, result);
     } catch (e) {
       setPayError(e instanceof Error ? e.message : "network");
     } finally {
       setPaying(false);
     }
+  };
+
+  // 在 Arc 上付款：錯誤由按鈕自己顯示
+  const openOnArc = async (evm: EvmWallet) => {
+    if (!ready()) return;
+    setPayError(undefined);
+    const { payTx, result } = await payOnArc<Drawn>(`/api/packs/${pack.id}/order`, { qty }, (id) => `/api/packs/orders/${id}/confirm`, evm);
+    drawn("arc", payTx, result);
   };
 
   // 即時回購：一筆交易裡 NFT 轉給平台、平台付 USDT
@@ -166,6 +185,7 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
       >
         {label}
       </button>
+      {live && user && wallet && canOpen && <ArcPayButton label={tArc("pay", { total: formatStable(round2(qty * pack.priceUsdt), "USDC") })} disabled={paying} pay={openOnArc} />}
       {live && user && !wallet && <p className="mt-2 text-center text-xs text-ink-2">{t("linkWalletToOpen")}</p>}
       {ageAsk && (
         <div className="mt-3 rounded-xl border border-line bg-surface-2 p-4 text-sm">
@@ -195,6 +215,7 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
           onChoose={(i, c) => setChoices((prev) => ({ ...prev, [i]: c }))}
           minted={minted}
           paySig={paySig}
+          payLink={(tx: string) => (payRail === "arc" ? arcExplorerUrl("tx", tx) : solscanUrl("tx", tx))}
           refundTx={refundTx}
           onSellBack={sellBack}
           onAgain={canOpen ? open : undefined}
@@ -220,6 +241,7 @@ function OpeningModal({
   onClose,
   minted,
   paySig,
+  payLink,
   refundTx,
   onSellBack,
 }: {
@@ -237,6 +259,8 @@ function OpeningModal({
   onClose: () => void;
   minted: Minted[];
   paySig?: string;
+  // 付款和退款交易的連結：Solana 付款連 Solscan，Arc 付款連 Arc 區塊瀏覽器
+  payLink: (tx: string) => string;
   refundTx: string | null;
   onSellBack: (i: number) => Promise<void>;
 }) {
@@ -323,11 +347,11 @@ function OpeningModal({
             </dl>
             {paySig && (
               <p className="mt-3 flex justify-center gap-4 text-xs text-ink-3">
-                <a href={solscanUrl("tx", paySig)} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
+                <a href={payLink(paySig)} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
                   {t("paymentTx")} ↗
                 </a>
                 {refundTx && (
-                  <a href={solscanUrl("tx", refundTx)} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
+                  <a href={payLink(refundTx)} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
                     {t("refundTx")} ↗
                   </a>
                 )}

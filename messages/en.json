@@ -699,5 +699,19 @@
     "new": "NEW",
     "failed": "Couldn't load this week's chart from Circle Chart. Try again later.",
     "source": "Data: Circle Chart, run by the Korea Music Content Association. Rankings and sales figures belong to Circle Chart."
+  },
+  "Arc": {
+    "pay": "Pay {total} with USDC on Arc",
+    "note": "Pay on Arc with USDC: just sign in your wallet. No gas token, no fees.",
+    "chooseWallet": "Choose a wallet",
+    "signing": "Sign in your wallet…",
+    "viewPayment": "Payment on Arc",
+    "error_no_evm_wallet": "Install an EVM wallet such as MetaMask or Rabby to pay on Arc.",
+    "error_rejected": "You cancelled the signature.",
+    "error_arc_not_open": "Paying on Arc isn't open to everyone yet.",
+    "error_arc_not_configured": "Paying on Arc isn't available right now.",
+    "error_authorization_expired": "The payment request expired. Please try again.",
+    "error_authorization_rejected": "Your wallet's signature didn't match the payment, or the wallet doesn't have enough USDC on Arc.",
+    "error_generic": "Payment didn't go through. Please try again."
   }
 }

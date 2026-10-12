@@ -699,5 +699,19 @@
     "new": "BARU",
     "failed": "Tangga minggu ini dari Circle Chart belum bisa dimuat. Coba lagi nanti.",
     "source": "Data: Circle Chart, dikelola Korea Music Content Association. Peringkat dan angka penjualan mengikuti rilis Circle Chart."
+  },
+  "Arc": {
+    "pay": "Bayar {total} dengan USDC di Arc",
+    "note": "Bayar dengan USDC di Arc: cukup tanda tangani di dompet. Tanpa token gas, tanpa biaya.",
+    "chooseWallet": "Pilih dompet",
+    "signing": "Tanda tangani di dompet…",
+    "viewPayment": "Pembayaran di Arc",
+    "error_no_evm_wallet": "Pasang dompet EVM seperti MetaMask atau Rabby untuk membayar di Arc.",
+    "error_rejected": "Kamu membatalkan tanda tangan.",
+    "error_arc_not_open": "Pembayaran di Arc belum dibuka untuk semua orang.",
+    "error_arc_not_configured": "Pembayaran di Arc sedang tidak tersedia.",
+    "error_authorization_expired": "Permintaan pembayaran kedaluwarsa. Silakan coba lagi.",
+    "error_authorization_rejected": "Tanda tangan tidak cocok dengan pembayaran, atau USDC di Arc pada dompet tidak cukup.",
+    "error_generic": "Pembayaran gagal. Silakan coba lagi."
   }
 }
