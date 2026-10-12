@@ -5,6 +5,7 @@ import LegalPage from "@/components/legal/LegalPage";
 import { BUYBACK_RATE } from "@/lib/packs";
 import { ADDRESS_RETENTION_DAYS, ESCROW_CONFIRM_DAYS, ESCROW_SHIP_DAYS, FEE_BPS } from "@/lib/policy";
 import { REDEEM_FEE_USDT } from "@/lib/shipping";
+import { CURRENCY } from "@/lib/fx";
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({ locale: await getLocale(), path: "/terms", title: "Terms of Service" });
@@ -39,13 +40,13 @@ export default async function TermsPage() {
         {
           title: "Trading vault cards",
           body: [
-            "Vault cards are listed and sold through Idolca's on-chain escrow program. The buyer's USDT and the NFT swap in a single transaction; a marketplace fee of " + pct(FEE_BPS) + " of the sale price goes to Idolca. Completed on-chain trades are final.",
+            `Vault cards are listed and sold through Idolca's on-chain escrow program. The buyer's ${CURRENCY} and the NFT swap in a single transaction; a marketplace fee of ${pct(FEE_BPS)} of the sale price goes to Idolca. Completed on-chain trades are final.`,
           ],
         },
         {
           title: "Redemption",
           body: [
-            `Holders can redeem a vault card to have the physical card shipped. Redemption freezes the NFT and charges a shipping fee of ${REDEEM_FEE_USDT} USDT in the same transaction. When we ship, the NFT is burned and the card leaves the vault.`,
+            `Holders can redeem a vault card to have the physical card shipped. Redemption freezes the NFT and charges a shipping fee of ${REDEEM_FEE_USDT} ${CURRENCY} in the same transaction. When we ship, the NFT is burned and the card leaves the vault.`,
             "We ship by tracked international mail to the countries listed in the redemption form. If we cannot ship to the address you give, we cancel the redemption, unfreeze the NFT and refund the shipping fee. Risk passes to you when the carrier delivers the card.",
           ],
         },
@@ -75,7 +76,7 @@ export default async function TermsPage() {
         {
           title: "Blockchain risks",
           body: [
-            "Transactions on Solana are public and irreversible. Network congestion, wallet software and token contracts are outside Idolca's control. USDT is issued by a third party, and its value is not guaranteed by Idolca.",
+            `Blockchain transactions are public and irreversible. Network congestion, wallet software and token contracts are outside Idolca's control. ${CURRENCY} and other stablecoins are issued by third parties, and their value is not guaranteed by Idolca.`,
           ],
         },
         {

@@ -5,8 +5,8 @@ import RedeemDialog from "./RedeemDialog";
 import type { ShippingAddress } from "@/lib/shipping";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/auth/AuthContext";
-import UsdtPrice from "@/components/web3/UsdtPrice";
-import { formatUsdt } from "@/lib/fx";
+import Price from "@/components/web3/Price";
+import { CURRENCY, formatPrice } from "@/lib/fx";
 import type { Card } from "@/lib/cards";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 import { useChainState, vaultAction, type VaultAction, type VaultCardState } from "@/lib/chain-client";
@@ -29,7 +29,7 @@ export default function BuyPanel({ card }: { card: Card }) {
       ) : !chain ? (
         <div className="h-9 w-40 animate-pulse rounded-lg bg-surface-2" />
       ) : live?.listing ? (
-        <UsdtPrice amount={live.listing.priceUsdt} className="text-3xl font-bold tabular-nums" />
+        <Price amount={live.listing.priceUsdt} className="text-3xl font-bold tabular-nums" />
       ) : (
         <p className="text-xl font-semibold text-ink-2">{t("notForSale")}</p>
       )}
@@ -104,7 +104,7 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
       note("linkWalletToBuy")
     ) : (
       <button className={PRIMARY + " w-full"} disabled={busy !== null} onClick={() => run("buy")}>
-        {busy === "buy" ? t("confirmInWallet") : t("buyNowFor", { price: formatUsdt(live.listing.priceUsdt) })}
+        {busy === "buy" ? t("confirmInWallet") : t("buyNowFor", { price: formatPrice(live.listing.priceUsdt) })}
       </button>
     );
   } else if (live.owner === me) {
@@ -121,7 +121,7 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
               aria-label={t("listPrice")}
               className="w-full bg-transparent py-2.5 tabular-nums outline-none"
             />
-            USDT
+            {CURRENCY}
           </label>
           <button className={PRIMARY} disabled={busy !== null || !(value > 0)} onClick={() => run("list", value)}>
             {busy === "list" ? t("confirmInWallet") : t("listForSale")}

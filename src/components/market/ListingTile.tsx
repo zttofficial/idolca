@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import UsdtPrice from "@/components/web3/UsdtPrice";
+import Price from "@/components/web3/Price";
 import VerificationBadge from "@/components/binder/VerificationBadge";
 import { itemTitle } from "@/lib/item-title";
 import type { Listing } from "@/lib/items";
@@ -29,7 +29,7 @@ export default function ListingTile({ listing }: { listing: Listing }) {
         </p>
         <p className="line-clamp-2 font-semibold text-ink">{itemTitle(listing)}</p>
         <div className="flex items-baseline justify-between gap-2">
-          <UsdtPrice amount={listing.priceUsdt ?? 0} className="text-base font-bold tabular-nums" />
+          <Price amount={listing.priceUsdt ?? 0} className="text-base font-bold tabular-nums" />
           <span className="truncate text-xs text-ink-3">{listing.seller}</span>
         </div>
       </div>

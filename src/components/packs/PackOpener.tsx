@@ -6,7 +6,7 @@ import PackArt from "./PackArt";
 import { usePackPhase } from "./Countdown";
 import { HoloCardFace } from "@/components/market/HoloTile";
 import { CardBackArt } from "@/components/market/CardArt";
-import { formatStable, formatUsdt } from "@/lib/fx";
+import { formatStable, formatPrice } from "@/lib/fx";
 import { BUYBACK_RATE, TIER_COLOR, entryCard, type Pack, type PoolEntry } from "@/lib/packs";
 import { useAuth } from "@/components/auth/AuthContext";
 import { payAndConfirm, payOnArc, postAction, refreshChainState, useChainState } from "@/lib/chain-client";
@@ -338,11 +338,11 @@ function OpeningModal({
             <dl className="mt-5 grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-surface-2 px-4 py-3">
                 <dt className="text-[11px] text-ink-3">{t("spent")}</dt>
-                <dd className="mt-1 text-lg font-semibold tabular-nums">{formatUsdt(spent, 2)}</dd>
+                <dd className="mt-1 text-lg font-semibold tabular-nums">{formatPrice(spent, 2)}</dd>
               </div>
               <div className="rounded-xl bg-surface-2 px-4 py-3">
                 <dt className="text-[11px] text-ink-3">{t("pulledValue")}</dt>
-                <dd className="mt-1 text-lg font-semibold tabular-nums">{formatUsdt(pulledValue, 2)}</dd>
+                <dd className="mt-1 text-lg font-semibold tabular-nums">{formatPrice(pulledValue, 2)}</dd>
               </div>
             </dl>
             {paySig && (
@@ -372,7 +372,7 @@ function OpeningModal({
                         {card.group} {card.member}
                       </p>
                       <p className="truncate text-xs text-ink-3">
-                        {card.album} · {card.version} · {formatUsdt(entry.valueUsdt, entry.valueUsdt < 10 ? 2 : 0)}
+                        {card.album} · {card.version} · {formatPrice(entry.valueUsdt, entry.valueUsdt < 10 ? 2 : 0)}
                       </p>
                       {nft && (
                         <p className="mt-0.5 flex gap-3 text-[11px] text-ink-3">

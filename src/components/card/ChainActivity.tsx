@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { formatUsdt } from "@/lib/fx";
+import { formatPrice } from "@/lib/fx";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 
 type ChainEvent = { type: "mint" | "list" | "sale" | "cancel" | "redeem" | "burn" | "transfer"; date: string; signature: string; priceUsdt?: number; from?: string; to?: string };
@@ -41,7 +41,7 @@ export default function ChainActivity({ cardId }: { cardId: string }) {
           <div className="flex flex-wrap items-baseline justify-between gap-x-3">
             <p className="text-sm font-medium">
               {t(`event_${e.type}`)}
-              {e.priceUsdt !== undefined && <span className="ml-2 text-ink-2 tabular-nums">{formatUsdt(e.priceUsdt)}</span>}
+              {e.priceUsdt !== undefined && <span className="ml-2 text-ink-2 tabular-nums">{formatPrice(e.priceUsdt)}</span>}
             </p>
             <span className="text-[11px] text-ink-3 tabular-nums">{e.date.slice(0, 16).replace("T", " ")}</span>
           </div>

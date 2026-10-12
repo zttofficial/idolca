@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { CURRENCY } from "@/lib/fx";
 import { useTranslations } from "next-intl";
 import { cropToCard } from "@/lib/crop-card";
 import { useAuth } from "@/components/auth/AuthContext";
@@ -223,7 +224,7 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
                       placeholder="25"
                       className="w-28 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm tabular-nums outline-none focus:border-ink"
                     />
-                    USDT
+                    {CURRENCY}
                   </label>
                 )}
               </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { formatUsdt } from "@/lib/fx";
+import { formatPrice } from "@/lib/fx";
 import Select from "@/components/ui/Select";
 import { EMPTY_ADDRESS, REDEEM_FEE_USDT, SHIP_COUNTRIES, parseAddress, type ShippingAddress } from "@/lib/shipping";
 
@@ -89,7 +89,7 @@ export default function RedeemDialog({ busy, onSubmit, onClose }: { busy: boolea
             <Select required searchable value={a.country} onChange={(country) => setA((x) => ({ ...x, country }))} options={countries.map((c) => ({ value: c.code, label: c.name }))} className={field} />
           </label>
         </div>
-        <p className="mt-5 rounded-xl bg-surface-2 px-4 py-3 text-xs leading-relaxed text-ink-2">{t("redeemFee", { fee: formatUsdt(REDEEM_FEE_USDT, 2) })}</p>
+        <p className="mt-5 rounded-xl bg-surface-2 px-4 py-3 text-xs leading-relaxed text-ink-2">{t("redeemFee", { fee: formatPrice(REDEEM_FEE_USDT, 2) })}</p>
         <div className="mt-5 flex justify-end gap-3">
           <button type="button" onClick={onClose} className="rounded-full border border-line px-5 py-2 text-sm hover:bg-surface-2">
             {t("cancel")}

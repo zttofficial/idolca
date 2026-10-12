@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "./AuthContext";
 import { Link } from "@/i18n/navigation";
 import { CLUSTER, shortAddress, solscanUrl } from "@/lib/solana/config";
-import { formatUsdt } from "@/lib/fx";
+import { formatStable } from "@/lib/fx";
 import { openAddCard } from "@/components/binder/AddCard";
 import { ChainError, claimFaucet, useBalance } from "@/lib/chain-client";
 import { WalletError, linkWallet, useWallets } from "@/lib/solana/wallets";
@@ -138,7 +138,7 @@ function WalletBox({ address }: { address: string }) {
       <dl className="mt-2 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-lg bg-surface px-2.5 py-1.5">
           <dt className="text-ink-3">{CLUSTER === "devnet" ? t("testUsdt") : "USDT"}</dt>
-          <dd className="font-semibold tabular-nums">{balance ? formatUsdt(balance.usdt) : "…"}</dd>
+          <dd className="font-semibold tabular-nums">{balance ? formatStable(balance.usdt, "USDT") : "…"}</dd>
         </div>
         <div className="rounded-lg bg-surface px-2.5 py-1.5">
           <dt className="text-ink-3">{CLUSTER === "devnet" ? "devnet SOL" : "SOL"}</dt>

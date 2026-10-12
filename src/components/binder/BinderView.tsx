@@ -16,7 +16,7 @@ import { Link } from "@/i18n/navigation";
 import { binderActions, useBinder, type BinderEntry } from "@/lib/binder";
 import { GROUPS, TEMPLATES, templateCard, type Template } from "@/lib/catalog";
 import type { Card } from "@/lib/cards";
-import { formatUsdt } from "@/lib/fx";
+import { CURRENCY, formatPrice } from "@/lib/fx";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 import { itemTitle } from "@/lib/item-title";
 import { setDescription, setListing, useMyItems, type CollectorItem, requestVault } from "@/lib/items";
@@ -480,7 +480,7 @@ function ListingControl({ item }: { item: CollectorItem }) {
   if (listed && !editing) {
     return (
       <div className="rounded-xl bg-accent-soft p-3 text-sm">
-        <p className="font-semibold text-accent-ink">{t("listedAt", { price: formatUsdt(item.priceUsdt!) })}</p>
+        <p className="font-semibold text-accent-ink">{t("listedAt", { price: formatPrice(item.priceUsdt!) })}</p>
         <Link href={`/listing/${item.id}`} className="btn-primary mt-2 block rounded-full py-2 text-center text-sm font-semibold">
           {t("viewListing")} →
         </Link>
@@ -519,7 +519,7 @@ function ListingControl({ item }: { item: CollectorItem }) {
           onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))}
           className="w-24 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm tabular-nums outline-none focus:border-ink"
         />
-        USDT
+        {CURRENCY}
       </label>
       <p className="mt-2 text-[11px] leading-snug text-ink-3">{t("listingNote")}</p>
       <div className="mt-2 flex gap-2">
@@ -579,7 +579,7 @@ function WantMarket({ template }: { template: Template }) {
   const market = useTemplateMarket()(template);
   return (
     <span className="text-xs text-ink-2">
-      {!market ? "…" : market.forSale && market.fromUsdt !== null ? t("forSaleNow", { count: market.forSale, price: formatUsdt(market.fromUsdt) }) : t("noneForSale")}
+      {!market ? "…" : market.forSale && market.fromUsdt !== null ? t("forSaleNow", { count: market.forSale, price: formatPrice(market.fromUsdt) }) : t("noneForSale")}
     </span>
   );
 }
@@ -710,7 +710,7 @@ function VaultSheet({ card, onClose, onTakeOut }: { card: Card; onClose: () => v
           <p className="text-sm text-ink-2">{card.version}</p>
           <p className="mt-3 font-mono text-[11px] text-ink-3">{card.serial}</p>
           <p className="mt-3 text-sm font-semibold text-accent-ink">
-            {card.status === "listed" ? t("listedAt", { price: formatUsdt(card.priceUsdt) }) : tStatus(card.status)}
+            {card.status === "listed" ? t("listedAt", { price: formatPrice(card.priceUsdt) }) : tStatus(card.status)}
           </p>
           <div className="mt-auto flex flex-col gap-2 pt-5">
             <Link href={`/card/${card.id}`} className="btn-primary rounded-full py-2.5 text-center text-sm font-semibold">

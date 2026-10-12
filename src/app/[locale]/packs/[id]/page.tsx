@@ -10,7 +10,7 @@ import PackArt from "@/components/packs/PackArt";
 import Countdown from "@/components/packs/Countdown";
 import PackOpener, { TierPill } from "@/components/packs/PackOpener";
 import { Link } from "@/i18n/navigation";
-import { formatUsdt } from "@/lib/fx";
+import { formatPrice } from "@/lib/fx";
 import { connection } from "next/server";
 import { headers } from "next/headers";
 import { packsBlockedIn } from "@/lib/server/region";
@@ -90,7 +90,7 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
             </div>
             <div className="rounded-xl bg-surface-2 px-4 py-3">
               <p className="text-[11px] text-ink-3">{t("expectedTitle")}</p>
-              <p className="mt-1 text-lg font-semibold tabular-nums">{formatUsdt(s.expected, 2)}</p>
+              <p className="mt-1 text-lg font-semibold tabular-nums">{formatPrice(s.expected, 2)}</p>
               <p className="mt-0.5 text-[11px] leading-snug text-ink-3">
                 {t("expectedBody", { rtp: Math.round((s.expected / pack.priceUsdt) * 100) })}
               </p>
@@ -171,7 +171,7 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
                       </p>
                       <p className="truncate text-[11px] text-ink-3">{card.version}</p>
                       <p className="mt-0.5 flex justify-between text-[11px]">
-                        <span className="text-ink tabular-nums">{formatUsdt(e.valueUsdt, e.valueUsdt < 10 ? 1 : 0)}</span>
+                        <span className="text-ink tabular-nums">{formatPrice(e.valueUsdt, e.valueUsdt < 10 ? 1 : 0)}</span>
                         <span className="text-ink-3">{gone ? t("pulled") : card.serial}</span>
                       </p>
                     </Link>

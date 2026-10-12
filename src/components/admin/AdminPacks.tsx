@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import type { Card } from "@/lib/cards";
-import { formatUsdt } from "@/lib/fx";
+import { formatPrice } from "@/lib/fx";
 import { TIERS, packStats, type Pack, type Tier } from "@/lib/packs";
 import Select from "@/components/ui/Select";
 
@@ -137,7 +137,7 @@ function PackPool({
     <div className="mt-4 rounded-2xl border border-line bg-surface p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <Link href={`/packs/${pack.id}`} className="font-semibold hover:underline">
-          {pack.name} · {formatUsdt(pack.priceUsdt, 2)}
+          {pack.name} · {formatPrice(pack.priceUsdt, 2)}
         </Link>
         <span className="text-xs text-ink-3">
           {t("poolSummary", { remaining: s.remaining, total: s.total, ev: s.expected.toFixed(2) })} · {pack.startsAt.slice(0, 16).replace("T", " ")} → {pack.endsAt.slice(0, 16).replace("T", " ")}
@@ -152,7 +152,7 @@ function PackPool({
               <span className="min-w-0 flex-1 truncate">
                 {e.card.serial} · {e.card.group} {e.card.member} · {e.card.version}
               </span>
-              <span className="text-xs tabular-nums">{formatUsdt(e.valueUsdt, 2)}</span>
+              <span className="text-xs tabular-nums">{formatPrice(e.valueUsdt, 2)}</span>
               {e.remaining ? (
                 <button disabled={busy !== undefined} onClick={() => onRemove(e.id)} className="text-xs text-ink-3 hover:text-down disabled:opacity-50">
                   {t("removeFromPool")}

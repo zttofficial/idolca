@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/components/auth/AuthContext";
-import { formatUsdt } from "@/lib/fx";
+import { formatPrice } from "@/lib/fx";
 import { formatAddress, type ShippingAddress } from "@/lib/shipping";
 import VaultIntake from "./VaultIntake";
 import VaultGrade from "./VaultGrade";
@@ -149,7 +149,7 @@ export default function AdminConsole() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold">{o.title}</p>
                     <p className="text-xs text-ink-3">
-                      {formatUsdt(o.priceUsdt)} · <span className={`font-medium ${o.status === "disputed" ? "text-notice-ink" : "text-ink-2"}`}>{tb(`orderStatus_${o.status}`)}</span>
+                      {formatPrice(o.priceUsdt)} · <span className={`font-medium ${o.status === "disputed" ? "text-notice-ink" : "text-ink-2"}`}>{tb(`orderStatus_${o.status}`)}</span>
                       {o.disputeReason && <span> · {o.disputeReason}</span>}
                     </p>
                     <p className="mt-0.5 flex flex-wrap gap-3 text-xs text-ink-3">
@@ -208,7 +208,7 @@ export default function AdminConsole() {
                       {tx(t("shipTx"), r.shipTx)}
                       {tx(t("cancelTx"), r.cancelTx)}
                       {tx(t("refundTx"), r.refundTx)}
-                      {r.feeCents > 0 && <span className={r.feePaid ? "text-up" : "text-down"}>{t(r.feePaid ? "feePaid" : "feeUnpaid", { fee: formatUsdt(r.feeCents / 100, 2) })}</span>}
+                      {r.feeCents > 0 && <span className={r.feePaid ? "text-up" : "text-down"}>{t(r.feePaid ? "feePaid" : "feeUnpaid", { fee: formatPrice(r.feeCents / 100, 2) })}</span>}
                     </p>
                     {address && !shipped && <pre className="mt-2 rounded-lg bg-surface-2 px-3 py-2 font-sans text-xs whitespace-pre-wrap text-ink-2">{address}</pre>}
                   </div>

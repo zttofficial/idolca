@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/auth/AuthContext";
 import { Link } from "@/i18n/navigation";
-import { formatStable, formatUsdt } from "@/lib/fx";
+import { formatStable, formatPrice } from "@/lib/fx";
 import { payAndConfirm, payOnArc } from "@/lib/chain-client";
 import { solscanUrl } from "@/lib/solana/config";
 import { arcExplorerUrl } from "@/lib/arc";
@@ -68,7 +68,7 @@ export default function EscrowBuy({ itemId, priceUsdt }: { itemId: string; price
       ) : (
         <>
           <button className={button} disabled={busy} onClick={buy}>
-            {busy ? t("confirmInWallet") : t("buyEscrow", { price: formatUsdt(priceUsdt) })}
+            {busy ? t("confirmInWallet") : t("buyEscrow", { price: formatPrice(priceUsdt) })}
           </button>
           <ArcPayButton label={tArc("pay", { total: formatStable(priceUsdt, "USDC") })} disabled={busy} pay={buyOnArc} />
         </>

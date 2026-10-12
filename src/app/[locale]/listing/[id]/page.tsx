@@ -8,7 +8,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import PhotoGallery from "@/components/market/PhotoGallery";
 import EscrowBuy from "@/components/market/EscrowBuy";
-import UsdtPrice from "@/components/web3/UsdtPrice";
+import Price from "@/components/web3/Price";
 import VerificationBadge from "@/components/binder/VerificationBadge";
 import { Link } from "@/i18n/navigation";
 import { itemTitle } from "@/lib/item-title";
@@ -93,7 +93,7 @@ async function ListingContent({ params }: { params: PageProps<"/[locale]/listing
 
           <div className={SECTION}>
             <p className="text-xs text-ink-3">{t("price")}</p>
-            <UsdtPrice amount={listing.priceUsdt ?? 0} className="mt-1 text-3xl font-bold tabular-nums" />
+            <Price amount={listing.priceUsdt ?? 0} className="mt-1 text-3xl font-bold tabular-nums" />
             <p className="mt-3 text-sm text-ink-2">{t("seller", { name: listing.seller })}</p>
             <EscrowBuy itemId={listing.id} priceUsdt={listing.priceUsdt ?? 0} />
             <ol className="mt-4 space-y-1.5 text-xs leading-relaxed text-ink-2">

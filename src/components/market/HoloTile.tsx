@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import CardArt from "./CardArt";
 import OnSolanaBadge from "@/components/web3/OnSolanaBadge";
-import UsdtPrice from "@/components/web3/UsdtPrice";
+import Price from "@/components/web3/Price";
 import type { Card } from "@/lib/cards";
 import { useChainState } from "@/lib/chain-client";
 
@@ -71,7 +71,7 @@ export default function HoloTile({ card }: { card: Card }) {
         {!chain ? (
           <span className="block h-5 w-20 animate-pulse rounded bg-surface-2" />
         ) : live?.listing ? (
-          <UsdtPrice amount={live.listing.priceUsdt} className="text-base font-bold tabular-nums" />
+          <Price amount={live.listing.priceUsdt} className="text-base font-bold tabular-nums" />
         ) : (
           <span className="text-sm text-ink-3">{tStatus(live?.burned ? "redeemed" : live?.redeeming ? "redeeming" : "vaulted")}</span>
         )}

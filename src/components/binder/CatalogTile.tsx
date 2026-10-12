@@ -6,7 +6,7 @@ import CardArt from "@/components/market/CardArt";
 import { Link } from "@/i18n/navigation";
 import { binderActions, useBinder } from "@/lib/binder";
 import { templateCard, type Template } from "@/lib/catalog";
-import { formatUsdt } from "@/lib/fx";
+import { formatPrice } from "@/lib/fx";
 import { useTemplateMarket, useVaultCards } from "@/lib/chain-client";
 
 // 圖鑑裡的一個卡款：標記「有 / 想要」，看真實在售數量和最低價
@@ -38,11 +38,11 @@ export default function CatalogTile({ template }: { template: Template }) {
         ) : market.forSale && market.fromUsdt !== null ? (
           market.vaultCardId ? (
             <Link href={`/card/${market.vaultCardId}`} className="text-accent-ink hover:underline">
-              {t("forSale", { count: market.forSale, price: formatUsdt(market.fromUsdt) })}
+              {t("forSale", { count: market.forSale, price: formatPrice(market.fromUsdt) })}
             </Link>
           ) : (
             <Link href={`/market?lane=free&q=${encodeURIComponent(`${template.member} ${template.version}`)}`} className="text-accent-ink hover:underline">
-              {t("forSale", { count: market.forSale, price: formatUsdt(market.fromUsdt) })}
+              {t("forSale", { count: market.forSale, price: formatPrice(market.fromUsdt) })}
             </Link>
           )
         ) : (

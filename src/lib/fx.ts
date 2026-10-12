@@ -7,4 +7,8 @@ export function formatStable(amount: number, symbol: string, fractionDigits = Nu
   })} ${symbol}`;
 }
 
-export const formatUsdt = (amount: number, fractionDigits?: number) => formatStable(amount, "USDT", fractionDigits);
+// 價格的計價幣種：每個部署按所在司法管轄區設定 NEXT_PUBLIC_CURRENCY（USDT、USDC 等美元穩定幣），留空為 USDT。
+// 金額本身是以美元穩定幣計的數字，換幣種不換算
+export const CURRENCY = process.env.NEXT_PUBLIC_CURRENCY || "USDT";
+
+export const formatPrice = (amount: number, fractionDigits?: number) => formatStable(amount, CURRENCY, fractionDigits);
