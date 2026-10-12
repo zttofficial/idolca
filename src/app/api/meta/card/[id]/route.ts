@@ -1,6 +1,7 @@
 import { SITE_URL } from "@/lib/server/chain";
 import { getDb } from "@/lib/server/db";
 import { getVaultRow, toCard } from "@/lib/server/vault-cards";
+import { gradeLabel } from "@/lib/grading";
 
 // 金庫卡 NFT 的元數據 JSON（Metaplex 標準），錢包和外部市場讀它顯示名稱、圖片和屬性
 export async function GET(_request: Request, ctx: RouteContext<"/api/meta/card/[id]">) {
@@ -21,7 +22,12 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/meta/card/[
       { trait_type: "Member", value: card.member },
       { trait_type: "Album", value: card.album },
       { trait_type: "Version", value: card.version },
-      ...(card.grade ? [{ trait_type: "Grade", value: String(card.grade) }] : []),
+      ...(card.grade
+        ? [
+            { trait_type: "Grade", value: gradeLabel(card.grade) },
+            { trait_type: "Grade Cert", value: card.grade.cert },
+          ]
+        : []),
       { trait_type: "Custody", value: "vault" },
       { trait_type: "Verification", value: "authentic" },
     ],

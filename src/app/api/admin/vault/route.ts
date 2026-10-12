@@ -6,6 +6,7 @@ import { saveUploads } from "@/lib/server/media";
 import { mintVaultNft } from "@/lib/server/chain";
 import { invalidateVaultCards, newVaultCardId, nextSerial, toCard } from "@/lib/server/vault-cards";
 import { RARITY_LIST, type Rarity } from "@/lib/cards";
+import { parseGrade } from "@/lib/grading";
 import { matchTemplate } from "@/lib/server/items";
 
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -23,10 +24,11 @@ export async function POST(request: Request) {
   const location = text(body.location, 40);
   const condition = text(body.condition, 300) || null;
   const rarity = body.rarity as Rarity;
-  const grade = body.grade === undefined || body.grade === null || body.grade === "" ? null : Number(body.grade);
+  const parsed = parseGrade(body);
   if (!group || !member || !album || !version || !location) return fail("missing_fields");
   if (!RARITY_LIST.includes(rarity)) return fail("invalid_rarity");
-  if (grade !== null && !(Number.isInteger(grade) && grade >= 1 && grade <= 10)) return fail("invalid_grade");
+  if ("error" in parsed) return fail(parsed.error);
+  const { grade } = parsed;
 
   let depositor: { id: string; wallet: string } | null = null;
   const who = text(body.depositor, 100);
@@ -66,7 +68,9 @@ export async function POST(request: Request) {
       album,
       version,
       rarity,
-      grade,
+      grader: grade?.grader ?? null,
+      grade: grade?.score ?? null,
+      gradeCert: grade?.cert ?? null,
       condition,
       imageFront: urls[0],
       imageBack: urls[1],

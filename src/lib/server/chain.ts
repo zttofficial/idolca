@@ -6,6 +6,7 @@ import { base58 } from "@metaplex-foundation/umi/serializers";
 import { burn, create, fetchAsset, fetchCollection, mplCore, transfer, update, updatePlugin } from "@metaplex-foundation/mpl-core";
 import { CHAIN } from "@/lib/chain";
 import { CLUSTER } from "@/lib/solana/config";
+import { GRADERS, type Grade } from "@/lib/grading";
 
 // 平台在鏈上的動作：鑄造收藏 NFT、把假卡寫進鏈上並凍結。平台金鑰只在伺服器上：
 // 線上放在 PLATFORM_SECRET_KEY（64 個數字的 JSON 陣列），本機也可以用 PLATFORM_KEYPAIR 指向金鑰檔
@@ -86,7 +87,7 @@ export async function markFakeOnChain(assetAddress: string, attrs: CollectorAttr
   return base58.deserialize(signature)[0];
 }
 
-export type VaultAttributes = { serial: string; group: string; member: string; album: string; version: string; rarity: string; grade: number | null; location: string; intakeDate: string };
+export type VaultAttributes = { serial: string; group: string; member: string; album: string; version: string; rarity: string; grade: Grade | null; location: string; intakeDate: string };
 
 // 實物入庫鑑定通過後鑄造金庫 NFT：持有人是寄存人的錢包，平台自有庫存（卡包卡池）鑄給平台錢包。
 // 屬性寫進 Attributes 插件，元數據指向 /api/meta/card/{id}
@@ -102,7 +103,9 @@ export async function mintVaultNft(cardId: string, card: VaultAttributes, owner:
     ["album", card.album],
     ["version", card.version],
     ["rarity", card.rarity],
-    ["grade", card.grade ? String(card.grade) : ""],
+    ["grader", card.grade ? (GRADERS.find((g) => g.id === card.grade!.grader)?.name ?? "") : ""],
+    ["grade", card.grade ? String(card.grade.score) : ""],
+    ["grade_cert", card.grade?.cert ?? ""],
     ["location", card.location],
     ["intake_date", card.intakeDate],
     ["custody", "vault"],

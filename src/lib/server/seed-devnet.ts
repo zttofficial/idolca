@@ -16,7 +16,6 @@ type Sample = {
   album: string;
   version: string;
   rarity: string;
-  grade?: number;
   intakeDate: string;
   location: string;
   image: { front: string };
@@ -31,7 +30,6 @@ const SAMPLES: Sample[] = [
     album: "I've IVE",
     version: "Fansign Event",
     rarity: "fansign",
-    grade: 10,
     intakeDate: "2026-07-14",
     location: "SEL-A03-12",
     image: { front: sampleImage("c1") },
@@ -44,7 +42,6 @@ const SAMPLES: Sample[] = [
     album: "Armageddon",
     version: "Ktown4u POB",
     rarity: "pob",
-    grade: 9,
     intakeDate: "2026-07-21",
     location: "SEL-A03-18",
     image: { front: sampleImage("c2") },
@@ -81,7 +78,6 @@ const SAMPLES: Sample[] = [
     album: "NA",
     version: "Soundwave POB",
     rarity: "pob",
-    grade: 10,
     intakeDate: "2026-08-19",
     location: "SEL-A07-22",
     image: { front: sampleImage("c5") },
@@ -118,7 +114,6 @@ const SAMPLES: Sample[] = [
     album: "BORN TO BE",
     version: "Lucky Draw Round 2",
     rarity: "luckydraw",
-    grade: 9,
     intakeDate: "2026-09-26",
     location: "SEL-C05-02",
     image: { front: sampleImage("c8") },
@@ -143,7 +138,6 @@ const SAMPLES: Sample[] = [
     album: "Armageddon",
     version: "Fansign Event",
     rarity: "fansign",
-    grade: 10,
     intakeDate: "2026-09-15",
     location: "SEL-A01-03",
     image: { front: sampleImage("c10") },
@@ -156,7 +150,6 @@ const SAMPLES: Sample[] = [
     album: "BORN TO BE",
     version: "Soundwave POB",
     rarity: "pob",
-    grade: 9,
     intakeDate: "2026-09-18",
     location: "SEL-C01-07",
     image: { front: sampleImage("c11") },
@@ -181,7 +174,6 @@ const SAMPLES: Sample[] = [
     album: "I've IVE",
     version: "Ktown4u POB",
     rarity: "pob",
-    grade: 10,
     intakeDate: "2026-09-22",
     location: "SEL-A04-02",
     image: { front: sampleImage("c13") },
@@ -194,7 +186,6 @@ const SAMPLES: Sample[] = [
     album: "EASY",
     version: "Lucky Draw Round 2",
     rarity: "luckydraw",
-    grade: 9,
     intakeDate: "2026-09-25",
     location: "SEL-B03-19",
     image: { front: sampleImage("c14") },
@@ -219,7 +210,6 @@ const SAMPLES: Sample[] = [
     album: "Get Up",
     version: "Fansign Event",
     rarity: "fansign",
-    grade: 10,
     intakeDate: "2026-09-29",
     location: "SEL-A02-08",
     image: { front: sampleImage("c16") },
@@ -232,7 +222,6 @@ const SAMPLES: Sample[] = [
     album: "Get Up",
     version: "Photobook Ver.",
     rarity: "album",
-    grade: 9,
     intakeDate: "2026-10-01",
     location: "SEL-A02-14",
     image: { front: sampleImage("c17") },
@@ -257,7 +246,6 @@ const SAMPLES: Sample[] = [
     album: "ATE",
     version: "Lucky Draw Round 2",
     rarity: "luckydraw",
-    grade: 10,
     intakeDate: "2026-10-06",
     location: "SEL-C04-09",
     image: { front: sampleImage("c19") },
@@ -300,7 +288,6 @@ export async function seedDevnetVault(db: Db) {
       album: c.album,
       version: c.version,
       rarity: c.rarity,
-      grade: c.grade ?? null,
       imageFront: c.image.front,
       location: c.location,
       intakeDate: c.intakeDate,

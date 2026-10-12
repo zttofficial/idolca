@@ -20,7 +20,7 @@ const HoloCard3D = dynamic(() => import("./HoloCard3D"), {
 function pickHero(cards: Card[]) {
   return cards
     .filter((c) => c.image)
-    .sort((a, b) => RARITY_LIST.indexOf(b.rarity) - RARITY_LIST.indexOf(a.rarity) || (b.grade ?? 0) - (a.grade ?? 0) || a.intakeDate.localeCompare(b.intakeDate))
+    .sort((a, b) => RARITY_LIST.indexOf(b.rarity) - RARITY_LIST.indexOf(a.rarity) || (b.grade?.score ?? 0) - (a.grade?.score ?? 0) || a.intakeDate.localeCompare(b.intakeDate))
     .slice(0, 3);
 }
 

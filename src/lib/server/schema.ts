@@ -1,4 +1,4 @@
-import { integer, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+import { integer, pgTable, primaryKey, real, text, timestamp } from "drizzle-orm/pg-core";
 
 // 兩種登入方式：郵箱 + 密碼（不懂加密的粉絲），或錢包簽名（加密用戶）。至少有其中一種
 export const users = pgTable("users", {
@@ -126,8 +126,10 @@ export const vaultCards = pgTable("vault_cards", {
   version: text("version").notNull(),
   // album / pob / luckydraw / fansign（見 src/lib/cards.ts）
   rarity: text("rarity").notNull(),
-  // 鑑定評級（1–10），沒有送評的卡為空
-  grade: integer("grade"),
+  // 外部評級機構（src/lib/grading.ts）、分數（1–10，可以有 .5）和鑑定編號；沒有送評的卡三項都空
+  grader: text("grader"),
+  grade: real("grade"),
+  gradeCert: text("grade_cert"),
   // 入庫時記錄的品相說明
   condition: text("condition"),
   // 入庫時拍的正反面，/api/media 的網址
@@ -417,7 +419,7 @@ export const BOOTSTRAP_SQL = [
     album text NOT NULL,
     version text NOT NULL,
     rarity text NOT NULL,
-    grade integer,
+    grade real,
     condition text,
     image_front text,
     image_back text,
@@ -433,6 +435,11 @@ export const BOOTSTRAP_SQL = [
   `ALTER TABLE vault_cards ADD COLUMN IF NOT EXISTS pack_tier text`,
   `ALTER TABLE vault_cards ADD COLUMN IF NOT EXISTS pack_value_cents integer`,
   `ALTER TABLE vault_cards ADD COLUMN IF NOT EXISTS pack_order text`,
+  `ALTER TABLE vault_cards ALTER COLUMN grade TYPE real`,
+  `ALTER TABLE vault_cards ADD COLUMN IF NOT EXISTS grader text`,
+  `ALTER TABLE vault_cards ADD COLUMN IF NOT EXISTS grade_cert text`,
+  // 早期的評級欄位只有分數、沒記是哪家機構評的，這種分數不顯示
+  `UPDATE vault_cards SET grade = NULL WHERE grader IS NULL AND grade IS NOT NULL`,
   `CREATE TABLE IF NOT EXISTS packs (
     id text PRIMARY KEY,
     name text NOT NULL,
