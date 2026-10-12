@@ -1,10 +1,10 @@
 # Idolca
 
-K-pop 小卡鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Solana 上對應一個 Metaplex Core NFT，以 USDT 結算，銷毀 NFT 即可提貨。
+K-pop 小卡鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Solana 上對應一個 Metaplex Core NFT，銷毀 NFT 即可提貨。價格標 USD，用 Solana 上的 USDT 或 Arc 上的 USDC 付款。
 
 English: [README.md](README.md)
 
-市場調研和競品分析見 [docs/research.md](docs/research.md)，技術選型和各功能的規則見 [docs/tech-stack.md](docs/tech-stack.md)，已實施的功能、代碼地圖、環境和待辦見 [docs/status.md](docs/status.md)，命名方案見 [docs/naming.md](docs/naming.md)。
+市場調研和競品分析見 [docs/research.md](docs/research.md)，技術選型和各功能的規則見 [docs/tech-stack.md](docs/tech-stack.md)，商業模式見 [docs/business.md](docs/business.md)，Arc 結算通道見 [docs/arc.md](docs/arc.md)，已實施的功能、代碼地圖、環境和待辦見 [docs/status.md](docs/status.md)，命名方案見 [docs/naming.md](docs/naming.md)。
 
 ## 開發
 

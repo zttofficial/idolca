@@ -85,7 +85,7 @@
   - 一邊賣掉的卡，另一邊的資料庫不知道；卡包的剩餘張數按鏈上狀態核過，所以只會顯示成已抽走，不會賣出去。
   - 要徹底分開，測試環境要有自己的平台錢包、一組集合，再部署一份託管程序（一份程序只有一個設定）。收藏集合裡的孤兒卡可以用集合的 PermanentTransferDelegate 收回再銷毀，金庫集合裡的平台動不了。
 - **Vercel 預覽部署連的是正式資料庫**：資料庫變數同時設在 Production 和 Preview。非 main 的分支推上去會建預覽部署，有人打開時會在正式資料庫上跑建表語句。要改成 Neon 給每個預覽部署開分支，或從 Preview 拿掉資料庫變數。
-- **用戶錢包連在主網時看不到 devnet 資產**：Phantom 要在開發者設定裡開測試網模式並選 Devnet，Solflare 在網路設定裡選 Devnet。登入框和 README 還沒有這個提示。
+- **用戶錢包連在主網時看不到 devnet 資產**：Phantom 要在開發者設定裡開測試網模式並選 Devnet，Solflare 在網路設定裡選 Devnet。README 的 Try it 寫了，登入框還沒有這個提示。
 - **線上管理員是測試錢包**：要換成用戶自己的錢包（`ADMIN_WALLETS` 或 `npm run admin:grant`）。Vercel 上的舊變數 `ADMIN_TOKEN` 已不再使用，可以刪掉。
 - **榜單數據**：讀 Circle Chart 網頁用的接口，正式營運前要換授權來源。
 - **團體名錄**：122 個團體裡 64 個附成員，其餘只有團名。
