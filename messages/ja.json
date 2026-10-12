@@ -32,7 +32,8 @@
     "packs": "ミステリーパック",
     "catalog": "図鑑",
     "binder": "コレクション",
-    "charts": "チャート"
+    "charts": "チャート",
+    "grading": "グレーディング"
   },
   "Hero": {
     "badge": "一枚ずつ鑑定 · 世界中で取引 · いつでもお届け",
@@ -131,14 +132,16 @@
     "ungraded": "未グレーディング",
     "inHouseGrade": "Idolca 自社グレード（第三者機関ではありません）",
     "intakeDate": "保管開始日",
-    "condition": "状態"
+    "condition": "状態",
+    "whatIsIdg": "IDG とは？"
   },
   "Footer": {
     "credits": "画像クレジット",
     "textDevnet": "© 2026 Idolca · Solana Devnet · テスト取引はテスト USDT を使用し、実際の資金は動きません",
     "textMainnet": "© 2026 Idolca · Solana",
     "terms": "利用規約",
-    "privacy": "プライバシー"
+    "privacy": "プライバシー",
+    "grading": "IDG グレーディング"
   },
   "NotFound": {
     "title": "ページが見つかりません",
@@ -169,13 +172,10 @@
     "redeemedNote": "このカードは所有者に発送済みです。デジタルコレクティブルは廃止されました。",
     "redeemingMine": "このカードの発送を申請済みです。発送までデジタルコレクティブルはロックされます。",
     "yourListing": "あなたの出品です。売れるまでデジタルコレクティブルはエスクローで保管されます。",
-    "cancelListing": "出品を取り消す",
     "confirmInWallet": "ウォレットで確認してください…",
     "buyNowFor": "{price} で今すぐ購入",
     "linkWalletToBuy": "購入するにはアカウントメニューからウォレットを連携してください。",
     "youOwn": "あなたのカードです。出品するか、引き出して発送できます。",
-    "listPrice": "出品価格",
-    "listForSale": "出品",
     "requestRedeem": "引き出しを申請（発送）",
     "holder": "保有者：",
     "you": "あなた",
@@ -358,7 +358,6 @@
     "notMinted": "バインダーに記録済み。手元のカードを撮影すれば、永久に記録が残るデジタルコレクティブルになります。",
     "mint": "デジタルコレクティブルにする",
     "sendToVault": "保管庫に送って鑑定・取引",
-    "close": "閉じる",
     "complete": "コンプリート！",
     "promoKicker": "コレクション",
     "promoTitle": "ずっと残るバインダー",
@@ -444,12 +443,17 @@
     "resetLayout": "最初の並びに戻す",
     "resetLayoutConfirm": "すべてのカードをバインダーに戻し、最初の並びにしますか？",
     "trackedOnly": "記録のみ",
-    "removeFromBinder": "バインダーから外す"
+    "removeFromBinder": "バインダーから外す",
+    "vaultListingNote": "出品するとデジタルコレクティブルはオンチェーンのエスクローに移り、カードは金庫に残ります。購入者の支払いとコレクティブルはワンステップで交換されます。価格変更は出品を取り消して出し直すため、ウォレットで 2 回署名します。",
+    "listingError": "出品を更新できませんでした。もう一度お試しください。",
+    "filterLabel": "表示",
+    "filterAll": "すべて",
+    "filterListed": "販売中 {count}",
+    "listedEmpty": "販売中のカードはありません。"
   },
   "Mint": {
     "title": "手元のカードをデジタルコレクティブルに",
     "subtitle": "表と裏を撮って名前を入れるだけ。図鑑にないカードでも、セットでも大丈夫です。",
-    "close": "閉じる",
     "choosePhoto": "カードの表面を撮影・アップロード",
     "retake": "写真を変更",
     "group": "グループ",
@@ -499,7 +503,6 @@
   },
   "Auth": {
     "login": "ログイン",
-    "close": "閉じる",
     "signupTitle": "アカウントを作成",
     "loginTitle": "おかえりなさい",
     "subtitle": "K-POP トレカを集めて、整理して、取引しよう。",
@@ -525,7 +528,6 @@
     "switchToSignup": "アカウントを作成",
     "myBinder": "マイコレクション",
     "walletTitle": "コレクション用ウォレット",
-    "walletBody": "ログインに使ったウォレットです。鍵を持っているのはあなただけで、作成・購入したコレクティブルは直接ここに届きます。",
     "balance": "残高",
     "copy": "コピー",
     "copied": "コピーしました",
@@ -538,12 +540,6 @@
     "error_wallet": "ウォレットでのログインに失敗しました。もう一度お試しください。",
     "walletAccount": "ウォレットでログイン中",
     "custodyBody": "作成したコレクティブルは Idolca がお預かりします。ウォレットでログインすると、ご自身で保管できます。",
-    "testUsdt": "テスト USDT",
-    "faucet": "devnet のテスト資金を受け取る",
-    "faucetBusy": "送金中…",
-    "faucet_done": "0.02 SOL と 500 テスト USDT をウォレットに送りました。",
-    "faucet_cooldown": "数分後にもう一度受け取れます。",
-    "faucet_error": "テスト資金を送れませんでした。もう一度お試しください。",
     "linkTitle": "ウォレットを連携",
     "linkBody": "売買はウォレットで署名します。このアカウントにウォレットを連携しても、カードやメールでのログインはそのままです。",
     "error_wallet_taken": "このウォレットは別のアカウントで使われています。",
@@ -552,7 +548,16 @@
     "admin": "管理画面",
     "agree": "続行すると<terms>利用規約</terms>と<privacy>プライバシーポリシー</privacy>に同意したことになります。",
     "error_rate_limited": "試行回数が多すぎます。数分待ってからお試しください。",
-    "getWallet": "ウォレットを入手"
+    "getWallet": "ウォレットを入手",
+    "forSale": "販売中",
+    "myOrders": "注文",
+    "editName": "名前を変更",
+    "saveName": "保存",
+    "nameHint": "2〜24 文字。出品に表示されます。",
+    "nameError": "名前は 2〜24 文字にしてください。",
+    "arcTitle": "Arc の USDC",
+    "arcConnect": "ウォレットを接続して残高を見る",
+    "arcNoWallet": "このブラウザに EVM ウォレット（MetaMask など）が見つかりません。Arc での支払いに使います。"
   },
   "Source": {
     "album": "アルバム",
@@ -575,7 +580,6 @@
     "sellYours": "カードを出品する",
     "breadcrumb": "個人出品",
     "price": "価格",
-    "seller": "出品者：{name}",
     "step1": "支払いは Idolca が預かり、出品者には渡りません。",
     "step2": "出品者が実物のカードを発送します。",
     "step3": "届いて写真どおりだと確認すると、出品者に代金が支払われ、デジタルコレクティブルがあなたに移ります。",
@@ -600,7 +604,12 @@
     "error_payment_not_found": "お支払いが見つかりません。ウォレットに十分な USDT と SOL があるか確認してください。",
     "error_wallet_not_found": "このアカウントに連携したウォレットを開いて、もう一度お試しください。",
     "sellerNotes": "出品者より",
-    "ownListing": "あなた自身の出品です。コレクションブックから管理できます。"
+    "ownListing": "あなた自身の出品です。コレクションブックから管理できます。",
+    "sellerWallet": "ウォレット連携済み",
+    "sellerJoined": "{date} に参加",
+    "sellerSales": "{count} 件成約",
+    "sellerActive": "{count} 件販売中",
+    "sellerMore": "{name} のほかの出品"
   },
   "Admin": {
     "title": "管理コンソール",
@@ -704,7 +713,6 @@
   "Pay": {
     "title": "支払い方法を選択",
     "total": "合計 {amount}",
-    "close": "閉じる",
     "back": "戻る",
     "waiting": "ウォレットで確認して、少々お待ちください…",
     "chooseWallet": "ウォレットを選択",
@@ -722,5 +730,51 @@
     "error_authorization_expired": "支払いリクエストの有効期限が切れました。もう一度お試しください。",
     "error_authorization_rejected": "署名が支払い内容と一致しないか、ウォレットの Arc 上の USDC が不足しています。",
     "error_generic": "支払いに失敗しました。もう一度お試しください。"
+  },
+  "Common": {
+    "close": "閉じる"
+  },
+  "Grading": {
+    "metaTitle": "IDG フォトカードグレーディング",
+    "metaDescription": "Idolca Grading（IDG）は K-POP フォトカードを人の目で鑑定し、4 つの基準で採点して、グレードを付けたカードすべてに公開記録を残します。",
+    "eyebrow": "Idolca Grading · IDG",
+    "title": "すべてのフォトカードに、身分証を",
+    "subtitle": "IDG は Idolca の金庫にあるフォトカードのためのグレーディングです。人の目で真贋を鑑定し、4 つの基準で採点して、誰でも確認できる公開記録を残します。",
+    "whyTitle": "フォトカードに専用のグレーディングが必要な理由",
+    "why1Title": "大手の鑑定会社はフォトカード向けではない",
+    "why1Body": "一般的な鑑定は 1 枚数十ドル、数か月待ちで、多くのフォトカードの価値を上回ります。",
+    "why2Title": "ほとんどのグレードは確認できない",
+    "why2Body": "一部の大手を除けば、グレードはスリーブのラベルにすぎず、ほかのサイトの購入者は照会できません。",
+    "why3Title": "偽物は場所を変えて出回る",
+    "why3Body": "共通の記録がなければ、同じカードが別のサイトで別の説明とともに出品されます。",
+    "howTitle": "IDG の流れ",
+    "step1Title": "金庫で鑑定",
+    "step1Body": "カードを Idolca の金庫に送り、人の目で確認します。本物だけがグレーディングされます。",
+    "step2Title": "4 つの基準で採点",
+    "step2Body": "センタリング、角、エッジ、表面。1〜10 点、0.5 刻み。",
+    "step3Title": "金庫番号が証明書番号",
+    "step3Body": "グレード付きのカードは IC- 番号をずっと使い、スリーブのラベルに印字されます。",
+    "step4Title": "公開記録",
+    "step4Body": "グレードはカードのデジタルコレクティブルに書き込まれ、カードページに実物写真とオンチェーン履歴とともに表示されます。",
+    "scaleTitle": "グレードの見方",
+    "scaleBody": "段階の間に 0.5 点があります（例：IDG 9.5）。",
+    "scale10": "Gem Mint：肉眼で欠点なし",
+    "scale9": "Mint：よく見ると小さな欠点が 1 つ",
+    "scale8": "Near Mint–Mint：角か辺の 1 か所に軽い擦れ",
+    "scale7": "Near Mint：角や辺にわずかな擦れ",
+    "scale6": "Excellent–Mint：目に見える擦れ、または小さな印刷ミス",
+    "scale5": "Excellent：複数の角に擦れ",
+    "scale4": "Very Good–Excellent：目立つ角の丸まりや傷",
+    "scale3": "Very Good：強い擦れ",
+    "scale2": "Good：折れや汚れ",
+    "scale1": "Poor：大きな損傷",
+    "thirdTitle": "ほかで鑑定済みなら",
+    "thirdBody": "{graders} のグレードも、鑑定会社と証明書番号つきで登録します。PSA と CGC の番号は公式の照会ページにリンクします。",
+    "honestTitle": "自社グレードであることを明示",
+    "honestBody": "IDG は Idolca の自社グレーディングで、Idolca はカードの販売もしています。そのため IDG のグレードはカードページで自社のものと明記し、第三者のグレードとは分けて表示し、誰でも見比べられる実物写真を添えています。",
+    "ctaTitle": "あなたのカードに IDG グレードを",
+    "ctaBody": "コレクションブックからカードを金庫へ送ってください。鑑定が済めばグレードが付き、その後は発送なしで取引できます。",
+    "ctaBinder": "カードを金庫に送る",
+    "ctaVault": "金庫を見る"
   }
 }

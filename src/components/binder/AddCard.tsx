@@ -13,6 +13,7 @@ import Select from "@/components/ui/Select";
 import { mintItem, type CollectorItem } from "@/lib/items";
 import { solscanUrl } from "@/lib/solana/config";
 import { CARD_SOURCES, type CardSource } from "@/lib/sources";
+import { CloseButton } from "@/components/ui/Dialog";
 
 // 「新增我的卡」= 自由上鏈：拍正反面（可以再補幾張）、選來源、填名字、上鏈，可以順手標價刊登。
 // 一則可以是一張卡，也可以是一組卡。平台不查驗：新卡一律「待驗證」，刊登時買家看到免責聲明。可以從任何頁面打開
@@ -114,9 +115,7 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
             <h2 className="text-xl font-bold">{t("title")}</h2>
             <p className="mt-1 text-sm text-ink-2">{t("subtitle")}</p>
           </div>
-          <button onClick={onClose} className="shrink-0 rounded-full border border-line px-3 py-1 text-xs text-ink-2 hover:bg-surface-2">
-            {t("close")}
-          </button>
+          <CloseButton onClick={onClose} className="shrink-0" />
         </div>
 
         <div className="mt-6 grid gap-6 sm:grid-cols-[230px_1fr]">

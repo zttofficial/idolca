@@ -116,3 +116,11 @@ export async function arcPayout(to: string, amountCents: number) {
   if (receipt.status !== "success") throw new ArcPaymentError("payout_failed");
   return hash;
 }
+
+// 某個地址在 Arc 上的 USDC 餘額（ERC-20 介面，6 位小數），換成 USDC 數字。唯讀，不需要平台金鑰
+export async function arcUsdcBalance(address: `0x${string}`) {
+  if (!ARC) throw new ArcPaymentError("not_configured");
+  const pub = createPublicClient({ transport: http(process.env.ARC_RPC_URL || ARC.rpc) });
+  const raw = await pub.readContract({ address: ARC_USDC.address, abi: USDC_ABI, functionName: "balanceOf", args: [getAddress(address)] });
+  return Number(raw) / 10 ** ARC_USDC.decimals;
+}

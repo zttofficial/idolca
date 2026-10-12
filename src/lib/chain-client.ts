@@ -105,6 +105,12 @@ export async function vaultAction(action: VaultAction, cardId: string, wallet: s
   return signature;
 }
 
+// 金庫卡上架或改價。託管程序沒有改價：改價是先取消掛單，再用新價格掛單，錢包簽兩次
+export async function listVaultCard(cardId: string, wallet: string, priceUsdt: number, relist: boolean) {
+  if (relist) await vaultAction("cancel", cardId, wallet);
+  return vaultAction("list", cardId, wallet, priceUsdt);
+}
+
 // 付款類動作（擔保交易、開卡包）：先建訂單拿到付款交易，簽名送出後回報確認
 export async function payAndConfirm<T>(createUrl: string, createBody: unknown, confirmUrl: (id: string) => string, wallet: string) {
   const order = await postJson<{ id: string; tx: string }>(createUrl, createBody);
@@ -122,7 +128,6 @@ export async function payOnArc<T extends { payTx: string }>(createUrl: string, c
   return { payTx: result.payTx, result };
 }
 
-export const claimFaucet = () => postJson<{ tx: string; sol: number; usdt: number }>("/api/chain/faucet");
 export const postAction = postJson;
 
 export function useBalance(wallet: string | null | undefined) {

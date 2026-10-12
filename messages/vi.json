@@ -32,7 +32,8 @@
     "packs": "Túi bí ẩn",
     "catalog": "Bách khoa thẻ",
     "binder": "Album sưu tầm",
-    "charts": "Bảng xếp hạng"
+    "charts": "Bảng xếp hạng",
+    "grading": "Chấm điểm"
   },
   "Hero": {
     "badge": "Kiểm định từng thẻ · Giao dịch toàn cầu · Gửi về tận nhà",
@@ -131,14 +132,16 @@
     "ungraded": "Chưa chấm điểm",
     "inHouseGrade": "Điểm do Idolca tự chấm, không phải đơn vị bên thứ ba",
     "intakeDate": "Ngày nhập kho",
-    "condition": "Tình trạng"
+    "condition": "Tình trạng",
+    "whatIsIdg": "IDG là gì?"
   },
   "Footer": {
     "credits": "Nguồn hình ảnh",
     "textDevnet": "© 2026 Idolca · Solana Devnet · Giao dịch thử dùng USDT thử, không có tiền thật",
     "textMainnet": "© 2026 Idolca · Solana",
     "terms": "Điều khoản",
-    "privacy": "Quyền riêng tư"
+    "privacy": "Quyền riêng tư",
+    "grading": "Chấm điểm IDG"
   },
   "NotFound": {
     "title": "Không tìm thấy trang",
@@ -169,13 +172,10 @@
     "redeemedNote": "Thẻ này đã được gửi cho chủ sở hữu. Vật phẩm sưu tầm số đã bị hủy.",
     "redeemingMine": "Bạn đã yêu cầu gửi thẻ này. Vật phẩm sưu tầm số bị khóa cho đến khi gửi.",
     "yourListing": "Đây là tin đăng của bạn. Vật phẩm sưu tầm số được giữ ký quỹ cho đến khi bán.",
-    "cancelListing": "Hủy đăng bán",
     "confirmInWallet": "Hãy xác nhận trong ví…",
     "buyNowFor": "Mua ngay với giá {price}",
     "linkWalletToBuy": "Liên kết ví trong menu tài khoản để mua.",
     "youOwn": "Thẻ này là của bạn. Có thể đăng bán hoặc yêu cầu gửi về.",
-    "listPrice": "Giá đăng bán",
-    "listForSale": "Đăng bán",
     "requestRedeem": "Yêu cầu rút thẻ (gửi cho tôi)",
     "holder": "Người giữ:",
     "you": "bạn",
@@ -358,7 +358,6 @@
     "notMinted": "Đã ghi trong sổ. Thêm ảnh thẻ của bạn để tạo vật phẩm sưu tầm số với hồ sơ vĩnh viễn.",
     "mint": "Tạo vật phẩm sưu tầm số",
     "sendToVault": "Gửi vào kho để xác thực và giao dịch",
-    "close": "Đóng",
     "complete": "Đủ bộ!",
     "promoKicker": "ALBUM SƯU TẦM",
     "promoTitle": "Cuốn sổ lưu giữ mãi mãi",
@@ -444,12 +443,17 @@
     "resetLayout": "Về thứ tự mặc định",
     "resetLayoutConfirm": "Đặt tất cả thẻ trở lại binder theo thứ tự mặc định?",
     "trackedOnly": "Chỉ ghi lại",
-    "removeFromBinder": "Gỡ khỏi binder"
+    "removeFromBinder": "Gỡ khỏi binder",
+    "vaultListingNote": "Khi đăng bán, vật phẩm sưu tầm số chuyển vào ký quỹ trên chuỗi, thẻ vẫn nằm trong kho. Tiền của người mua và vật phẩm được đổi trong một bước. Đổi giá sẽ hủy rồi đăng lại nên ví cần ký hai lần.",
+    "listingError": "Không cập nhật được tin đăng. Vui lòng thử lại.",
+    "filterLabel": "Hiển thị",
+    "filterAll": "Tất cả",
+    "filterListed": "Đang bán {count}",
+    "listedEmpty": "Hiện không có thẻ nào đang bán."
   },
   "Mint": {
     "title": "Tạo vật phẩm sưu tầm số cho thẻ của bạn",
     "subtitle": "Chụp mặt trước và mặt sau rồi đặt tên. Không cần có trong danh mục, cả một bộ thẻ cũng được.",
-    "close": "Đóng",
     "choosePhoto": "Chụp hoặc tải lên mặt trước của thẻ",
     "retake": "Đổi ảnh",
     "group": "Nhóm",
@@ -499,7 +503,6 @@
   },
   "Auth": {
     "login": "Đăng nhập",
-    "close": "Đóng",
     "signupTitle": "Tạo tài khoản",
     "loginTitle": "Chào mừng trở lại",
     "subtitle": "Sưu tầm, quản lý và giao dịch photocard K-pop.",
@@ -525,7 +528,6 @@
     "switchToSignup": "Tạo tài khoản",
     "myBinder": "Album sưu tầm của tôi",
     "walletTitle": "Ví sưu tầm của bạn",
-    "walletBody": "Ví bạn dùng để đăng nhập. Chỉ bạn giữ chìa khóa, và vật phẩm bạn tạo hoặc mua sẽ vào thẳng đây.",
     "balance": "Số dư",
     "copy": "Sao chép",
     "copied": "Đã sao chép",
@@ -538,12 +540,6 @@
     "error_wallet": "Đăng nhập bằng ví thất bại. Hãy thử lại.",
     "walletAccount": "Đã đăng nhập bằng ví",
     "custodyBody": "Vật phẩm bạn tạo được Idolca giữ hộ. Đăng nhập bằng ví để tự giữ.",
-    "testUsdt": "USDT thử nghiệm",
-    "faucet": "Nhận tiền thử nghiệm devnet",
-    "faucetBusy": "Đang gửi…",
-    "faucet_done": "Đã gửi 0,02 SOL và 500 USDT thử nghiệm vào ví của bạn.",
-    "faucet_cooldown": "Vài phút nữa bạn mới nhận lại được.",
-    "faucet_error": "Không gửi được tiền thử nghiệm. Hãy thử lại.",
     "linkTitle": "Liên kết ví",
     "linkBody": "Mua bán cần ký bằng ví. Liên kết ví với tài khoản này; thẻ và đăng nhập bằng email vẫn giữ nguyên.",
     "error_wallet_taken": "Ví này đã được dùng cho tài khoản khác.",
@@ -552,7 +548,16 @@
     "admin": "Quản trị",
     "agree": "Tiếp tục nghĩa là bạn đồng ý với <terms>Điều khoản dịch vụ</terms> và <privacy>Chính sách quyền riêng tư</privacy>.",
     "error_rate_limited": "Thử quá nhiều lần. Hãy đợi vài phút rồi thử lại.",
-    "getWallet": "Tải ví"
+    "getWallet": "Tải ví",
+    "forSale": "Đang bán",
+    "myOrders": "Đơn hàng của tôi",
+    "editName": "Đổi tên",
+    "saveName": "Lưu",
+    "nameHint": "2–24 ký tự. Người mua sẽ thấy trên tin đăng của bạn.",
+    "nameError": "Tên cần 2–24 ký tự.",
+    "arcTitle": "USDC trên Arc",
+    "arcConnect": "Kết nối ví để xem số dư",
+    "arcNoWallet": "Trình duyệt này không có ví EVM (như MetaMask). Thanh toán trên Arc cần dùng nó."
   },
   "Source": {
     "album": "Album",
@@ -575,7 +580,6 @@
     "sellYours": "Đăng bán thẻ của bạn",
     "breadcrumb": "Người bán tự đăng",
     "price": "Giá",
-    "seller": "Người bán: {name}",
     "step1": "Tiền của bạn do Idolca giữ, người bán chưa nhận được.",
     "step2": "Người bán gửi thẻ thật.",
     "step3": "Khi bạn xác nhận đã nhận và đúng như ảnh, người bán được trả tiền và vật phẩm sưu tầm số chuyển sang bạn.",
@@ -600,7 +604,12 @@
     "error_payment_not_found": "Không tìm thấy khoản thanh toán. Hãy kiểm tra ví có đủ USDT và SOL.",
     "error_wallet_not_found": "Mở ví đã liên kết với tài khoản này rồi thử lại.",
     "sellerNotes": "Từ người bán",
-    "ownListing": "Đây là tin đăng của chính bạn. Quản lý trong sổ sưu tập."
+    "ownListing": "Đây là tin đăng của chính bạn. Quản lý trong sổ sưu tập.",
+    "sellerWallet": "Đã liên kết ví",
+    "sellerJoined": "Tham gia {date}",
+    "sellerSales": "Đã bán {count}",
+    "sellerActive": "Đang bán {count}",
+    "sellerMore": "Tin đăng khác của {name}"
   },
   "Admin": {
     "title": "Trang quản trị",
@@ -704,7 +713,6 @@
   "Pay": {
     "title": "Chọn cách thanh toán",
     "total": "Tổng {amount}",
-    "close": "Đóng",
     "back": "Quay lại",
     "waiting": "Xác nhận trong ví rồi chờ một chút…",
     "chooseWallet": "Chọn ví",
@@ -722,5 +730,51 @@
     "error_authorization_expired": "Yêu cầu thanh toán đã hết hạn. Vui lòng thử lại.",
     "error_authorization_rejected": "Chữ ký không khớp với khoản thanh toán, hoặc ví không đủ USDC trên Arc.",
     "error_generic": "Thanh toán không thành công. Vui lòng thử lại."
+  },
+  "Common": {
+    "close": "Đóng"
+  },
+  "Grading": {
+    "metaTitle": "Chấm điểm photocard IDG",
+    "metaDescription": "Idolca Grading (IDG) giám định photocard K-pop bằng mắt người, chấm theo bốn tiêu chí và lưu hồ sơ công khai cho mọi thẻ đã chấm.",
+    "eyebrow": "Idolca Grading · IDG",
+    "title": "Mỗi photocard đều có căn cước",
+    "subtitle": "IDG là hệ thống chấm điểm của Idolca cho photocard trong kho. Mỗi thẻ được giám định thật giả bằng mắt người, chấm theo bốn tiêu chí và có hồ sơ công khai ai cũng kiểm tra được.",
+    "whyTitle": "Vì sao photocard cần cách chấm riêng",
+    "why1Title": "Các hãng chấm điểm lớn không dành cho photocard",
+    "why1Body": "Chấm điểm phổ thông tốn vài chục đô mỗi thẻ và chờ hàng tháng, đắt hơn giá trị của phần lớn photocard.",
+    "why2Title": "Phần lớn điểm không tra được",
+    "why2Body": "Ngoài vài hãng lớn, điểm chỉ là nhãn trên bao thẻ, người mua ở nền tảng khác không có cách tra cứu.",
+    "why3Title": "Hàng giả đổi chỗ bán tiếp",
+    "why3Body": "Không có hồ sơ chung, cùng một thẻ có thể được đăng lại ở bất cứ đâu với câu chuyện khác.",
+    "howTitle": "IDG hoạt động thế nào",
+    "step1Title": "Giám định trong kho",
+    "step1Body": "Thẻ được gửi vào kho Idolca và kiểm tra bằng mắt người. Chỉ thẻ thật mới được chấm điểm.",
+    "step2Title": "Chấm theo bốn tiêu chí",
+    "step2Body": "Căn giữa, góc, cạnh và bề mặt, từ 1 đến 10, bước 0,5.",
+    "step3Title": "Số kho chính là số chứng nhận",
+    "step3Body": "Thẻ đã chấm giữ số IC- suốt đời, in trên nhãn bao thẻ.",
+    "step4Title": "Hồ sơ công khai",
+    "step4Body": "Điểm được ghi vào vật phẩm sưu tầm số của thẻ và hiện trên trang thẻ, cạnh ảnh chụp thật và toàn bộ lịch sử on-chain.",
+    "scaleTitle": "Cách đọc điểm",
+    "scaleBody": "Giữa các bậc còn có nửa điểm, ví dụ IDG 9.5.",
+    "scale10": "Gem Mint: mắt thường không thấy lỗi",
+    "scale9": "Mint: một lỗi rất nhỏ khi nhìn kỹ",
+    "scale8": "Near Mint–Mint: mòn nhẹ ở một góc hoặc cạnh",
+    "scale7": "Near Mint: mòn nhẹ ở các góc hoặc cạnh",
+    "scale6": "Excellent–Mint: thấy vết mòn hoặc lỗi in nhỏ",
+    "scale5": "Excellent: mòn ở nhiều góc",
+    "scale4": "Very Good–Excellent: góc bo tròn hoặc trầy rõ",
+    "scale3": "Very Good: mòn nặng",
+    "scale2": "Good: có nếp gấp hoặc vết bẩn",
+    "scale1": "Poor: hư hại nặng",
+    "thirdTitle": "Đã chấm điểm ở nơi khác?",
+    "thirdBody": "Chúng tôi cũng ghi nhận điểm của {graders}, kèm hãng chấm và số chứng nhận. Số của PSA và CGC dẫn thẳng tới trang tra cứu công khai của họ.",
+    "honestTitle": "Điểm của chính chúng tôi, ghi rõ ràng",
+    "honestBody": "IDG là hệ thống chấm điểm nội bộ của Idolca, và Idolca cũng bán thẻ. Vì vậy mọi điểm IDG đều được ghi rõ là của chúng tôi trên trang thẻ, tách khỏi điểm của bên thứ ba, kèm ảnh chụp thật ai cũng so sánh được.",
+    "ctaTitle": "Để thẻ của bạn có điểm IDG",
+    "ctaBody": "Gửi thẻ vào kho từ sổ sưu tập. Sau khi giám định, thẻ có thể được chấm điểm và giao dịch mà không cần gửi lại.",
+    "ctaBinder": "Gửi thẻ vào kho",
+    "ctaVault": "Xem kho"
   }
 }

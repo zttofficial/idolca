@@ -13,7 +13,9 @@ import VerificationBadge from "@/components/binder/VerificationBadge";
 import { Link } from "@/i18n/navigation";
 import { itemTitle } from "@/lib/item-title";
 import { getDb } from "@/lib/server/db";
-import { getListing } from "@/lib/server/items";
+import { getListing, getSeller } from "@/lib/server/items";
+import ListingTile from "@/components/market/ListingTile";
+import type { Listing } from "@/lib/items";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 
 export async function generateMetadata(props: PageProps<"/[locale]/listing/[id]">): Promise<Metadata> {
@@ -48,6 +50,7 @@ async function ListingContent({ params }: { params: PageProps<"/[locale]/listing
   const db = await getDb();
   const listing = db ? await getListing(db, (await params).id) : null;
   if (!listing) notFound();
+  const seller = (await getSeller(db!, listing.id))!;
   const t = await getTranslations("Listing");
   const tSource = await getTranslations("Source");
   const tMint = await getTranslations("Mint");
@@ -94,8 +97,8 @@ async function ListingContent({ params }: { params: PageProps<"/[locale]/listing
           <div className={SECTION}>
             <p className="text-xs text-ink-3">{t("price")}</p>
             <Price amount={listing.priceUsdt ?? 0} className="mt-1 text-3xl font-bold tabular-nums" />
-            <p className="mt-3 text-sm text-ink-2">{t("seller", { name: listing.seller })}</p>
-            <EscrowBuy itemId={listing.id} priceUsdt={listing.priceUsdt ?? 0} ownerAddress={listing.ownerAddress} />
+            <SellerCard seller={seller} />
+            <EscrowBuy itemId={listing.id} priceUsdt={listing.priceUsdt ?? 0} />
             <ol className="mt-4 space-y-1.5 text-xs leading-relaxed text-ink-2">
               {(["step1", "step2", "step3"] as const).map((k, i) => (
                 <li key={k} className="flex gap-2">
@@ -147,6 +150,38 @@ async function ListingContent({ params }: { params: PageProps<"/[locale]/listing
           </div>
         </div>
       </div>
+
+      {seller.others.length > 0 && (
+        <section className="mt-14">
+          <h2 className="text-lg font-semibold">{t("sellerMore", { name: seller.name })}</h2>
+          <div className="mt-5 grid grid-cols-2 gap-5 sm:grid-cols-4">
+            {seller.others.map((l) => (
+              <ListingTile key={l.id} listing={l as Listing} />
+            ))}
+          </div>
+        </section>
+      )}
     </>
+  );
+}
+
+// 賣家卡片：頭像、暱稱，加入時間、成交筆數、在售件數，綁了錢包的標一個記號。只放公開資訊
+async function SellerCard({ seller }: { seller: NonNullable<Awaited<ReturnType<typeof getSeller>>> }) {
+  const t = await getTranslations("Listing");
+  const locale = await getLocale();
+  const joined = new Date(seller.joinedAt).toLocaleDateString(locale, { year: "numeric", month: "long" });
+  return (
+    <div className="mt-4 flex items-center gap-3 rounded-xl bg-surface-2 px-3 py-2.5">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft font-bold text-accent-ink">{seller.name.slice(0, 1).toUpperCase()}</span>
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-2">
+          <span className="truncate text-sm font-semibold">{seller.name}</span>
+          {seller.walletLinked && <span className="shrink-0 rounded-full bg-up/10 px-1.5 py-0.5 text-[10px] font-semibold text-up">{t("sellerWallet")}</span>}
+        </p>
+        <p className="mt-0.5 truncate text-xs text-ink-3">
+          {[t("sellerJoined", { date: joined }), t("sellerSales", { count: seller.sales }), t("sellerActive", { count: seller.active })].join(" · ")}
+        </p>
+      </div>
+    </div>
   );
 }

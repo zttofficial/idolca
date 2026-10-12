@@ -14,6 +14,7 @@ export default function Navbar() {
     { href: "/binder", label: t("binder") },
     { href: "/charts", label: t("charts") },
     { href: "/vault", label: t("vault") },
+    { href: "/grading", label: t("grading") },
   ];
 
   return (

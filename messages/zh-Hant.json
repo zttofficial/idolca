@@ -32,7 +32,8 @@
     "packs": "盲盒",
     "catalog": "圖鑑",
     "binder": "收藏冊",
-    "charts": "榜單"
+    "charts": "榜單",
+    "grading": "評級"
   },
   "Hero": {
     "badge": "逐張鑑定 · 全球交易 · 隨時寄回",
@@ -131,14 +132,16 @@
     "ungraded": "未評級",
     "inHouseGrade": "Idolca 自家評級，非第三方機構",
     "intakeDate": "入庫日期",
-    "condition": "品相"
+    "condition": "品相",
+    "whatIsIdg": "什麼是 IDG？"
   },
   "Footer": {
     "credits": "圖片來源",
     "textDevnet": "© 2026 Idolca · Solana 測試網 · 交易使用測試 USDT，不涉及真實資金",
     "textMainnet": "© 2026 Idolca · Solana",
     "terms": "服務條款",
-    "privacy": "隱私權政策"
+    "privacy": "隱私權政策",
+    "grading": "IDG 評級"
   },
   "NotFound": {
     "title": "找不到這個頁面",
@@ -169,13 +172,10 @@
     "redeemedNote": "這張卡已經寄給持有人，數位珍藏已註銷。",
     "redeemingMine": "你已申請寄出這張卡，數位珍藏鎖定中，寄出時會註銷。",
     "yourListing": "這是你的掛單，數位珍藏由託管保管到成交為止。",
-    "cancelListing": "取消掛單",
     "confirmInWallet": "請在錢包裡確認…",
     "buyNowFor": "以 {price} 立即購買",
     "linkWalletToBuy": "先在帳號選單裡綁定錢包才能購買。",
     "youOwn": "這張卡是你的。可以掛單出售，或申請提貨寄給你。",
-    "listPrice": "掛單價格",
-    "listForSale": "掛單",
     "requestRedeem": "申請提貨（寄給我）",
     "holder": "持有人：",
     "you": "你",
@@ -358,7 +358,6 @@
     "notMinted": "已記在收藏冊裡。拍下你手上的這張卡，就能做成數位珍藏、留下永久紀錄。",
     "mint": "做成數位珍藏",
     "sendToVault": "寄到金庫鑑定，就能交易",
-    "close": "關閉",
     "complete": "全收集！",
     "promoKicker": "收藏冊",
     "promoTitle": "你的卡冊，永久留存",
@@ -444,12 +443,17 @@
     "resetLayout": "恢復預設排法",
     "resetLayoutConfirm": "要把所有卡放回冊子，按預設順序排好嗎？",
     "trackedOnly": "僅記錄",
-    "removeFromBinder": "從收藏冊移除"
+    "removeFromBinder": "從收藏冊移除",
+    "vaultListingNote": "上架後數位珍藏轉進鏈上託管，卡留在金庫；買家付款時，款項和數位珍藏一步交換。改價會先取消再重新上架，錢包要簽兩次。",
+    "listingError": "上架沒有成功，請再試一次。",
+    "filterLabel": "顯示",
+    "filterAll": "全部",
+    "filterListed": "在售中 {count}",
+    "listedEmpty": "目前沒有在售中的卡。"
   },
   "Mint": {
     "title": "把手上的卡做成數位珍藏",
     "subtitle": "拍下正反面、填上名字就好，不必在圖鑑裡；一組卡也可以一起上。",
-    "close": "關閉",
     "choosePhoto": "拍下或上傳卡片正面",
     "retake": "換一張照片",
     "group": "團體",
@@ -499,7 +503,6 @@
   },
   "Auth": {
     "login": "登入",
-    "close": "關閉",
     "signupTitle": "建立帳號",
     "loginTitle": "歡迎回來",
     "subtitle": "收藏、整理、交易 K-pop 小卡。",
@@ -525,7 +528,6 @@
     "switchToSignup": "建立帳號",
     "myBinder": "我的收藏冊",
     "walletTitle": "你的收藏錢包",
-    "walletBody": "你用來登入的錢包，鑰匙只在你手上；生成和買到的數位珍藏直接進這裡。",
     "balance": "餘額",
     "copy": "複製",
     "copied": "已複製",
@@ -538,12 +540,6 @@
     "error_wallet": "錢包登入失敗，請再試一次。",
     "walletAccount": "以錢包登入",
     "custodyBody": "你生成的數位珍藏由 Idolca 代為保管。用錢包登入的話，會直接放進你自己的錢包。",
-    "testUsdt": "測試 USDT",
-    "faucet": "領取 devnet 測試幣",
-    "faucetBusy": "發送中…",
-    "faucet_done": "已發送 0.02 SOL 和 500 測試 USDT 到你的錢包。",
-    "faucet_cooldown": "幾分鐘後才能再領。",
-    "faucet_error": "測試幣發送失敗，請再試一次。",
     "linkTitle": "綁定錢包",
     "linkBody": "買賣要用錢包簽名。把錢包綁定到這個帳號，原本的卡和郵箱登入都不變。",
     "error_wallet_taken": "這個錢包已經綁在別的帳號上。",
@@ -552,7 +548,16 @@
     "admin": "平台後台",
     "agree": "繼續即表示你同意<terms>服務條款</terms>和<privacy>隱私權政策</privacy>。",
     "error_rate_limited": "嘗試次數太多，請等幾分鐘再試。",
-    "getWallet": "取得錢包"
+    "getWallet": "取得錢包",
+    "forSale": "在售中",
+    "myOrders": "我的訂單",
+    "editName": "改暱稱",
+    "saveName": "儲存",
+    "nameHint": "2 到 24 個字，會顯示在你的刊登上。",
+    "nameError": "暱稱要 2 到 24 個字。",
+    "arcTitle": "Arc 上的 USDC",
+    "arcConnect": "連接錢包查看餘額",
+    "arcNoWallet": "這個瀏覽器沒有 EVM 錢包（MetaMask 等），Arc 付款要用它。"
   },
   "Source": {
     "album": "專輯",
@@ -575,7 +580,6 @@
     "sellYours": "刊登你的卡",
     "breadcrumb": "自由刊登",
     "price": "價格",
-    "seller": "賣家：{name}",
     "step1": "你付的款項先由 Idolca 保管，賣家拿不到。",
     "step2": "賣家寄出實體卡。",
     "step3": "你確認收到、和照片相符後，款項才放給賣家，數位珍藏同時轉給你。",
@@ -600,7 +604,12 @@
     "error_payment_not_found": "找不到你的付款，請確認錢包裡有足夠的 USDT 和 SOL。",
     "error_wallet_not_found": "請打開綁定這個帳號的那個錢包再試一次。",
     "sellerNotes": "賣家描述",
-    "ownListing": "這是你自己的刊登，可以到收藏冊管理。"
+    "ownListing": "這是你自己的刊登，可以到收藏冊管理。",
+    "sellerWallet": "已綁定錢包",
+    "sellerJoined": "{date} 加入",
+    "sellerSales": "成交 {count} 筆",
+    "sellerActive": "在售 {count} 件",
+    "sellerMore": "{name} 的其他刊登"
   },
   "Admin": {
     "title": "平台後台",
@@ -704,7 +713,6 @@
   "Pay": {
     "title": "選擇付款方式",
     "total": "合計 {amount}",
-    "close": "關閉",
     "back": "返回",
     "waiting": "請在錢包確認，然後稍候…",
     "chooseWallet": "選擇錢包",
@@ -722,5 +730,51 @@
     "error_authorization_expired": "付款請求已過期，請再試一次。",
     "error_authorization_rejected": "簽名和付款內容對不上，或錢包在 Arc 上的 USDC 不夠。",
     "error_generic": "付款沒有成功，請再試一次。"
+  },
+  "Common": {
+    "close": "關閉"
+  },
+  "Grading": {
+    "metaTitle": "IDG 小卡評級",
+    "metaDescription": "Idolca Grading（IDG）人工鑑定 K-pop 小卡，按四項標準評分，每張評過級的卡都有公開紀錄。",
+    "eyebrow": "Idolca Grading · IDG",
+    "title": "每張小卡，都有自己的身分證",
+    "subtitle": "IDG 是 Idolca 給金庫裡小卡的評級。每張卡都經人工鑑定、按四項標準評分，並留下任何人都能查的公開紀錄。",
+    "whyTitle": "小卡為什麼需要自己的評級",
+    "why1Title": "大型評級機構不是為小卡設計的",
+    "why1Body": "主流評級一張要幾十美元、排上幾個月，比多數小卡本身還貴。",
+    "why2Title": "多數評級查不到",
+    "why2Body": "除了少數大機構，評級只是卡套上的一張標籤，別的平台的買家沒辦法查證。",
+    "why3Title": "假卡會換個地方再賣",
+    "why3Body": "沒有共用的紀錄，同一張卡可以換個平台、換個說法重新上架。",
+    "howTitle": "IDG 怎麼評",
+    "step1Title": "在金庫裡鑑定",
+    "step1Body": "卡寄進 Idolca 金庫，由人工查驗。只有真品才會評級。",
+    "step2Title": "按四項標準評分",
+    "step2Body": "置中、四角、邊緣、表面，1 到 10 分，以 0.5 為單位。",
+    "step3Title": "金庫編號就是鑑定編號",
+    "step3Body": "評過級的卡一直沿用它的 IC- 編號，印在卡套標籤上。",
+    "step4Title": "紀錄公開可查",
+    "step4Body": "分數寫進這張卡的數位珍藏，顯示在卡片頁上，旁邊是實拍照片和完整的鏈上紀錄。",
+    "scaleTitle": "分數怎麼讀",
+    "scaleBody": "兩級之間還有 0.5 分，例如 IDG 9.5。",
+    "scale10": "Gem Mint：肉眼看不出任何瑕疵",
+    "scale9": "Mint：細看才有一處極小瑕疵",
+    "scale8": "Near Mint–Mint：一個角或一條邊有輕微磨損",
+    "scale7": "Near Mint：四角或邊緣有些微磨損",
+    "scale6": "Excellent–Mint：看得到磨損，或有小的印刷瑕疵",
+    "scale5": "Excellent：好幾個角有磨損",
+    "scale4": "Very Good–Excellent：明顯的圓角或刮痕",
+    "scale3": "Very Good：磨損嚴重",
+    "scale2": "Good：有摺痕或污漬",
+    "scale1": "Poor：嚴重損壞",
+    "thirdTitle": "已經送評過了？",
+    "thirdBody": "{graders} 的評級我們也會登記，連同評級機構和鑑定編號。PSA 和 CGC 的編號可以直接連到它們的公開查詢頁。",
+    "honestTitle": "自家評級，清楚標示",
+    "honestBody": "IDG 是 Idolca 自己的評級，而 Idolca 也在賣卡。所以每個 IDG 分數在卡片頁上都標明是自家評級，和第三方評級分開顯示，並附上任何人都能比對的實拍照片。",
+    "ctaTitle": "讓你的卡拿到 IDG 評級",
+    "ctaBody": "在收藏冊裡把卡寄進金庫。鑑定通過後就能評級，之後轉手也不用再寄。",
+    "ctaBinder": "把卡寄進金庫",
+    "ctaVault": "看看金庫"
   }
 }

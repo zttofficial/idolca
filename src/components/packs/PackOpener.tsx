@@ -15,6 +15,7 @@ import type { EvmWallet } from "@/lib/evm/arc-wallet";
 import PaymentPicker from "@/components/pay/PaymentPicker";
 import { signAndSend } from "@/lib/solana/wallets";
 import { solscanUrl } from "@/lib/solana/config";
+import { CloseButton } from "@/components/ui/Dialog";
 
 const QUANTITIES = [1, 5, 10] as const;
 type Stage = "closed" | "pack" | "tearing" | "reveal" | "results";
@@ -280,9 +281,7 @@ function OpeningModal({
 
   return (
     <div role="dialog" aria-modal="true" aria-label={pack.name} className="theme-dark fixed inset-0 z-[60] overflow-y-auto bg-[#0c0c0f]/95 backdrop-blur-md">
-      <button onClick={onClose} className="absolute top-4 right-4 z-10 rounded-full border border-line bg-surface px-3 py-1 text-xs text-ink-2 hover:bg-surface-3">
-        {t("close")}
-      </button>
+      <CloseButton onClick={onClose} className="absolute top-4 right-4 z-10" />
 
       <div className="flex min-h-full flex-col items-center justify-center px-4 py-16">
         {(stage === "pack" || stage === "tearing") && (
@@ -398,7 +397,7 @@ function OpeningModal({
                   {t("again")}
                 </button>
               )}
-              <button onClick={onClose} className="rounded-full border border-line bg-surface px-6 py-2.5 text-sm font-semibold hover:bg-surface-3">
+              <button onClick={onClose} className="btn-secondary rounded-full px-6 py-2.5 text-sm font-semibold">
                 {t("close")}
               </button>
             </div>

@@ -7,6 +7,7 @@ import type { AuthUser } from "./AuthContext";
 import Wordmark from "@/components/brand/Wordmark";
 import { Link } from "@/i18n/navigation";
 import { WalletError, signInWithWallet, useWallets } from "@/lib/solana/wallets";
+import { CloseButton } from "@/components/ui/Dialog";
 
 type Mode = "signup" | "login";
 type ErrorCode = "invalid_email" | "weak_password" | "email_taken" | "invalid_credentials" | "not_configured" | "network";
@@ -77,9 +78,7 @@ export default function AccountModal({ configured, onClose, onSignedIn }: { conf
         <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-start justify-between">
             <Wordmark className="pt-1 text-2xl" />
-            <button onClick={onClose} className="rounded-full px-2 py-1 text-xs text-ink-3 hover:bg-surface-2 hover:text-ink">
-              {t("close")}
-            </button>
+            <CloseButton onClick={onClose} />
           </div>
 
           <h2 className="mt-4 text-xl font-bold">{t(mode === "signup" ? "signupTitle" : "loginTitle")}</h2>

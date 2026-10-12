@@ -1,22 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import CardArt from "@/components/market/CardArt";
 import { AddCardButton, openAddCard } from "./AddCard";
 import VerificationBadge from "./VerificationBadge";
+import ListingControl from "@/components/market/ListingControl";
+import Dialog from "@/components/ui/Dialog";
 import BinderBook from "./BinderBook";
 import BinderArranger from "./BinderArranger";
 import { arrange, clearPocket, EMPTY_LAYOUT, isTrackedOnly, takeOut } from "@/lib/binder-layout";
 import { OnChainCards, Orders } from "./BinderChain";
-import { refreshChainState, useTemplateMarket, useVaultCards } from "@/lib/chain-client";
+import { listVaultCard, refreshChainState, useTemplateMarket, useVaultCards, vaultAction } from "@/lib/chain-client";
 import { useAuth } from "@/components/auth/AuthContext";
 import { Thumbs } from "@/components/market/PhotoGallery";
 import { Link } from "@/i18n/navigation";
 import { binderActions, useBinder, type BinderEntry } from "@/lib/binder";
 import { GROUPS, TEMPLATES, templateCard, type Template } from "@/lib/catalog";
 import type { Card } from "@/lib/cards";
-import { CURRENCY, formatPrice } from "@/lib/fx";
+import { formatPrice } from "@/lib/fx";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 import { itemTitle } from "@/lib/item-title";
 import { setDescription, setListing, useMyItems, type CollectorItem, requestVault } from "@/lib/items";
@@ -30,14 +33,25 @@ type Slot = { kind: "vault"; card: Card } | { kind: "item"; item: CollectorItem 
 export default function BinderView() {
   const t = useTranslations("Binder");
   const binder = useBinder();
-  const [tab, setTab] = useState<Tab>("binder");
   const { user, ready, login } = useAuth();
-  // 從其他頁連過來時用 ?tab= 指定頁籤（例如付款後看訂單）
-  useEffect(() => {
-    const wanted = new URLSearchParams(window.location.search).get("tab") as Tab | null;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- 只在進入頁面時讀網址
-    if (wanted && TABS.includes(wanted)) setTab(wanted);
-  }, []);
+  // 頁籤和篩選跟著網址走：?tab=orders 看訂單，?filter=listed 只看在售中（上架很多張時管理價格和下架，不必翻卡冊）。
+  // 帳號選單和付款後的連結直接帶參數過來；已經在收藏冊時點這些連結也會切換
+  const pathname = usePathname();
+  const router = useRouter();
+  const sp = useSearchParams();
+  const wanted = sp.get("tab") as Tab | null;
+  const tab: Tab = wanted && TABS.includes(wanted) ? wanted : "binder";
+  const onlyListed = sp.get("filter") === "listed";
+  const setView = (next: { tab?: Tab; listed?: boolean }) => {
+    const params = new URLSearchParams();
+    const t2 = next.tab ?? tab;
+    if (t2 !== "binder") params.set("tab", t2);
+    if (t2 === "binder" && (next.listed ?? onlyListed)) params.set("filter", "listed");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+  const setTab = (next: Tab) => setView({ tab: next });
+  const setOnlyListed = (listed: boolean) => setView({ listed });
   const vault = useVaultCards();
   // 鏈上持有人隨時會變（開卡包、買賣），每次進收藏冊都重讀一次
   useEffect(() => {
@@ -102,6 +116,9 @@ export default function BinderView() {
     binderActions.setLayout(clearPocket(layout, key));
     binderActions.setCount(key.slice("card:".length), 0);
   };
+  // 在售中：自己上鏈並刊登的卡，和在託管程序裡掛單的金庫卡（拿出冊子的也算）
+  const listedSlots = slots.filter((slot) => (slot.kind === "vault" && slot.card.status === "listed") || (slot.kind === "item" && slot.item.priceUsdt !== null));
+  const openSlot = (slot: Slot) => (slot.kind === "vault" ? setSelectedVault(slot.card.id) : slot.kind === "item" ? setSelectedItem(slot.item.id) : setSelected(slot.owned.template.id));
   const selectedOwned = owned.find((o) => o.template.id === selected);
   const pickedItem = items.find((i) => i.id === selectedItem);
   const pickedVault = myVault.find((c) => c.id === selectedVault);
@@ -137,7 +154,7 @@ export default function BinderView() {
         </div>
         {/* 只清得掉手動標記的卡和想要清單；錢包裡的金庫卡和自己上鏈的卡跟著鏈上持有顯示，清不掉也不必加回 */}
         {(owned.length > 0 || wants.length > 0) && (
-          <button onClick={() => window.confirm(t("clearConfirm")) && binderActions.clear()} className="shrink-0 pb-3 text-xs text-ink-3 hover:text-down">
+          <button onClick={() => window.confirm(t("clearConfirm")) && binderActions.clear()} className="btn-danger mb-2 shrink-0 rounded-full px-3 py-1 text-xs font-semibold">
             {t("clear")}
           </button>
         )}
@@ -146,20 +163,53 @@ export default function BinderView() {
       {tab === "binder" && (
         <div className="mt-6">
           <div className="mb-4 flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
-            {!arranging && hiddenCards.length > 0 && <p className="mr-auto text-xs text-ink-3">{t("hiddenCount", { count: hiddenCards.length })}</p>}
+            {!arranging && (
+              <div role="radiogroup" aria-label={t("filterLabel")} className="mr-auto flex rounded-full bg-surface-2 p-1 text-xs font-semibold">
+                {([false, true] as const).map((only) => (
+                  <button
+                    key={String(only)}
+                    role="radio"
+                    aria-checked={onlyListed === only}
+                    onClick={() => setOnlyListed(only)}
+                    className={`rounded-full px-3 py-1 transition ${onlyListed === only ? "bg-surface text-ink shadow-sm" : "text-ink-3 hover:text-ink"}`}
+                  >
+                    {only ? t("filterListed", { count: listedSlots.length }) : t("filterAll")}
+                  </button>
+                ))}
+              </div>
+            )}
+            {!arranging && !onlyListed && hiddenCards.length > 0 && <p className="text-xs text-ink-3">{t("hiddenCount", { count: hiddenCards.length })}</p>}
             {arranging && (
               <button onClick={() => window.confirm(t("resetLayoutConfirm")) && binderActions.setLayout(EMPTY_LAYOUT)} className="mr-auto text-xs text-ink-3 hover:text-ink">
                 {t("resetLayout")}
               </button>
             )}
-            <button
-              onClick={() => setArranging(!arranging)}
-              className={`rounded-full px-4 py-1.5 text-sm font-semibold ${arranging ? "btn-primary" : "border border-line hover:bg-surface-2"}`}
-            >
-              {t(arranging ? "arrangeDone" : "arrange")}
-            </button>
+            {!onlyListed && (
+              <button
+                onClick={() => setArranging(!arranging)}
+                className={`rounded-full px-4 py-1.5 text-sm font-semibold ${arranging ? "btn-primary" : "border border-line hover:bg-surface-2"}`}
+              >
+                {t(arranging ? "arrangeDone" : "arrange")}
+              </button>
+            )}
           </div>
-          {arranging ? (
+          {onlyListed ? (
+            listedSlots.length ? (
+              // 和卡冊同一本書，只放在售中的卡，卡套上掛售價
+              <BinderBook
+                slots={listedSlots.map((slot) => (
+                  <span key={slotKey(slot)} className="relative block h-full w-full">
+                    <SlotView slot={slot} onSelect={() => openSlot(slot)} />
+                    <span className="pointer-events-none absolute right-1 bottom-1 rounded-md bg-ink/80 px-1.5 py-0.5 text-[10px] font-semibold text-white tabular-nums">
+                      {formatPrice(slot.kind === "vault" ? slot.card.priceUsdt : slot.kind === "item" ? (slot.item.priceUsdt ?? 0) : 0)}
+                    </span>
+                  </span>
+                ))}
+              />
+            ) : (
+              <p className="rounded-2xl border border-dashed border-line px-6 py-12 text-center text-sm text-ink-3">{t("listedEmpty")}</p>
+            )
+          ) : arranging ? (
             <BinderArranger
               layout={layout}
               pockets={pockets}
@@ -174,9 +224,7 @@ export default function BinderView() {
               slots={pockets.map((key, i) => {
                 const slot = key ? byKey.get(key) : undefined;
                 if (!slot) return null;
-                const open = () =>
-                  slot.kind === "vault" ? setSelectedVault(slot.card.id) : slot.kind === "item" ? setSelectedItem(slot.item.id) : setSelected(slot.owned.template.id);
-                return <SlotView key={i} slot={slot} onSelect={open} />;
+                return <SlotView key={i} slot={slot} onSelect={() => openSlot(slot)} />;
               })}
             />
           )}
@@ -296,8 +344,8 @@ function CardSheet({ owned, onClose, onTakeOut }: { owned: Owned; onClose: () =>
   const { template, entry } = owned;
   const vault = useVaultCards();
   return (
-    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="grid w-full max-w-xl gap-6 rounded-2xl border border-line bg-surface p-6 shadow-2xl sm:grid-cols-[180px_1fr]" onClick={(e) => e.stopPropagation()}>
+    <Dialog label={`${template.group} ${template.member}`} onClose={onClose}>
+      <div className="grid gap-6 sm:grid-cols-[180px_1fr]">
         <div className="aspect-[55/85] overflow-hidden rounded-xl">
           <CardArt card={ownedCard(owned, vault)} rarityLabel={tRarity(template.rarity)} className="block h-full w-full" />
         </div>
@@ -333,13 +381,10 @@ function CardSheet({ owned, onClose, onTakeOut }: { owned: Owned; onClose: () =>
               {t("mint")}
             </button>
             <TakeOutButton onTakeOut={onTakeOut} label="removeFromBinder" />
-            <button onClick={onClose} className="py-1 text-xs text-ink-3 hover:text-ink">
-              {t("close")}
-            </button>
           </div>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }
 
@@ -369,8 +414,8 @@ function ItemSheet({ item, onClose, onTakeOut }: { item: CollectorItem; onClose:
   const fake = item.verification === "fake";
   const photo = item.photos[shown] ?? item.photo;
   return (
-    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] grid place-items-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="grid w-full max-w-xl gap-6 rounded-2xl border border-line bg-surface p-6 shadow-2xl sm:grid-cols-[200px_1fr]" onClick={(e) => e.stopPropagation()}>
+    <Dialog label={itemTitle(item)} onClose={onClose}>
+      <div className="grid gap-6 sm:grid-cols-[200px_1fr]">
         <div>
           <div className={`aspect-[55/85] overflow-hidden rounded-xl ${fake ? "ring-2 ring-down" : ""}`}>
             {/* eslint-disable-next-line @next/next/no-img-element -- 用戶上傳的照片 */}
@@ -404,16 +449,21 @@ function ItemSheet({ item, onClose, onTakeOut }: { item: CollectorItem; onClose:
           )}
 
           <div className="mt-auto flex flex-col gap-2 pt-5">
-            {!fake && !item.vaultRequestedAt && <ListingControl item={item} />}
+            {!fake && !item.vaultRequestedAt && (
+              <ListingControl
+                price={item.priceUsdt}
+                viewHref={`/listing/${item.id}`}
+                note={t("listingNote")}
+                onList={(price) => setListing(item.id, price)}
+                onUnlist={() => setListing(item.id, null)}
+              />
+            )}
             {!fake && <VaultRequest item={item} />}
             <TakeOutButton onTakeOut={onTakeOut} />
-            <button onClick={onClose} className="py-1 text-xs text-ink-3 hover:text-ink">
-              {t("close")}
-            </button>
           </div>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }
 
@@ -441,7 +491,7 @@ function VaultRequest({ item }: { item: CollectorItem }) {
         <p className="font-semibold text-ink">{t("vaultRequested")}</p>
         <p className="mt-1">{t("vaultShipInstructions", { ref: `IDOLCA-${item.id.slice(0, 8).toUpperCase()}` })}</p>
         {address ? <p className="mt-2 whitespace-pre-line text-ink">{address}</p> : <p className="mt-2 text-ink-3">{t("vaultAddressPending")}</p>}
-        <button disabled={busy} onClick={() => run(true)} className="mt-2 font-semibold text-ink-3 hover:text-down disabled:opacity-50">
+        <button disabled={busy} onClick={() => run(true)} className="btn-secondary mt-2 rounded-full px-3 py-1 text-xs font-semibold disabled:opacity-50">
           {t("vaultCancel")}
         </button>
       </div>
@@ -449,88 +499,12 @@ function VaultRequest({ item }: { item: CollectorItem }) {
   }
   return (
     <div>
-      <button disabled={busy || !user?.walletAddress} onClick={() => run(false)} className="w-full rounded-full border border-line py-2.5 text-center text-sm font-semibold hover:bg-surface-2 disabled:opacity-50">
+      <button disabled={busy || !user?.walletAddress} onClick={() => run(false)} className="w-full btn-secondary rounded-full py-2.5 text-center text-sm font-semibold disabled:opacity-50">
         {busy ? "…" : t("sendToVault")}
       </button>
       <p className="mt-1.5 text-[11px] leading-relaxed text-ink-3">{t(user?.walletAddress ? "vaultHint" : "vaultNeedsWallet")}</p>
       {error && <p className="mt-1 text-[11px] text-down">{t.has(`error_${error}`) ? t(`error_${error}`) : t("orderError")}</p>}
     </div>
-  );
-}
-
-// 刊登出售 / 改價 / 下架
-function ListingControl({ item }: { item: CollectorItem }) {
-  const t = useTranslations("Binder");
-  const listed = item.priceUsdt !== null;
-  const [editing, setEditing] = useState(false);
-  const [price, setPrice] = useState(item.priceUsdt?.toString() ?? "");
-  const [busy, setBusy] = useState(false);
-  const value = Number(price);
-  const valid = price !== "" && value > 0 && value <= 100_000;
-  const run = async (next: number | null) => {
-    setBusy(true);
-    try {
-      await setListing(item.id, next);
-      setEditing(false);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (listed && !editing) {
-    return (
-      <div className="rounded-xl bg-accent-soft p-3 text-sm">
-        <p className="font-semibold text-accent-ink">{t("listedAt", { price: formatPrice(item.priceUsdt!) })}</p>
-        <Link href={`/listing/${item.id}`} className="btn-primary mt-2 block rounded-full py-2 text-center text-sm font-semibold">
-          {t("viewListing")} →
-        </Link>
-        <div className="mt-2 flex justify-center gap-4 text-xs">
-          <button onClick={() => setEditing(true)} className="text-ink-2 hover:text-ink">
-            {t("editPrice")}
-          </button>
-          <button disabled={busy} onClick={() => run(null)} className="text-ink-2 hover:text-down">
-            {t("unlist")}
-          </button>
-        </div>
-      </div>
-    );
-  }
-  if (!editing) {
-    return (
-      <button onClick={() => setEditing(true)} className="btn-primary rounded-full py-2.5 text-sm font-semibold">
-        {t("listForSale")}
-      </button>
-    );
-  }
-  return (
-    <form
-      className="rounded-xl border border-line p-3"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (valid) run(value);
-      }}
-    >
-      <label className="flex items-center gap-2 text-xs text-ink-2">
-        {t("price")}
-        <input
-          autoFocus
-          inputMode="decimal"
-          value={price}
-          onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))}
-          className="w-24 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm tabular-nums outline-none focus:border-ink"
-        />
-        {CURRENCY}
-      </label>
-      <p className="mt-2 text-[11px] leading-snug text-ink-3">{t("listingNote")}</p>
-      <div className="mt-2 flex gap-2">
-        <button disabled={!valid || busy} className="btn-primary rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-40">
-          {t(listed ? "savePrice" : "confirmList")}
-        </button>
-        <button type="button" onClick={() => setEditing(false)} className="px-2 text-xs text-ink-3 hover:text-ink">
-          {t("cancel")}
-        </button>
-      </div>
-    </form>
   );
 }
 
@@ -594,7 +568,7 @@ function DescriptionEditor({ item }: { item: CollectorItem }) {
     return (
       <div className="mt-3 text-xs">
         {item.description ? <p className="whitespace-pre-line leading-relaxed text-ink-2">{item.description}</p> : null}
-        <button onClick={() => setEditing(true)} className="mt-1 font-semibold text-accent-ink hover:underline">
+        <button onClick={() => setEditing(true)} className="btn-secondary mt-2 rounded-full px-3 py-1 text-xs font-semibold disabled:opacity-50">
           {t(item.description ? "editDescription" : "addDescription")}
         </button>
       </div>
@@ -611,7 +585,7 @@ function DescriptionEditor({ item }: { item: CollectorItem }) {
         placeholder={t("descriptionPlaceholder")}
         className="w-full resize-y rounded-xl border border-line bg-surface px-3 py-2 text-xs leading-relaxed outline-none focus:border-ink"
       />
-      <div className="mt-1 flex gap-3 text-xs">
+      <div className="mt-2 flex gap-2">
         <button
           disabled={busy}
           onClick={async () => {
@@ -623,11 +597,11 @@ function DescriptionEditor({ item }: { item: CollectorItem }) {
               setBusy(false);
             }
           }}
-          className="font-semibold text-accent-ink hover:underline disabled:opacity-50"
+          className="btn-primary rounded-full px-3 py-1 text-xs font-semibold disabled:opacity-50"
         >
           {t("saveDescription")}
         </button>
-        <button onClick={() => setEditing(false)} className="text-ink-3 hover:text-ink">
+        <button onClick={() => setEditing(false)} className="btn-secondary rounded-full px-3 py-1 text-xs font-semibold disabled:opacity-50">
           {t("cancelEdit")}
         </button>
       </div>
@@ -692,13 +666,16 @@ function VaultSlot({ card, onSelect }: { card: Card; onSelect?: () => void }) {
   );
 }
 
+// 錢包裡的金庫卡：和自己上鏈的卡一樣，可以直接在這裡上架、改價、下架（走鏈上託管程序，要錢包簽名）
 function VaultSheet({ card, onClose, onTakeOut }: { card: Card; onClose: () => void; onTakeOut: () => void }) {
   const t = useTranslations("Binder");
   const tRarity = useTranslations("Rarity");
   const tStatus = useTranslations("Status");
+  const wallet = useAuth().user?.walletAddress;
+  const listed = card.status === "listed";
   return (
-    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="grid w-full max-w-xl gap-6 rounded-2xl border border-line bg-surface p-6 shadow-2xl sm:grid-cols-[180px_1fr]" onClick={(e) => e.stopPropagation()}>
+    <Dialog label={`${card.group} ${card.member}`} onClose={onClose}>
+      <div className="grid gap-6 sm:grid-cols-[180px_1fr]">
         <div className="aspect-[55/85] overflow-hidden rounded-xl">
           <CardArt card={card} rarityLabel={tRarity(card.rarity)} className="block h-full w-full" />
         </div>
@@ -709,21 +686,27 @@ function VaultSheet({ card, onClose, onTakeOut }: { card: Card; onClose: () => v
           <h3 className="mt-1 text-xl font-bold">{card.member}</h3>
           <p className="text-sm text-ink-2">{card.version}</p>
           <p className="mt-3 font-mono text-[11px] text-ink-3">{card.serial}</p>
-          <p className="mt-3 text-sm font-semibold text-accent-ink">
-            {card.status === "listed" ? t("listedAt", { price: formatPrice(card.priceUsdt) }) : tStatus(card.status)}
-          </p>
+          {!listed && <p className="mt-3 text-sm font-semibold text-accent-ink">{tStatus(card.status)}</p>}
           <div className="mt-auto flex flex-col gap-2 pt-5">
-            <Link href={`/card/${card.id}`} className="btn-primary rounded-full py-2.5 text-center text-sm font-semibold">
-              {t("viewCard")} →
-            </Link>
+            {wallet && (card.status === "vaulted" || listed) && (
+              <ListingControl
+                price={listed ? card.priceUsdt : null}
+                viewHref={`/card/${card.id}`}
+                note={t("vaultListingNote")}
+                onList={(price) => listVaultCard(card.id, wallet, price, listed)}
+                onUnlist={() => vaultAction("cancel", card.id, wallet)}
+              />
+            )}
+            {!listed && (
+              <Link href={`/card/${card.id}`} className="btn-secondary rounded-full py-2.5 text-center text-sm font-semibold">
+                {t("viewCard")} →
+              </Link>
+            )}
             <TakeOutButton onTakeOut={onTakeOut} />
-            <button onClick={onClose} className="py-1 text-xs text-ink-3 hover:text-ink">
-              {t("close")}
-            </button>
           </div>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }
 
@@ -731,7 +714,7 @@ function VaultSheet({ card, onClose, onTakeOut }: { card: Card; onClose: () => v
 function TakeOutButton({ onTakeOut, label = "takeOut" }: { onTakeOut: () => void; label?: "takeOut" | "removeFromBinder" }) {
   const t = useTranslations("Binder");
   return (
-    <button onClick={onTakeOut} className="py-1 text-xs text-ink-3 hover:text-ink">
+    <button onClick={onTakeOut} className="btn-secondary rounded-full py-2.5 text-center text-sm font-semibold">
       {t(label)}
     </button>
   );

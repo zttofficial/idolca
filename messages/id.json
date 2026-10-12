@@ -32,7 +32,8 @@
     "packs": "Mystery Pack",
     "catalog": "Katalog",
     "binder": "Binder",
-    "charts": "Tangga"
+    "charts": "Tangga",
+    "grading": "Grading"
   },
   "Hero": {
     "badge": "Dicek satu per satu · Diperdagangkan global · Dikirim ke rumahmu",
@@ -131,14 +132,16 @@
     "ungraded": "Belum digrading",
     "inHouseGrade": "Grading internal Idolca, bukan lembaga pihak ketiga",
     "intakeDate": "Tanggal masuk",
-    "condition": "Kondisi"
+    "condition": "Kondisi",
+    "whatIsIdg": "Apa itu IDG?"
   },
   "Footer": {
     "credits": "Kredit gambar",
     "textDevnet": "© 2026 Idolca · Solana Devnet · Transaksi uji memakai USDT uji, tanpa dana nyata",
     "textMainnet": "© 2026 Idolca · Solana",
     "terms": "Ketentuan",
-    "privacy": "Privasi"
+    "privacy": "Privasi",
+    "grading": "Grading IDG"
   },
   "NotFound": {
     "title": "Halaman tidak ditemukan",
@@ -169,13 +172,10 @@
     "redeemedNote": "Kartu ini sudah dikirim ke pemiliknya. Koleksi digitalnya sudah dipensiunkan.",
     "redeemingMine": "Kamu sudah meminta kartu ini dikirim. Koleksi digitalnya dikunci sampai dikirim.",
     "yourListing": "Ini listing-mu. Koleksi digitalnya ditahan di escrow sampai terjual.",
-    "cancelListing": "Batalkan listing",
     "confirmInWallet": "Konfirmasi di dompetmu…",
     "buyNowFor": "Beli sekarang {price}",
     "linkWalletToBuy": "Hubungkan dompet dari menu akun untuk membeli.",
     "youOwn": "Kartu ini milikmu. Jual atau minta dikirim ke kamu.",
-    "listPrice": "Harga listing",
-    "listForSale": "Jual",
     "requestRedeem": "Ajukan penebusan (kirim ke saya)",
     "holder": "Pemegang:",
     "you": "kamu",
@@ -358,7 +358,6 @@
     "notMinted": "Sudah tercatat di binder-mu. Tambahkan foto kartumu untuk menjadikannya koleksi digital dengan catatan permanen.",
     "mint": "Jadikan koleksi digital",
     "sendToVault": "Kirim ke vault untuk verifikasi dan jual beli",
-    "close": "Tutup",
     "complete": "Lengkap!",
     "promoKicker": "BINDER",
     "promoTitle": "Binder yang tersimpan selamanya",
@@ -444,12 +443,17 @@
     "resetLayout": "Kembali ke urutan awal",
     "resetLayoutConfirm": "Masukkan semua kartu kembali ke binder dengan urutan awal?",
     "trackedOnly": "Hanya dicatat",
-    "removeFromBinder": "Hapus dari binder"
+    "removeFromBinder": "Hapus dari binder",
+    "vaultListingNote": "Setelah dijual, koleksi digital pindah ke escrow on-chain dan kartunya tetap di vault. Pembayaran pembeli dan koleksi ditukar dalam satu langkah. Mengubah harga berarti membatalkan lalu menjual ulang, jadi dompet meminta dua tanda tangan.",
+    "listingError": "Gagal memperbarui listing. Silakan coba lagi.",
+    "filterLabel": "Tampilkan",
+    "filterAll": "Semua",
+    "filterListed": "Dijual {count}",
+    "listedEmpty": "Belum ada kartu yang dijual."
   },
   "Mint": {
     "title": "Jadikan kartumu koleksi digital",
     "subtitle": "Foto bagian depan dan belakang, lalu beri nama. Tidak harus ada di katalog, satu set kartu juga bisa.",
-    "close": "Tutup",
     "choosePhoto": "Foto atau unggah sisi depan kartu",
     "retake": "Ganti foto",
     "group": "Grup",
@@ -499,7 +503,6 @@
   },
   "Auth": {
     "login": "Masuk",
-    "close": "Tutup",
     "signupTitle": "Buat akunmu",
     "loginTitle": "Selamat datang kembali",
     "subtitle": "Kumpulkan, catat, dan jual beli photocard K-pop.",
@@ -525,7 +528,6 @@
     "switchToSignup": "Buat akun",
     "myBinder": "Binder saya",
     "walletTitle": "Wallet koleksimu",
-    "walletBody": "Dompet yang kamu pakai untuk masuk. Hanya kamu yang memegang kuncinya, dan koleksi yang kamu buat atau beli langsung masuk ke sini.",
     "balance": "Saldo",
     "copy": "Salin",
     "copied": "Tersalin",
@@ -538,12 +540,6 @@
     "error_wallet": "Gagal masuk dengan dompet. Coba lagi.",
     "walletAccount": "Masuk dengan dompet",
     "custodyBody": "Koleksi yang kamu buat disimpan oleh Idolca. Masuk dengan dompet untuk menyimpannya sendiri.",
-    "testUsdt": "USDT uji",
-    "faucet": "Ambil dana uji devnet",
-    "faucetBusy": "Mengirim…",
-    "faucet_done": "0,02 SOL dan 500 USDT uji sudah dikirim ke dompetmu.",
-    "faucet_cooldown": "Kamu bisa mengambil lagi beberapa menit lagi.",
-    "faucet_error": "Gagal mengirim dana uji. Coba lagi.",
     "linkTitle": "Hubungkan dompet",
     "linkBody": "Jual beli ditandatangani dengan dompet. Hubungkan dompet ke akun ini; kartu dan login email tetap sama.",
     "error_wallet_taken": "Dompet ini sudah dipakai akun lain.",
@@ -552,7 +548,16 @@
     "admin": "Admin",
     "agree": "Dengan melanjutkan, kamu menyetujui <terms>Ketentuan Layanan</terms> dan <privacy>Kebijakan Privasi</privacy>.",
     "error_rate_limited": "Terlalu banyak percobaan. Tunggu beberapa menit lalu coba lagi.",
-    "getWallet": "Dapatkan dompet"
+    "getWallet": "Dapatkan dompet",
+    "forSale": "Dijual",
+    "myOrders": "Pesanan saya",
+    "editName": "Ubah nama",
+    "saveName": "Simpan",
+    "nameHint": "2–24 karakter. Pembeli melihatnya di listing-mu.",
+    "nameError": "Nama harus 2–24 karakter.",
+    "arcTitle": "USDC di Arc",
+    "arcConnect": "Hubungkan dompet untuk lihat saldo",
+    "arcNoWallet": "Tidak ada dompet EVM (seperti MetaMask) di browser ini. Pembayaran di Arc memakainya."
   },
   "Source": {
     "album": "Album",
@@ -575,7 +580,6 @@
     "sellYours": "Jual kartumu",
     "breadcrumb": "Listing penjual",
     "price": "Harga",
-    "seller": "Penjual: {name}",
     "step1": "Pembayaranmu ditahan Idolca, bukan penjual.",
     "step2": "Penjual mengirim kartu fisik.",
     "step3": "Setelah kamu konfirmasi kartu tiba dan sesuai foto, penjual dibayar dan koleksi digitalnya pindah ke kamu.",
@@ -600,7 +604,12 @@
     "error_payment_not_found": "Pembayaranmu tidak ditemukan. Pastikan dompetmu punya cukup USDT dan SOL.",
     "error_wallet_not_found": "Buka dompet yang terhubung ke akun ini lalu coba lagi.",
     "sellerNotes": "Dari penjual",
-    "ownListing": "Ini listing milikmu sendiri. Kelola dari binder."
+    "ownListing": "Ini listing milikmu sendiri. Kelola dari binder.",
+    "sellerWallet": "Dompet terhubung",
+    "sellerJoined": "Bergabung {date}",
+    "sellerSales": "{count} terjual",
+    "sellerActive": "{count} dijual",
+    "sellerMore": "Listing lain dari {name}"
   },
   "Admin": {
     "title": "Konsol admin",
@@ -704,7 +713,6 @@
   "Pay": {
     "title": "Pilih cara bayar",
     "total": "Total {amount}",
-    "close": "Tutup",
     "back": "Kembali",
     "waiting": "Konfirmasi di dompet, lalu tunggu sebentar…",
     "chooseWallet": "Pilih dompet",
@@ -722,5 +730,51 @@
     "error_authorization_expired": "Permintaan pembayaran kedaluwarsa. Silakan coba lagi.",
     "error_authorization_rejected": "Tanda tangan tidak cocok dengan pembayaran, atau USDC di Arc pada dompet tidak cukup.",
     "error_generic": "Pembayaran gagal. Silakan coba lagi."
+  },
+  "Common": {
+    "close": "Tutup"
+  },
+  "Grading": {
+    "metaTitle": "Grading photocard IDG",
+    "metaDescription": "Idolca Grading (IDG) mengautentikasi photocard K-pop secara manual, menilainya dengan empat kriteria, dan memberi setiap kartu yang dinilai catatan publik.",
+    "eyebrow": "Idolca Grading · IDG",
+    "title": "Setiap photocard punya identitas",
+    "subtitle": "IDG adalah grading Idolca untuk photocard di vault kami. Setiap kartu diautentikasi secara manual, dinilai dengan empat kriteria, dan punya catatan publik yang bisa dicek siapa saja.",
+    "whyTitle": "Mengapa photocard butuh grading sendiri",
+    "why1Title": "Lembaga grading besar tidak dibuat untuk photocard",
+    "why1Body": "Grading umum memakan puluhan dolar per kartu dan berbulan-bulan, lebih mahal dari nilai kebanyakan photocard.",
+    "why2Title": "Kebanyakan grade tidak bisa dicek",
+    "why2Body": "Selain beberapa lembaga besar, grade hanya label di sleeve. Pembeli di platform lain tidak bisa memeriksanya.",
+    "why3Title": "Kartu palsu berpindah tempat",
+    "why3Body": "Tanpa catatan bersama, kartu yang sama bisa dijual ulang di mana saja dengan cerita apa pun.",
+    "howTitle": "Cara kerja IDG",
+    "step1Title": "Diautentikasi di vault",
+    "step1Body": "Kartu dikirim ke vault Idolca dan diperiksa manual. Hanya kartu asli yang dinilai.",
+    "step2Title": "Dinilai dengan empat kriteria",
+    "step2Body": "Centering, sudut, tepi, dan permukaan, dari 1 sampai 10 dengan kelipatan 0,5.",
+    "step3Title": "Nomor vault adalah nomor sertifikat",
+    "step3Body": "Kartu yang dinilai memakai nomor IC- selamanya, tercetak di label sleeve.",
+    "step4Title": "Tercatat publik",
+    "step4Body": "Grade ditulis ke koleksi digital kartu dan tampil di halaman kartu, bersama foto asli dan seluruh riwayat on-chain.",
+    "scaleTitle": "Cara membaca grade",
+    "scaleBody": "Ada setengah poin di antara tiap tingkat, misalnya IDG 9.5.",
+    "scale10": "Gem Mint: tanpa cacat terlihat",
+    "scale9": "Mint: satu cacat sangat kecil bila dilihat dekat",
+    "scale8": "Near Mint–Mint: aus ringan di satu sudut atau tepi",
+    "scale7": "Near Mint: aus tipis di sudut atau tepi",
+    "scale6": "Excellent–Mint: aus terlihat atau cacat cetak kecil",
+    "scale5": "Excellent: aus di beberapa sudut",
+    "scale4": "Very Good–Excellent: sudut membulat atau goresan jelas",
+    "scale3": "Very Good: aus berat",
+    "scale2": "Good: lipatan atau noda",
+    "scale1": "Poor: rusak parah",
+    "thirdTitle": "Sudah di-grading di tempat lain?",
+    "thirdBody": "Kami juga mencatat grade {graders}, lengkap dengan lembaga dan nomor sertifikatnya. Nomor PSA dan CGC langsung tertaut ke halaman cek publik mereka.",
+    "honestTitle": "Grade kami sendiri, ditandai jelas",
+    "honestBody": "IDG adalah grading internal Idolca, dan Idolca juga menjual kartu. Karena itu setiap grade IDG ditandai sebagai milik kami di halaman kartu, dipisahkan dari grade pihak ketiga, dan disertai foto asli yang bisa dibandingkan siapa saja.",
+    "ctaTitle": "Dapatkan grade IDG untuk kartumu",
+    "ctaBody": "Kirim kartu ke vault dari binder. Setelah diautentikasi, kartu bisa dinilai dan diperjualbelikan tanpa dikirim lagi.",
+    "ctaBinder": "Kirim kartu ke vault",
+    "ctaVault": "Lihat vault"
   }
 }

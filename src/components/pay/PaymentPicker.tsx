@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { ARC } from "@/lib/arc";
 import { formatPrice } from "@/lib/fx";
 import { useEvmWallets, type EvmWallet } from "@/lib/evm/arc-wallet";
+import { CloseButton } from "@/components/ui/Dialog";
 
 // 結帳的付款方式面板：所有購買按鈕都先打開這裡，再選用哪種方式付。
 // solana：Solana 錢包付 USDT（錢包裡要有一點 SOL 付手續費）；arc：在 EVM 錢包簽一個 USDC 授權，不用 gas 幣、不付手續費；
@@ -65,9 +66,7 @@ export default function PaymentPicker({
               <h2 className="text-lg font-bold">{t("title")}</h2>
               <p className="mt-0.5 text-sm text-ink-2">{t("total", { amount: formatPrice(amountUsd) })}</p>
             </div>
-            <button onClick={onClose} disabled={busy !== null} className="rounded-full px-2 py-1 text-xs text-ink-3 hover:bg-surface-2 hover:text-ink disabled:opacity-50">
-              {t("close")}
-            </button>
+            <CloseButton onClick={() => busy === null && onClose()} />
           </div>
 
           {step === "evm" ? (

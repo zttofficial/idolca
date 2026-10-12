@@ -1,9 +1,9 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { TEMPLATES } from "@/lib/catalog";
-import { and, desc, eq, isNotNull } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull, ne } from "drizzle-orm";
 import type { Db } from "./db";
-import { collectorItems, users } from "./schema";
+import { collectorItems, orders, users } from "./schema";
 
 export type ItemRow = typeof collectorItems.$inferSelect;
 
@@ -49,8 +49,10 @@ export const MAX_PRICE = 100_000;
 export function priceToCents(v: unknown): number | null | undefined {
   if (v === null) return null;
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
-  if (!Number.isFinite(n) || n <= 0 || n > MAX_PRICE) return undefined;
-  return Math.round(n * 100);
+  // 以分為單位存，四捨五入後至少 1 分（0.01）：不到半分的價格會變成 0，等於免費
+  const cents = Math.round(n * 100);
+  if (!Number.isFinite(n) || cents < 1 || n > MAX_PRICE) return undefined;
+  return cents;
 }
 
 const norm = (s?: string | null) => (s ?? "").trim().toLowerCase();
@@ -89,6 +91,31 @@ export async function getListing(db: Db, id: string) {
 }
 
 export type Listing = ReturnType<typeof publicListing>;
+
+// 刊登頁的賣家卡片：暱稱、加入時間、成交筆數、在售件數、有沒有綁錢包，以及這位賣家的其他刊登（最多 4 則）。
+// 只給公開資訊，不含郵箱和錢包地址
+export async function getSeller(db: Db, itemId: string) {
+  const [row] = await db
+    .select({ id: users.id, name: users.displayName, joinedAt: users.createdAt, wallet: users.walletAddress })
+    .from(collectorItems)
+    .innerJoin(users, eq(users.id, collectorItems.userId))
+    .where(eq(collectorItems.id, itemId));
+  if (!row) return null;
+  const onSale = and(eq(collectorItems.userId, row.id), isNotNull(collectorItems.priceCents), eq(collectorItems.verification, "unverified"));
+  const [[sales], [active], others] = await Promise.all([
+    db.select({ n: count() }).from(orders).where(and(eq(orders.sellerId, row.id), eq(orders.status, "completed"))),
+    db.select({ n: count() }).from(collectorItems).where(onSale),
+    db.select().from(collectorItems).where(and(onSale, ne(collectorItems.id, itemId))).orderBy(desc(collectorItems.listedAt)).limit(4),
+  ]);
+  return {
+    name: row.name,
+    joinedAt: row.joinedAt.toISOString(),
+    sales: sales.n,
+    active: active.n,
+    walletLinked: Boolean(row.wallet),
+    others: others.map((r) => publicListing(r, row.name)),
+  };
+}
 
 // 鏈上屬性用的收藏品資料
 export const chainAttributes = (r: ItemRow) => ({

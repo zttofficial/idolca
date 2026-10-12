@@ -32,7 +32,8 @@
     "packs": "Mystery Pack",
     "catalog": "Catalog",
     "binder": "Binder",
-    "charts": "Charts"
+    "charts": "Charts",
+    "grading": "Grading"
   },
   "Hero": {
     "badge": "Hand-checked · Traded worldwide · Ships to your door",
@@ -131,14 +132,16 @@
     "ungraded": "Ungraded",
     "inHouseGrade": "Idolca's own grading, not a third-party grader",
     "intakeDate": "Vaulted on",
-    "condition": "Condition"
+    "condition": "Condition",
+    "whatIsIdg": "What is IDG?"
   },
   "Footer": {
     "credits": "Image credits",
     "textDevnet": "© 2026 Idolca · Solana Devnet · Test transactions use test USDT, no real funds",
     "textMainnet": "© 2026 Idolca · Solana",
     "terms": "Terms",
-    "privacy": "Privacy"
+    "privacy": "Privacy",
+    "grading": "IDG grading"
   },
   "NotFound": {
     "title": "Page not found",
@@ -169,13 +172,10 @@
     "redeemedNote": "This card has been shipped to its owner. Its digital collectible was retired.",
     "redeemingMine": "You asked us to ship this card. Its digital collectible is locked until it ships.",
     "yourListing": "This is your listing. The digital collectible is held in escrow until it sells.",
-    "cancelListing": "Cancel listing",
     "confirmInWallet": "Confirm in your wallet…",
     "buyNowFor": "Buy now for {price}",
     "linkWalletToBuy": "Link a wallet from the account menu to buy.",
     "youOwn": "You own this card. List it for sale or have it shipped to you.",
-    "listPrice": "Listing price",
-    "listForSale": "List",
     "requestRedeem": "Request redemption (ship to me)",
     "holder": "Holder:",
     "you": "you",
@@ -358,7 +358,6 @@
     "notMinted": "Tracked in your binder. Add a photo of your card to make it a digital collectible with a permanent record.",
     "mint": "Make it a digital collectible",
     "sendToVault": "Send to vault to verify and trade",
-    "close": "Close",
     "complete": "Complete!",
     "promoKicker": "BINDER",
     "promoTitle": "A binder that keeps forever",
@@ -444,12 +443,17 @@
     "resetLayout": "Reset to default order",
     "resetLayoutConfirm": "Put every card back into the binder in the default order?",
     "trackedOnly": "Tracked only",
-    "removeFromBinder": "Remove from binder"
+    "removeFromBinder": "Remove from binder",
+    "vaultListingNote": "The digital collectible moves into on-chain escrow and the card stays in the vault. The buyer's payment and the collectible swap in one step. Changing the price cancels and relists, so your wallet asks you to sign twice.",
+    "listingError": "Couldn't update the listing. Please try again.",
+    "filterLabel": "Show",
+    "filterAll": "All",
+    "filterListed": "For sale {count}",
+    "listedEmpty": "Nothing is for sale right now."
   },
   "Mint": {
     "title": "Make a digital collectible of your card",
     "subtitle": "Photograph the front and back, then name it. It doesn't need to be in our catalog, and a set of cards works too.",
-    "close": "Close",
     "choosePhoto": "Take or upload a photo of the front",
     "retake": "Change photo",
     "group": "Group",
@@ -499,7 +503,6 @@
   },
   "Auth": {
     "login": "Log in",
-    "close": "Close",
     "signupTitle": "Create your account",
     "loginTitle": "Welcome back",
     "subtitle": "Collect, track and trade K-pop photocards.",
@@ -525,7 +528,6 @@
     "switchToSignup": "Create an account",
     "myBinder": "My binder",
     "walletTitle": "Your collection wallet",
-    "walletBody": "The wallet you signed in with. Only you hold its keys, and the collectibles you create or buy go straight here.",
     "balance": "Balance",
     "copy": "Copy",
     "copied": "Copied",
@@ -538,12 +540,6 @@
     "error_wallet": "Wallet sign-in failed. Try again.",
     "walletAccount": "Signed in with wallet",
     "custodyBody": "Collectibles you create are held for you by Idolca. Sign in with a wallet to keep them yourself.",
-    "testUsdt": "Test USDT",
-    "faucet": "Get devnet test funds",
-    "faucetBusy": "Sending…",
-    "faucet_done": "Sent 0.02 SOL and 500 test USDT to your wallet.",
-    "faucet_cooldown": "You can claim again in a few minutes.",
-    "faucet_error": "Couldn't send test funds. Try again.",
     "linkTitle": "Link a wallet",
     "linkBody": "Buying and selling are signed with a wallet. Link one to this account; your cards and email login stay the same.",
     "error_wallet_taken": "That wallet is already used by another account.",
@@ -552,7 +548,16 @@
     "admin": "Admin",
     "agree": "By continuing you agree to the <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>.",
     "error_rate_limited": "Too many attempts. Wait a few minutes and try again.",
-    "getWallet": "Get a wallet"
+    "getWallet": "Get a wallet",
+    "forSale": "For sale",
+    "myOrders": "My orders",
+    "editName": "Edit",
+    "saveName": "Save",
+    "nameHint": "2–24 characters. Buyers see this on your listings.",
+    "nameError": "Names need 2–24 characters.",
+    "arcTitle": "USDC on Arc",
+    "arcConnect": "Connect wallet to see balance",
+    "arcNoWallet": "No EVM wallet (such as MetaMask) found in this browser. Arc payments use one."
   },
   "Source": {
     "album": "Album",
@@ -575,7 +580,6 @@
     "sellYours": "List your cards",
     "breadcrumb": "Seller listings",
     "price": "Price",
-    "seller": "Seller: {name}",
     "step1": "Your payment is held by Idolca, not the seller.",
     "step2": "The seller ships the physical card.",
     "step3": "Once you confirm it arrived and matches the photos, the seller is paid and the digital collectible moves to you.",
@@ -600,7 +604,12 @@
     "error_payment_not_found": "We couldn't find your payment. Check that your wallet has enough USDT and SOL.",
     "error_wallet_not_found": "Open the wallet you linked to this account and try again.",
     "sellerNotes": "From the seller",
-    "ownListing": "This is your own listing. Manage it from your binder."
+    "ownListing": "This is your own listing. Manage it from your binder.",
+    "sellerWallet": "Wallet linked",
+    "sellerJoined": "Joined {date}",
+    "sellerSales": "{count} sold",
+    "sellerActive": "{count} for sale",
+    "sellerMore": "More from {name}"
   },
   "Admin": {
     "title": "Admin console",
@@ -704,7 +713,6 @@
   "Pay": {
     "title": "Choose how to pay",
     "total": "Total {amount}",
-    "close": "Close",
     "back": "Back",
     "waiting": "Confirm in your wallet, then hold on…",
     "chooseWallet": "Choose a wallet",
@@ -722,5 +730,51 @@
     "error_authorization_expired": "The payment request expired. Please try again.",
     "error_authorization_rejected": "Your wallet's signature didn't match the payment, or the wallet doesn't have enough USDC on Arc.",
     "error_generic": "Payment didn't go through. Please try again."
+  },
+  "Common": {
+    "close": "Close"
+  },
+  "Grading": {
+    "metaTitle": "IDG photocard grading",
+    "metaDescription": "Idolca Grading (IDG) authenticates K-pop photocards by hand, scores them on four criteria and gives every graded card a public record.",
+    "eyebrow": "Idolca Grading · IDG",
+    "title": "Every photocard gets an ID",
+    "subtitle": "IDG is Idolca's grading for photocards in our vault. Each card is authenticated by hand, scored on four criteria and given a public record anyone can check.",
+    "whyTitle": "Why photocards need their own grading",
+    "why1Title": "Big graders aren't built for photocards",
+    "why1Body": "Mainstream grading costs tens of dollars a card and can take months, more than most photocards are worth.",
+    "why2Title": "Most grades can't be checked",
+    "why2Body": "Outside a few large graders, a grade is a label on a sleeve. A buyer on another platform has no way to look it up.",
+    "why3Title": "Fakes travel",
+    "why3Body": "Without a shared record, the same card can be relisted anywhere with any story attached.",
+    "howTitle": "How IDG works",
+    "step1Title": "Authenticated in the vault",
+    "step1Body": "The card is mailed into the Idolca vault and checked by hand. Only authentic cards are graded.",
+    "step2Title": "Scored on four criteria",
+    "step2Body": "Centering, corners, edges and surface, from 1 to 10 in half-point steps.",
+    "step3Title": "The vault serial is the cert number",
+    "step3Body": "Each graded card keeps its IC- serial for life, printed on its sleeve label.",
+    "step4Title": "Recorded publicly",
+    "step4Body": "The grade is written into the card's digital collectible and shown on its card page, next to its photos and full on-chain history.",
+    "scaleTitle": "The scale",
+    "scaleBody": "Half points sit between the steps below, for example IDG 9.5.",
+    "scale10": "Gem Mint: flawless to the eye",
+    "scale9": "Mint: one tiny flaw under close look",
+    "scale8": "Near Mint–Mint: light wear on one corner or edge",
+    "scale7": "Near Mint: slight wear on corners or edges",
+    "scale6": "Excellent–Mint: visible wear or a small print flaw",
+    "scale5": "Excellent: wear on several corners",
+    "scale4": "Very Good–Excellent: noticeable rounding or scuffs",
+    "scale3": "Very Good: heavy wear",
+    "scale2": "Good: creases or stains",
+    "scale1": "Poor: major damage",
+    "thirdTitle": "Already graded elsewhere?",
+    "thirdBody": "We record {graders} grades too, with the grader and cert number. PSA and CGC certs link straight to their public lookup.",
+    "honestTitle": "Our own grade, clearly labeled",
+    "honestBody": "IDG is Idolca's in-house grading, and Idolca also sells cards. So every IDG grade is marked as our own on the card page, kept apart from third-party grades, and backed by photos anyone can compare.",
+    "ctaTitle": "Get your card an IDG grade",
+    "ctaBody": "Send a card into the vault from your binder. Once it's authenticated it can be graded, and it trades without shipping again.",
+    "ctaBinder": "Send a card to the vault",
+    "ctaVault": "See the vault"
   }
 }

@@ -84,3 +84,13 @@ export async function signArcPayment(wallet: EvmWallet, request: ArcPaymentReque
   }
   return { from, signature, validBefore: request.validBefore };
 }
+
+// 錢包目前在本站可用的地址：prompt 為 false 時只讀已授權的帳號（不彈窗），true 時請求連線
+export async function evmAddress(wallet: EvmWallet, prompt: boolean): Promise<`0x${string}` | null> {
+  try {
+    const accounts = (await wallet.provider.request({ method: prompt ? "eth_requestAccounts" : "eth_accounts" })) as `0x${string}`[];
+    return accounts[0] ?? null;
+  } catch {
+    return null;
+  }
+}

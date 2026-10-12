@@ -71,9 +71,10 @@ check("test wallet listed", await click("Idolca Test Wallet"));
 check("logged in", await waitFor(`!document.querySelector('[role=dialog]') && ${has(buyer.address.slice(0, 4))}`, 20000));
 
 step("領測試幣");
+// 網站上沒有領測試幣的入口（介面和主網一致），測試直接呼叫 devnet 的接口；帳號選單裡看得到餘額
+check("faucet", await evaluate(`fetch('/api/chain/faucet', { method: 'POST' }).then((r) => r.ok)`));
 await evaluate(`[...document.querySelectorAll('header button[aria-expanded]')].find(b => !b.hasAttribute('aria-haspopup')).click()`);
 await sleep(800);
-check("faucet", await click("Get devnet test funds"));
 check("funded", await waitFor(has("500 USDT"), 60000));
 await shot("1-account-menu");
 

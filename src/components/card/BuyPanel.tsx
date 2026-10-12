@@ -6,10 +6,12 @@ import type { ShippingAddress } from "@/lib/shipping";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/auth/AuthContext";
 import Price from "@/components/web3/Price";
-import { CURRENCY, formatPrice } from "@/lib/fx";
+import { formatPrice } from "@/lib/fx";
 import type { Card } from "@/lib/cards";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
-import { useChainState, vaultAction, type VaultAction, type VaultCardState } from "@/lib/chain-client";
+import { listVaultCard, useChainState, vaultAction, type VaultAction, type VaultCardState } from "@/lib/chain-client";
+import ListingControl from "@/components/market/ListingControl";
+import CopyButton from "@/components/ui/CopyButton";
 import PaymentPicker from "@/components/pay/PaymentPicker";
 
 const PRIMARY = "btn-primary flex-1 rounded-full px-6 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
@@ -65,10 +67,10 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<string>();
   const [done, setDone] = useState<{ action: VaultAction; signature: string }>();
-  const [price, setPrice] = useState(card.priceUsdt ? String(card.priceUsdt) : "");
   const [redeeming, setRedeeming] = useState(false);
   const [picking, setPicking] = useState(false);
   const tPay = useTranslations("Pay");
+  const tBinder = useTranslations("Binder");
 
   const run = async (action: VaultAction, priceUsdt?: number, address?: ShippingAddress) => {
     if (!me) return;
@@ -94,13 +96,24 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
   let body: React.ReactNode;
   if (live.burned) body = note("redeemedNote");
   else if (live.redeeming) body = note(live.owner === me ? "redeemingMine" : "redeemingNote");
-  else if (live.listing && live.listing.seller === me) {
+  else if (me && (live.listing?.seller === me || (!live.listing && live.owner === me))) {
+    // 自己的卡：上架、改價、下架用和收藏冊同一個元件；沒上架時還能申請提貨
+    const mine = live.listing;
     body = (
-      <div>
-        <p className="mb-3 text-sm text-ink-2">{t("yourListing")}</p>
-        <button className={SECONDARY + " w-full"} disabled={busy !== null} onClick={() => run("cancel")}>
-          {busy === "cancel" ? t("confirmInWallet") : t("cancelListing")}
-        </button>
+      <div className="space-y-3">
+        <p className="text-sm text-ink-2">{t(mine ? "yourListing" : "youOwn")}</p>
+        <ListingControl
+          price={mine ? mine.priceUsdt : null}
+          note={tBinder("vaultListingNote")}
+          onList={(price) => listVaultCard(card.id, me, price, Boolean(mine))}
+          onUnlist={() => vaultAction("cancel", card.id, me)}
+        />
+        {!mine && (
+          <button className={SECONDARY + " w-full"} disabled={busy !== null} onClick={() => setRedeeming(true)}>
+            {t("requestRedeem")}
+          </button>
+        )}
+        {redeeming && <RedeemDialog busy={busy === "redeem"} onSubmit={(address) => run("redeem", undefined, address)} onClose={() => setRedeeming(false)} />}
       </div>
     );
   } else if (live.listing) {
@@ -125,32 +138,6 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
           />
         )}
       </>
-    );
-  } else if (live.owner === me) {
-    const value = Number(price);
-    body = (
-      <div className="space-y-3">
-        <p className="text-sm text-ink-2">{t("youOwn")}</p>
-        <div className="flex gap-2">
-          <label className="flex flex-1 items-center gap-2 rounded-full border border-line px-4 text-sm">
-            <input
-              inputMode="decimal"
-              value={price}
-              onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))}
-              aria-label={t("listPrice")}
-              className="w-full bg-transparent py-2.5 tabular-nums outline-none"
-            />
-            {CURRENCY}
-          </label>
-          <button className={PRIMARY} disabled={busy !== null || !(value > 0)} onClick={() => run("list", value)}>
-            {busy === "list" ? t("confirmInWallet") : t("listForSale")}
-          </button>
-        </div>
-        <button className={SECONDARY + " w-full"} disabled={busy !== null} onClick={() => setRedeeming(true)}>
-          {t("requestRedeem")}
-        </button>
-        {redeeming && <RedeemDialog busy={busy === "redeem"} onSubmit={(address) => run("redeem", undefined, address)} onClose={() => setRedeeming(false)} />}
-      </div>
     );
   } else body = note("notListed");
 
@@ -190,7 +177,6 @@ function ShareRow({ cardId }: { cardId: string }) {
   const t = useTranslations("Detail");
   const key = `idolca:saved:${cardId}`;
   const [saved, setSaved] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     try {
@@ -209,14 +195,6 @@ function ShareRow({ cardId }: { cardId: string }) {
     } catch {}
   };
 
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {}
-  };
-
   return (
     <div className="mt-4 flex items-center gap-4 border-t border-line pt-4 text-xs text-ink-2">
       <button onClick={toggle} aria-pressed={saved} className="flex items-center gap-1.5 hover:text-ink">
@@ -225,9 +203,7 @@ function ShareRow({ cardId }: { cardId: string }) {
         </svg>
         {saved ? t("saved") : t("wishlist")}
       </button>
-      <button onClick={copy} className="ml-auto hover:text-ink">
-        {copied ? t("copied") : t("share")}
-      </button>
+      <CopyButton text={() => window.location.href} label={t("share")} copiedLabel={t("copied")} className="ml-auto" />
     </div>
   );
 }

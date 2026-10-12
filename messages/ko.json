@@ -32,7 +32,8 @@
     "packs": "미스터리 팩",
     "catalog": "도감",
     "binder": "바인더",
-    "charts": "차트"
+    "charts": "차트",
+    "grading": "그레이딩"
   },
   "Hero": {
     "badge": "한 장씩 감정 · 전 세계 거래 · 언제든 배송",
@@ -131,14 +132,16 @@
     "ungraded": "미그레이딩",
     "inHouseGrade": "Idolca 자체 등급(제3자 기관 아님)",
     "intakeDate": "입고일",
-    "condition": "상태"
+    "condition": "상태",
+    "whatIsIdg": "IDG란?"
   },
   "Footer": {
     "credits": "이미지 출처",
     "textDevnet": "© 2026 Idolca · Solana Devnet · 테스트 거래는 테스트 USDT를 사용하며 실제 자금은 오가지 않아요",
     "textMainnet": "© 2026 Idolca · Solana",
     "terms": "이용약관",
-    "privacy": "개인정보 처리방침"
+    "privacy": "개인정보 처리방침",
+    "grading": "IDG 그레이딩"
   },
   "NotFound": {
     "title": "페이지를 찾을 수 없습니다",
@@ -169,13 +172,10 @@
     "redeemedNote": "이 카드는 소유자에게 발송됐어요. 디지털 컬렉터블은 폐기됐어요.",
     "redeemingMine": "이 카드의 발송을 신청했어요. 발송될 때까지 디지털 컬렉터블이 잠겨요.",
     "yourListing": "내 판매 등록이에요. 팔릴 때까지 디지털 컬렉터블은 에스크로에 보관돼요.",
-    "cancelListing": "판매 취소",
     "confirmInWallet": "지갑에서 확인해 주세요…",
     "buyNowFor": "{price}에 바로 구매",
     "linkWalletToBuy": "구매하려면 계정 메뉴에서 지갑을 연결해 주세요.",
     "youOwn": "내 카드예요. 판매 등록하거나 출고 신청할 수 있어요.",
-    "listPrice": "판매 가격",
-    "listForSale": "등록",
     "requestRedeem": "출고 신청 (배송 받기)",
     "holder": "보유자:",
     "you": "나",
@@ -358,7 +358,6 @@
     "notMinted": "바인더에 기록됐어요. 카드 사진을 추가하면 영구 기록이 남는 디지털 컬렉터블이 돼요.",
     "mint": "디지털 컬렉터블로 만들기",
     "sendToVault": "보관소로 보내 검수 후 거래하기",
-    "close": "닫기",
     "complete": "올콜렉!",
     "promoKicker": "바인더",
     "promoTitle": "영원히 남는 바인더",
@@ -444,12 +443,17 @@
     "resetLayout": "기본 순서로 되돌리기",
     "resetLayoutConfirm": "모든 카드를 바인더에 다시 넣고 기본 순서로 정렬할까요?",
     "trackedOnly": "기록만",
-    "removeFromBinder": "바인더에서 빼기"
+    "removeFromBinder": "바인더에서 빼기",
+    "vaultListingNote": "판매 등록하면 디지털 컬렉터블은 온체인 에스크로로 옮겨지고 카드는 금고에 그대로 있어요. 구매자의 결제와 컬렉터블이 한 번에 교환돼요. 가격을 바꾸면 등록을 취소했다가 다시 올리기 때문에 지갑에서 두 번 서명해요.",
+    "listingError": "판매 등록을 바꾸지 못했어요. 다시 시도해 주세요.",
+    "filterLabel": "보기",
+    "filterAll": "전체",
+    "filterListed": "판매 중 {count}",
+    "listedEmpty": "판매 중인 카드가 없어요."
   },
   "Mint": {
     "title": "가진 카드를 디지털 컬렉터블로",
     "subtitle": "앞뒷면을 찍고 이름만 적으면 돼요. 도감에 없는 카드도, 여러 장 세트도 괜찮아요.",
-    "close": "닫기",
     "choosePhoto": "카드 앞면 촬영 또는 업로드",
     "retake": "사진 바꾸기",
     "group": "그룹",
@@ -499,7 +503,6 @@
   },
   "Auth": {
     "login": "로그인",
-    "close": "닫기",
     "signupTitle": "계정 만들기",
     "loginTitle": "다시 오신 걸 환영해요",
     "subtitle": "K-POP 포카를 모으고, 정리하고, 거래하세요.",
@@ -525,7 +528,6 @@
     "switchToSignup": "계정 만들기",
     "myBinder": "내 바인더",
     "walletTitle": "내 컬렉션 지갑",
-    "walletBody": "로그인에 사용한 지갑이에요. 열쇠는 당신만 가지고 있고, 만들거나 산 컬렉터블은 바로 여기로 들어와요.",
     "balance": "잔액",
     "copy": "복사",
     "copied": "복사됨",
@@ -538,12 +540,6 @@
     "error_wallet": "지갑 로그인에 실패했어요. 다시 시도해 주세요.",
     "walletAccount": "지갑으로 로그인됨",
     "custodyBody": "만든 컬렉터블은 Idolca가 대신 보관해요. 지갑으로 로그인하면 직접 보관할 수 있어요.",
-    "testUsdt": "테스트 USDT",
-    "faucet": "devnet 테스트 자금 받기",
-    "faucetBusy": "보내는 중…",
-    "faucet_done": "지갑으로 0.02 SOL과 테스트 USDT 500을 보냈어요.",
-    "faucet_cooldown": "몇 분 뒤에 다시 받을 수 있어요.",
-    "faucet_error": "테스트 자금을 보내지 못했어요. 다시 시도해 주세요.",
     "linkTitle": "지갑 연결",
     "linkBody": "사고팔 때는 지갑으로 서명해요. 이 계정에 지갑을 연결해도 기존 카드와 이메일 로그인은 그대로예요.",
     "error_wallet_taken": "이 지갑은 다른 계정에서 이미 쓰고 있어요.",
@@ -552,7 +548,16 @@
     "admin": "관리자",
     "agree": "계속하면 <terms>이용약관</terms>과 <privacy>개인정보 처리방침</privacy>에 동의하게 돼요.",
     "error_rate_limited": "시도 횟수가 너무 많아요. 몇 분 후에 다시 시도해 주세요.",
-    "getWallet": "지갑 받기"
+    "getWallet": "지갑 받기",
+    "forSale": "판매 중",
+    "myOrders": "내 주문",
+    "editName": "닉네임 변경",
+    "saveName": "저장",
+    "nameHint": "2~24자. 판매글에 표시돼요.",
+    "nameError": "닉네임은 2~24자로 해 주세요.",
+    "arcTitle": "Arc의 USDC",
+    "arcConnect": "지갑을 연결해 잔액 보기",
+    "arcNoWallet": "이 브라우저에 EVM 지갑(MetaMask 등)이 없어요. Arc 결제에 필요해요."
   },
   "Source": {
     "album": "앨범",
@@ -575,7 +580,6 @@
     "sellYours": "내 카드 판매하기",
     "breadcrumb": "개인 판매",
     "price": "가격",
-    "seller": "판매자: {name}",
     "step1": "결제 금액은 Idolca가 보관하며 판매자에게 바로 가지 않아요.",
     "step2": "판매자가 실물 카드를 발송해요.",
     "step3": "도착해서 사진과 같은지 확인하면 판매자에게 대금이 지급되고 디지털 컬렉터블이 당신에게 옮겨져요.",
@@ -600,7 +604,12 @@
     "error_payment_not_found": "결제를 찾지 못했어요. 지갑에 USDT와 SOL이 충분한지 확인해 주세요.",
     "error_wallet_not_found": "이 계정에 연결한 지갑을 열고 다시 시도해 주세요.",
     "sellerNotes": "판매자 설명",
-    "ownListing": "내가 올린 판매글이에요. 컬렉션북에서 관리할 수 있어요."
+    "ownListing": "내가 올린 판매글이에요. 컬렉션북에서 관리할 수 있어요.",
+    "sellerWallet": "지갑 연결됨",
+    "sellerJoined": "{date} 가입",
+    "sellerSales": "거래 {count}건",
+    "sellerActive": "판매 중 {count}개",
+    "sellerMore": "{name}의 다른 판매글"
   },
   "Admin": {
     "title": "관리자 콘솔",
@@ -704,7 +713,6 @@
   "Pay": {
     "title": "결제 방법 선택",
     "total": "합계 {amount}",
-    "close": "닫기",
     "back": "뒤로",
     "waiting": "지갑에서 확인한 뒤 잠시 기다려 주세요…",
     "chooseWallet": "지갑 선택",
@@ -722,5 +730,51 @@
     "error_authorization_expired": "결제 요청이 만료되었습니다. 다시 시도해 주세요.",
     "error_authorization_rejected": "서명이 결제 내용과 맞지 않거나, 지갑의 Arc USDC 잔액이 부족합니다.",
     "error_generic": "결제가 완료되지 않았습니다. 다시 시도해 주세요."
+  },
+  "Common": {
+    "close": "닫기"
+  },
+  "Grading": {
+    "metaTitle": "IDG 포토카드 그레이딩",
+    "metaDescription": "Idolca Grading(IDG)은 K-POP 포토카드를 사람이 직접 감정하고 네 가지 기준으로 채점하며, 그레이딩한 모든 카드에 공개 기록을 남겨요.",
+    "eyebrow": "Idolca Grading · IDG",
+    "title": "모든 포토카드에 신분증을",
+    "subtitle": "IDG는 Idolca 금고에 있는 포토카드를 위한 그레이딩이에요. 사람이 직접 진품을 감정하고 네 가지 기준으로 채점해, 누구나 확인할 수 있는 공개 기록을 남겨요.",
+    "whyTitle": "포토카드에 전용 그레이딩이 필요한 이유",
+    "why1Title": "대형 그레이딩 업체는 포토카드에 맞지 않아요",
+    "why1Body": "일반 그레이딩은 장당 수십 달러에 몇 달씩 걸려, 대부분의 포토카드 가격보다 비싸요.",
+    "why2Title": "대부분의 등급은 확인할 수 없어요",
+    "why2Body": "몇몇 대형 업체를 빼면 등급은 슬리브의 라벨일 뿐이라, 다른 플랫폼의 구매자는 조회할 방법이 없어요.",
+    "why3Title": "가품은 장소를 바꿔 다시 팔려요",
+    "why3Body": "공유된 기록이 없으면 같은 카드가 다른 곳에서 다른 설명으로 다시 올라와요.",
+    "howTitle": "IDG는 이렇게 진행돼요",
+    "step1Title": "금고에서 감정",
+    "step1Body": "카드를 Idolca 금고로 보내면 사람이 직접 확인해요. 진품만 그레이딩해요.",
+    "step2Title": "네 가지 기준으로 채점",
+    "step2Body": "센터링, 모서리, 가장자리, 표면. 1~10점, 0.5점 단위.",
+    "step3Title": "금고 번호가 인증 번호",
+    "step3Body": "그레이딩한 카드는 IC- 번호를 계속 쓰고, 슬리브 라벨에 인쇄돼요.",
+    "step4Title": "공개 기록",
+    "step4Body": "등급은 카드의 디지털 컬렉터블에 기록되고, 카드 페이지에 실물 사진과 전체 온체인 기록과 함께 표시돼요.",
+    "scaleTitle": "등급 읽는 법",
+    "scaleBody": "단계 사이에 0.5점이 있어요(예: IDG 9.5).",
+    "scale10": "Gem Mint: 육안으로 흠 없음",
+    "scale9": "Mint: 자세히 보면 아주 작은 흠 하나",
+    "scale8": "Near Mint–Mint: 모서리나 가장자리 한 곳에 가벼운 마모",
+    "scale7": "Near Mint: 모서리나 가장자리에 약간의 마모",
+    "scale6": "Excellent–Mint: 보이는 마모나 작은 인쇄 결함",
+    "scale5": "Excellent: 여러 모서리에 마모",
+    "scale4": "Very Good–Excellent: 눈에 띄는 모서리 둥글어짐이나 긁힘",
+    "scale3": "Very Good: 심한 마모",
+    "scale2": "Good: 접힘이나 얼룩",
+    "scale1": "Poor: 큰 손상",
+    "thirdTitle": "이미 다른 곳에서 그레이딩했다면",
+    "thirdBody": "{graders} 등급도 업체와 인증 번호와 함께 등록해요. PSA와 CGC 번호는 공식 조회 페이지로 바로 연결돼요.",
+    "honestTitle": "자체 등급임을 분명히 표시해요",
+    "honestBody": "IDG는 Idolca의 자체 그레이딩이고, Idolca는 카드도 판매해요. 그래서 모든 IDG 등급은 카드 페이지에 자체 등급으로 표시하고, 제3자 등급과 따로 보여주며, 누구나 비교할 수 있는 실물 사진을 함께 제공해요.",
+    "ctaTitle": "내 카드에 IDG 등급 받기",
+    "ctaBody": "컬렉션북에서 카드를 금고로 보내 주세요. 감정을 통과하면 그레이딩을 받을 수 있고, 이후 거래할 때 다시 배송할 필요가 없어요.",
+    "ctaBinder": "카드를 금고로 보내기",
+    "ctaVault": "금고 보기"
   }
 }

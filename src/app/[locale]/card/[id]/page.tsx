@@ -69,7 +69,7 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
     [tCard("album"), card.album],
     [tCard("version"), card.version],
     [tCard("type"), tRarity(card.rarity)],
-    ...(card.grade ? [[tCard("grade"), <GradeValue key="grade" grade={card.grade} inHouseNote={tCard("inHouseGrade")} />] as [string, ReactNode]] : []),
+    ...(card.grade ? [[tCard("grade"), <GradeValue key="grade" grade={card.grade} inHouseNote={tCard("inHouseGrade")} whatIs={tCard("whatIsIdg")} />] as [string, ReactNode]] : []),
     ...(card.condition ? [[tCard("condition"), card.condition] as [string, ReactNode]] : []),
     [tCard("intakeDate"), card.intakeDate],
     [t("custodyLocation"), card.location],
@@ -155,7 +155,7 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
 }
 
 // 評級：機構和分數，加上鑑定編號；機構有公開查詢頁時編號連過去。自家評級（IDG）另起一行註明不是第三方
-function GradeValue({ grade, inHouseNote }: { grade: Grade; inHouseNote: string }) {
+function GradeValue({ grade, inHouseNote, whatIs }: { grade: Grade; inHouseNote: string; whatIs: string }) {
   const url = gradeLookupUrl(grade);
   return (
     <>
@@ -167,7 +167,14 @@ function GradeValue({ grade, inHouseNote }: { grade: Grade; inHouseNote: string 
       ) : (
         `#${grade.cert}`
       )}
-      {isInHouse(grade) && <span className="block text-[11px] text-ink-3">{inHouseNote}</span>}
+      {isInHouse(grade) && (
+        <span className="block text-[11px] text-ink-3">
+          {inHouseNote} ·{" "}
+          <Link href="/grading" className="underline hover:text-ink">
+            {whatIs}
+          </Link>
+        </span>
+      )}
     </>
   );
 }

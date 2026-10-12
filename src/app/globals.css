@@ -92,6 +92,28 @@ body {
   background: var(--accent-hover);
 }
 
+/* 次要按鈕：白底細邊框。主要動作用 btn-primary，其他動作都用這個，不用純文字按鈕 */
+.btn-secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  transition: background-color 0.15s;
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+/* 危險操作（清除、刪除這類無法復原的動作）：紅色細邊框加紅字 */
+.btn-danger {
+  background: var(--surface);
+  color: var(--down);
+  border: 1px solid color-mix(in srgb, var(--down) 45%, transparent);
+  transition: background-color 0.15s;
+}
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--down) 10%, transparent);
+}
+
 /* 列表卡的 3D 傾斜和全息效果 */
 .holo-stage {
   perspective: 900px;

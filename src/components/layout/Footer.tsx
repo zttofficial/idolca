@@ -16,6 +16,9 @@ export default function Footer() {
         <Link href="/privacy" className="hover:text-ink">
           {t("privacy")}
         </Link>
+        <Link href="/grading" className="hover:text-ink">
+          {t("grading")}
+        </Link>
         <Link href="/credits" className="hover:text-ink">
           {t("credits")}
         </Link>
