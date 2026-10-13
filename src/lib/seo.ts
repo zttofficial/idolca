@@ -15,8 +15,8 @@ export const languageAlternates = (path: string) => ({
   "x-default": `${SITE_URL}${localePath(routing.defaultLocale, path)}`,
 });
 
-// 預設分享圖（src/app/opengraph-image.tsx）。它在根目錄，[locale] 下的頁面不會自動帶上，要在 metadata 裡顯式寫出
-export const DEFAULT_SHARE_IMAGE = { url: "/opengraph-image", width: 1200, height: 630, type: "image/png", alt: "Idolca: every photocard finds its fan" };
+// 預設分享圖（src/app/opengraph-image.tsx）。它在根目錄，[locale] 下的頁面不會自動帶上，要在 metadata 裡顯式寫出；網址帶版本號（見 next.config.ts）
+export const DEFAULT_SHARE_IMAGE = { url: `/opengraph-image?v=${process.env.SHARE_IMAGE_VERSION}`, width: 1200, height: 630, type: "image/png", alt: "Idolca: every photocard finds its fan" };
 
 type PageSeo = {
   locale: string;
