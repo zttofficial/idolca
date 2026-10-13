@@ -6,6 +6,7 @@ import { ARC } from "@/lib/arc";
 import { formatPrice } from "@/lib/fx";
 import { useEvmWallets, type EvmWallet } from "@/lib/evm/arc-wallet";
 import { CloseButton } from "@/components/ui/Dialog";
+import { track, type AnalyticsEvent } from "@/lib/analytics";
 
 // 結帳的付款方式面板：所有購買按鈕都先打開這裡，再選用哪種方式付。
 // solana：Solana 錢包付 USDT（錢包裡要有一點 SOL 付手續費）；arc：在 EVM 錢包簽一個 USDC 授權，不用 gas 幣、不付手續費；
@@ -16,12 +17,15 @@ export type PayRun = { solana: (() => Promise<void>) | null; arc: ((wallet: EvmW
 export default function PaymentPicker({
   amountUsd,
   run,
+  event,
   arcUnavailableNote,
   describeError,
   onClose,
 }: {
   amountUsd: number;
   run: PayRun;
+  // 付款成功時記的分析事件和附帶的屬性；付款方式和金額自動帶上
+  event: { name: AnalyticsEvent; props?: Record<string, string | number> };
   // Arc 不適用時的說明（例如金庫卡成交只能在 Solana 上原子交換）
   arcUnavailableNote?: string;
   // 呼叫方自己的錯誤說明（例如卡包賣完）；沒有對應時用通用說明
@@ -39,6 +43,7 @@ export default function PaymentPicker({
     setError(undefined);
     try {
       await go();
+      track(event.name, { ...event.props, rail: method, amount_usd: amountUsd });
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "generic");

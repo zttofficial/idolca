@@ -195,6 +195,7 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
         <PaymentPicker
           amountUsd={round2(qty * pack.priceUsdt)}
           run={{ solana: openOnSolana, arc: openOnArc }}
+          event={{ name: "pack_opened", props: { pack: pack.id, qty } }}
           describeError={(code) => (t.has(`error_${code}`) ? t(`error_${code}`) : null)}
           onClose={() => setPicking(false)}
         />

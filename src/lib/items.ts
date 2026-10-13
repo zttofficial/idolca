@@ -6,6 +6,7 @@ import { useSyncExternalStore } from "react";
 import type { CardSource } from "./sources";
 import type { AuctionView } from "./auction";
 import { signAndSend } from "./solana/wallets";
+import { track } from "./analytics";
 
 // 自由上鏈的卡平台不查驗：一律待驗證，只有查出假卡時才會變成 fake
 export type Verification = "unverified" | "fake";
@@ -100,6 +101,7 @@ export async function addItem(input: MintInput): Promise<CollectorItem> {
   if (!data.item) throw new Error(data.error ?? "mint_failed");
   items = [data.item, ...items];
   emit();
+  track("card_added", { listed: input.priceUsdt !== undefined, photos: input.photos.length });
   return data.item;
 }
 
@@ -114,6 +116,7 @@ export async function putOnChain(id: string, wallet: string) {
   const { tx, asset } = (await post(`/api/items/${id}/mint`)) as unknown as { tx: string; asset: string };
   const signature = await signAndSend(tx, wallet);
   const { item } = (await post(`/api/items/${id}/mint/confirm`, { signature, asset })) as unknown as { item: CollectorItem };
+  track("collectible_minted");
   items = items.map((i) => (i.id === id ? item : i));
   emit();
   return item;

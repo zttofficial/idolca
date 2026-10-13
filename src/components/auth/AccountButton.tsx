@@ -12,6 +12,7 @@ import CopyButton from "@/components/ui/CopyButton";
 import { ARC, arcExplorerUrl } from "@/lib/arc";
 import { evmAddress, useEvmWallets } from "@/lib/evm/arc-wallet";
 import { WalletError, linkWallet, useWallets } from "@/lib/solana/wallets";
+import { track } from "@/lib/analytics";
 import InfoTip from "@/components/ui/InfoTip";
 
 // 導航列的帳號入口。選單：頭像和暱稱（可以改）、收藏冊和交易的入口、Solana 錢包（地址、餘額；郵箱帳號在這裡綁定錢包）、登出
@@ -219,6 +220,7 @@ function LinkWalletBox() {
                 setError(undefined);
                 try {
                   updateUser(await linkWallet(w));
+                  track("wallet_linked");
                 } catch (e) {
                   setError(e instanceof WalletError && ["rejected", "wallet_taken"].includes(e.message) ? e.message : "wallet");
                 } finally {

@@ -7,12 +7,14 @@ import { CURRENCY, formatPrice } from "@/lib/fx";
 import { AUCTION_DAYS, AUCTION_FEE_BPS, AUCTION_MIN_START, type AuctionView } from "@/lib/auction";
 import InfoTip from "@/components/ui/InfoTip";
 import { TimeLeft } from "@/components/auction/AuctionPanel";
+import { track } from "@/lib/analytics";
 
 export type AuctionInput = { startUsd: number; reserveUsd: number | null; days: number };
 
 // 上架、改價、下架，或改用拍賣出售。收藏冊裡的收藏卡（擔保交易刊登）、收藏冊和卡片頁上的金庫卡（鏈上託管）共用這一個介面，
 // 差別只在呼叫方傳進來的動作和說明文字。上架時先選一口價或拍賣；拍賣中顯示目前出價和剩餘時間，沒人出價前可以取消
 export default function ListingControl({
+  lane,
   price,
   auction,
   viewHref,
@@ -22,6 +24,8 @@ export default function ListingControl({
   onAuction,
   onCancelAuction,
 }: {
+  // 哪條交易線，只用來記分析事件
+  lane: "free" | "vault";
   // 目前的售價；沒上架時為 null
   price: number | null;
   // 拍賣中時的拍賣狀態
@@ -66,7 +70,9 @@ export default function ListingControl({
       setBusy(false);
     }
   };
-  const errorText = error && <p className="mt-2 text-[11px] text-down">{t.has(`error_${error}`) ? t(`error_${error}`) : tAuction.has(`error_${error}`) ? tAuction(`error_${error}`) : t("listingError")}</p>;
+  const errorText = error && (
+    <p className="mt-2 text-[11px] text-down">{t.has(`error_${error}`) ? t(`error_${error}`) : tAuction.has(`error_${error}`) ? tAuction(`error_${error}`) : t("listingError")}</p>
+  );
 
   if (auction) {
     return (
@@ -76,7 +82,9 @@ export default function ListingControl({
           <TimeLeft endsAt={auction.endsAt} className="text-xs font-normal" />
         </p>
         <p className="mt-1 text-xs text-accent-ink">
-          {auction.highUsd === null ? tAuction("startingAt", { price: formatPrice(auction.startUsd) }) : tAuction("currentAt", { price: formatPrice(auction.highUsd), count: auction.bidCount })}
+          {auction.highUsd === null
+            ? tAuction("startingAt", { price: formatPrice(auction.startUsd) })
+            : tAuction("currentAt", { price: formatPrice(auction.highUsd), count: auction.bidCount })}
         </p>
         {viewHref && (
           <Link href={viewHref} className="btn-primary mt-2 block rounded-full py-2 text-center text-sm font-semibold">
@@ -129,8 +137,16 @@ export default function ListingControl({
       onSubmit={(e) => {
         e.preventDefault();
         if (!valid) return;
-        if (mode === "fixed") run(() => onList(value));
-        else run(() => onAuction!({ startUsd: value, reserveUsd: withReserve ? reserveValue : null, days }));
+        if (mode === "fixed")
+          run(async () => {
+            await onList(value);
+            if (!listed) track("listed", { lane, mode: "fixed", price_usd: value });
+          });
+        else
+          run(async () => {
+            await onAuction!({ startUsd: value, reserveUsd: withReserve ? reserveValue : null, days });
+            track("listed", { lane, mode: "auction", start_usd: value, days, reserve: withReserve });
+          });
       }}
     >
       {/* 已經一口價上架時只是改價，不切換方式 */}

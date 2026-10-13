@@ -115,6 +115,7 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
       <div className="space-y-3">
         <p className="text-sm text-ink-2">{t(mine ? "yourListing" : "youOwn")}</p>
         <ListingControl
+          lane="vault"
           price={mine ? mine.priceUsdt : null}
           note={tBinder("vaultListingNote")}
           onList={(price) => listVaultCard(card.id, me, price, Boolean(mine))}
@@ -145,6 +146,7 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
           <PaymentPicker
             amountUsd={live.listing.priceUsdt}
             run={{ solana: buyOnSolana, arc: null }}
+            event={{ name: "purchased", props: { lane: "vault" } }}
             arcUnavailableNote={tPay("arcVaultOnly")}
             describeError={(code) => (t.has(`error_${code}`) ? t(`error_${code}`) : null)}
             onClose={() => setPicking(false)}

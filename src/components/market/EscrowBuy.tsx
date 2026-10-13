@@ -79,6 +79,7 @@ export default function EscrowBuy({ itemId, priceUsdt }: { itemId: string; price
         <PaymentPicker
           amountUsd={priceUsdt}
           run={{ solana: buyOnSolana, arc: buyOnArc }}
+          event={{ name: "purchased", props: { lane: "free" } }}
           describeError={(code) => (t.has(`error_${code}`) ? t(`error_${code}`) : null)}
           onClose={() => setPicking(false)}
         />

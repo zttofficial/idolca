@@ -14,7 +14,7 @@ export default async function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      updated="2026-10-10"
+      updated="2026-10-12"
       note={locale === "en" ? undefined : "This policy is provided in English, and the English version governs."}
       intro="This policy explains what personal data Idolca collects, why, and how long we keep it. We collect only what the service needs and do not sell personal data or use it for advertising."
       sections={[
@@ -25,6 +25,7 @@ export default async function PrivacyPage() {
             "Collection data: cards you mark in your binder, cards you mint or list, the photos you upload, and your orders.",
             "Redemption data: the recipient name, phone number and shipping address you enter when you redeem a vault card.",
             "Technical data: a session cookie that keeps you signed in, your IP address for rate limiting, and the country your request comes from, which decides whether mystery packs are offered.",
+            "Usage data: which pages are viewed, where visitors came from, and anonymous counts of actions such as listing, bidding, buying and opening packs, with the amount and payment method. These events carry no email, wallet address or shipping address.",
           ],
         },
         {
@@ -49,7 +50,7 @@ export default async function PrivacyPage() {
         {
           title: "Who processes it",
           body: [
-            "Vercel hosts the site and Neon hosts the database; both process data on our behalf under their data processing terms. Shipping carriers receive the recipient name, phone and address for the shipment. We do not share personal data with anyone else unless the law requires it.",
+            "Vercel hosts the site and Neon hosts the database; PostHog, in its EU region, processes usage data. All three process data on our behalf under their data processing terms. Shipping carriers receive the recipient name, phone and address for the shipment. We do not share personal data with anyone else unless the law requires it.",
           ],
         },
         {
@@ -60,7 +61,7 @@ export default async function PrivacyPage() {
         },
         {
           title: "Cookies",
-          body: ["Idolca sets one essential cookie for your session. The site remembers a few preferences, such as your last shipping address, in your own browser's storage. We use no advertising or cross-site tracking cookies."],
+          body: ["Idolca sets one essential cookie for your session. The site remembers a few preferences, such as your last shipping address, in your own browser's storage. Usage analytics run without cookies or browser storage: PostHog recognises a visit by a privacy-preserving hash computed on its servers. We use no advertising or cross-site tracking cookies."],
         },
       ]}
     />

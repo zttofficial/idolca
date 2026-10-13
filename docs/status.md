@@ -35,6 +35,8 @@
 | SEO（標題、hreflang、站點地圖、分享圖、JSON-LD） | 全站 | `src/lib/seo.ts`、`src/app/sitemap.ts`、`robots.ts`、`opengraph-image.tsx` |
 | 下拉選單元件 | 全站 | `src/components/ui/Combobox.tsx`（可自由輸入的建議清單）、`Select.tsx`（選單，可帶搜尋） |
 | 多語言（8 種） | 全站 | `messages/*.json` |
+| 產品分析（PostHog，不用 cookie） | 全站 | `src/instrumentation-client.ts`、`src/lib/analytics.ts`；付款類事件在 `PaymentPicker.tsx` |
+| 官方社群帳號（頁尾圖示、結構化資料） | 全站 | `src/lib/social.ts` |
 
 ## 資料表
 
@@ -62,7 +64,7 @@
 | 平台金鑰 | `PLATFORM_SECRET_KEY`（敏感變數） | `.data/platform-devnet.json` | 同左 |
 | 管理員 | `ADMIN_WALLETS` 目前是測試錢包 `5ftP1ayDW7EpPmTXBjdC1dvuoRbdqfEKDX4tRWnFCBZu` | `.env.local` 的 `ADMIN_WALLETS`，金鑰 `.data/admin-test-devnet.json` | 同左 |
 
-- 線上已設的變數：資料庫、`PLATFORM_SECRET_KEY`、`ADMIN_WALLETS`、`CRON_SECRET`（Production 和 Preview）；Arc 主網的 `NEXT_PUBLIC_ARC_NETWORK`、`ARC_PLATFORM_KEY`、`ARC_PAY_ADMIN_ONLY`（只有 Production）。全部變數見 `.env.example`。
+- 線上已設的變數：資料庫、`PLATFORM_SECRET_KEY`、`ADMIN_WALLETS`、`CRON_SECRET`（Production 和 Preview）；Arc 主網的 `NEXT_PUBLIC_ARC_NETWORK`、`ARC_PLATFORM_KEY`、`ARC_PAY_ADMIN_ONLY`，以及 PostHog 的 `NEXT_PUBLIC_POSTHOG_KEY`（只有 Production）。全部變數見 `.env.example`。
 - Vercel CLI 在 `C:/Software/VercelCLI/node_modules/.bin/vercel`，已登入並連結專案。每次部署的專屬網址有 Vercel 登入保護，對外只用 idolca.vercel.app。
 - 改 `next.config.ts` 或執行環境相關的設定，本機跑過不算數：Vercel 和本機的 Node 載入行為不同，要在部署後馬上檢查鏈上接口。出事先 `vercel rollback`；回滾後新的部署不會自動上線，修好後要 `vercel promote`。
 - 鏈上地址（程序、集合、平台錢包、測試 USDT）在 `src/lib/chain/devnet.json`，說明見 tech-stack.md「devnet 部署」。

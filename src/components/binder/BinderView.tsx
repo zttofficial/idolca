@@ -465,6 +465,7 @@ function ItemSheet({ item, onClose, onTakeOut }: { item: CollectorItem; onClose:
           <div className="mt-auto flex flex-col gap-2 pt-5">
             {!fake && !item.vaultRequestedAt && (
               <ListingControl
+                lane="free"
                 price={item.priceUsdt}
                 auction={item.auction}
                 viewHref={`/listing/${item.id}`}
@@ -730,6 +731,7 @@ function VaultSheet({ card, onClose, onTakeOut }: { card: Card; onClose: () => v
           <div className="mt-auto flex flex-col gap-2 pt-5">
             {wallet && (card.status === "vaulted" || listed || auction) && (
               <ListingControl
+                lane="vault"
                 price={listed ? card.priceUsdt : null}
                 auction={auction}
                 viewHref={`/card/${card.id}`}

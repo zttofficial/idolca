@@ -190,6 +190,7 @@ export default function AuctionPanel({
         <PaymentPicker
           amountUsd={picking}
           run={bid.run(picking)}
+          event={{ name: "bid_placed", props: { lane: view.lane } }}
           arcUnavailableNote={bid.arcUnavailableNote}
           describeError={(code) => (t.has(`error_${code}`) ? t(`error_${code}`) : null)}
           onClose={() => setPicking(null)}

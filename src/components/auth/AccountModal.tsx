@@ -7,6 +7,7 @@ import type { AuthUser } from "./AuthContext";
 import Wordmark from "@/components/brand/Wordmark";
 import { Link } from "@/i18n/navigation";
 import { WalletError, signInWithWallet, useWallets } from "@/lib/solana/wallets";
+import { track } from "@/lib/analytics";
 import { CloseButton } from "@/components/ui/Dialog";
 import InfoTip from "@/components/ui/InfoTip";
 
@@ -55,8 +56,10 @@ export default function AccountModal({ configured, onClose, onSignedIn }: { conf
         body: JSON.stringify(mode === "signup" ? { email, password, displayName } : { email, password }),
       });
       const data = (await res.json()) as { user?: AuthUser; error?: ErrorCode };
-      if (data.user) onSignedIn(data.user);
-      else setError(data.error ?? "network");
+      if (data.user) {
+        track(mode === "signup" ? "signed_up" : "logged_in", { method: "email" });
+        onSignedIn(data.user);
+      } else setError(data.error ?? "network");
     } catch {
       setError("network");
     } finally {
@@ -220,7 +223,9 @@ function WalletLogin({ configured, onSignedIn }: { configured: boolean; onSigned
     setPending(wallet.name);
     setError(undefined);
     try {
-      onSignedIn(await signInWithWallet(wallet));
+      const user = await signInWithWallet(wallet);
+      track("logged_in", { method: "wallet" });
+      onSignedIn(user);
     } catch (e) {
       setError(e instanceof WalletError && e.message === "rejected" ? "rejected" : "wallet");
     } finally {
