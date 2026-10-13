@@ -3,6 +3,7 @@ import { Link, getPathname } from "@/i18n/navigation";
 import LocaleSwitcher from "./LocaleSwitcher";
 import Wordmark from "@/components/brand/Wordmark";
 import AccountButton from "@/components/auth/AccountButton";
+import MobileNav from "./MobileNav";
 
 export default function Navbar() {
   const t = useTranslations("Nav");
@@ -16,6 +17,7 @@ export default function Navbar() {
     { href: "/vault", label: t("vault") },
     { href: "/grading", label: t("grading") },
   ];
+  const searchAction = getPathname({ href: "/market", locale });
 
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-bg/85 backdrop-blur-xl">
@@ -32,9 +34,9 @@ export default function Navbar() {
             </li>
           ))}
         </ul>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-2 sm:gap-3">
           {/* 搜尋送到市場頁，帶上關鍵字 */}
-          <form action={getPathname({ href: "/market", locale })} method="get" className="hidden items-center rounded-full border border-line bg-surface px-4 py-1.5 text-sm text-ink-3 xl:flex">
+          <form action={searchAction} method="get" className="hidden items-center rounded-full border border-line bg-surface px-4 py-1.5 text-sm text-ink-3 xl:flex">
             <input
               type="search"
               name="q"
@@ -45,6 +47,7 @@ export default function Navbar() {
           </form>
           <LocaleSwitcher />
           <AccountButton />
+          <MobileNav links={links} searchAction={searchAction} />
         </div>
       </nav>
     </header>

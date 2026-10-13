@@ -49,6 +49,7 @@ PGLITE_DIR=.data/pglite-e2e npm run dev   # 另開一個終端
 npm run test:e2e:vault     # 入庫、卡包、公平性核對、回購、提貨和取消、收藏卡轉金庫卡
 npm run test:e2e:ui        # 無頭 Chrome 點完主要流程並截圖（CHROME_PATH 指定 Chrome）
 npm run test:e2e:binder    # 收藏冊同步：刪掉的卡換裝置也不會回來，沒送出的改動會補傳
+npm run test:e2e:mobile    # 模擬 390px 手機：逐頁截圖、找橫向溢出、檢查手機選單（只讀，可對線上站跑）
 # 拍賣要用縮短的時間啟動網站（拍賣的一「天」只有 25 秒）：
 #   PGLITE_DIR=.data/pglite-e2e AUCTION_DAY_SECONDS=25 AUCTION_BID_WINDOW_SECONDS=6 AUCTION_EXTEND_SECONDS=4 npm run dev
 npm run test:e2e:auction   # 出價鎖款、被超過退款、結標轉成擔保訂單、保底價流拍、賣家取消、截止後的出價、假卡作廢

@@ -25,6 +25,7 @@
   },
   "Nav": {
     "market": "Market",
+    "menu": "Menu",
     "vault": "Vault",
     "how": "How it works",
     "search": "Search groups, members, albums",
