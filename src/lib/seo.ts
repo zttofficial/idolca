@@ -3,7 +3,7 @@ import { routing } from "@/i18n/routing";
 
 // 搜尋引擎和社群分享用的頁面資訊：canonical 網址、八種語言互相對應（hreflang）、Open Graph 和 Twitter 卡片。
 // 英文不帶語言前綴，其他語言帶前綴（見 src/i18n/routing.ts）
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://idolca.vercel.app").replace(/\/$/, "");
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://idolca.trade").replace(/\/$/, "");
 
 const OG_LOCALE: Record<string, string> = { en: "en_US", "zh-Hant": "zh_TW", "zh-Hans": "zh_CN", ja: "ja_JP", ko: "ko_KR", th: "th_TH", id: "id_ID", vi: "vi_VN" };
 

@@ -2,7 +2,7 @@
 
 **Every photocard finds its fan.** Idolca is a global marketplace for K-pop photocards built on Solana. A card is mailed once, into the Idolca vault, where it is checked by hand and paired with a digital collectible. After that it can change owners with fans anywhere in the world in seconds, at one price in every country, and ship to its owner's door whenever they want it.
 
-Live at **https://idolca.vercel.app**: cards and trading on Solana devnet, payments on Arc mainnet · 中文說明：[README.zh-Hant.md](README.zh-Hant.md)
+Live at **https://idolca.trade**: cards and trading on Solana devnet, payments on Arc mainnet · 中文說明：[README.zh-Hant.md](README.zh-Hant.md)
 
 Follow us: [X](https://x.com/IdolcaOfficial) · [Telegram](https://t.me/IdolcaOfficial) · [YouTube](https://www.youtube.com/@IdolcaOfficial)
 
@@ -63,7 +63,7 @@ No mock data: every price, owner and history entry comes from the chain or the d
 
 Cards and Solana payments run on devnet, so nothing costs real money. Arc payments run on mainnet and are limited to admin accounts until launch.
 
-1. Open **https://idolca.vercel.app** and browse without signing in: **Market**, **Vault** (every card with its owner and status), a card page with the public record of every transfer, **Mystery Pack** with live odds, expected value and the fairness check, and **Grading**.
+1. Open **https://idolca.trade** and browse without signing in: **Market**, **Vault** (every card with its owner and status), a card page with the public record of every transfer, **Mystery Pack** with live odds, expected value and the fairness check, and **Grading**.
 2. **Log in → Wallet** with a wallet set to devnet (Phantom: developer settings → testnet mode → Devnet; Solflare: network settings → Devnet), or sign up with email.
 3. **Binder → Add my card**: photograph a card you own and list it for sale. To make it a digital collectible, the wallet needs a little devnet SOL from [faucet.solana.com](https://faucet.solana.com).
 4. Buying a vault card, opening a pack and redemption are paid in Idolca's devnet test USDT, which the site does not hand out; the [end-to-end suites](#tests) run these flows with real devnet transactions.

@@ -4,7 +4,7 @@
 
 ## 總覽
 
-- 線上 <https://idolca.vercel.app>，卡片和交易跑在 Solana devnet，所有流程都用錢包真實上鏈驗證過。開卡包和擔保交易另外可以在 Arc 上用 USDC 付款（線上接 Arc 主網、只限管理員），設計見 [arc.md](arc.md)。
+- 線上 <https://idolca.trade>，卡片和交易跑在 Solana devnet，所有流程都用錢包真實上鏈驗證過。開卡包和擔保交易另外可以在 Arc 上用 USDC 付款（線上接 Arc 主網、只限管理員），設計見 [arc.md](arc.md)。
 - 代碼按正式上線標準寫：換主網只改環境變數和部署合約，不改代碼（步驟見 tech-stack.md「上線主網」）。
 - 黑客松：已提交 Colosseum Crypto World's Fair 主賽和 Superteam Canada track；GitHub 倉庫是私有的，已分享給 hackathon@colosseum.com。
 
@@ -64,8 +64,9 @@
 | 平台金鑰 | `PLATFORM_SECRET_KEY`（敏感變數） | `.data/platform-devnet.json` | 同左 |
 | 管理員 | `ADMIN_WALLETS` 目前是測試錢包 `5ftP1ayDW7EpPmTXBjdC1dvuoRbdqfEKDX4tRWnFCBZu` | `.env.local` 的 `ADMIN_WALLETS`，金鑰 `.data/admin-test-devnet.json` | 同左 |
 
-- 線上已設的變數：資料庫、`PLATFORM_SECRET_KEY`、`ADMIN_WALLETS`、`CRON_SECRET`（Production 和 Preview）；Arc 主網的 `NEXT_PUBLIC_ARC_NETWORK`、`ARC_PLATFORM_KEY`、`ARC_PAY_ADMIN_ONLY`，以及 PostHog 的 `NEXT_PUBLIC_POSTHOG_KEY`（只有 Production）。全部變數見 `.env.example`。
-- Vercel CLI 在 `C:/Software/VercelCLI/node_modules/.bin/vercel`，已登入並連結專案。每次部署的專屬網址有 Vercel 登入保護，對外只用 idolca.vercel.app。
+- 線上已設的變數：資料庫、`PLATFORM_SECRET_KEY`、`ADMIN_WALLETS`、`CRON_SECRET`（Production 和 Preview）；Arc 主網的 `NEXT_PUBLIC_ARC_NETWORK`、`ARC_PLATFORM_KEY`、`ARC_PAY_ADMIN_ONLY`，以及只有 Production 的 `NEXT_PUBLIC_SITE_URL`（`https://idolca.trade`）和 PostHog 的 `NEXT_PUBLIC_POSTHOG_KEY`。全部變數見 `.env.example`。
+- Vercel CLI 在 `C:/Software/VercelCLI/node_modules/.bin/vercel`，已登入並連結專案。每次部署的專屬網址有 Vercel 登入保護，對外只用 idolca.trade。
+- 網域 `idolca.trade` 接在 Vercel 專案上，`www.idolca.trade` 308 轉到主網域。`idolca.vercel.app` 照常服務、不轉址：早期鑄造的 NFT 元數據網址寫在鏈上，指向它。
 - 改 `next.config.ts` 或執行環境相關的設定，本機跑過不算數：Vercel 和本機的 Node 載入行為不同，要在部署後馬上檢查鏈上接口。出事先 `vercel rollback`；回滾後新的部署不會自動上線，修好後要 `vercel promote`。
 - 鏈上地址（程序、集合、平台錢包、測試 USDT）在 `src/lib/chain/devnet.json`，說明見 tech-stack.md「devnet 部署」。
 - 合約在 WSL 的 `~/idolca-onchain` 編譯（`/mnt/c` 下會記憶體錯誤），要用 `anchor build --arch v0`；改了 `onchain/programs` 先複製過去。編譯後把 `target/idl`、`target/types` 複製回倉庫的 `onchain/target/` 和 `src/lib/chain/idl/`。
@@ -97,7 +98,6 @@
 
 ## 還沒做
 
-- 自己的網域（idolca.com、idolca.app 查過可註冊）；接上後改 `NEXT_PUBLIC_SITE_URL`。
 - 法幣入金（MoonPay 這類）、提現和 KYC、Google 和 Apple 登入、郵箱驗證。
 - 專輯代購代拆。
 - 主網部署，清單見 tech-stack.md「上線主網」。資金、定價、庫存和法務的待辦見 [business.md](business.md)。

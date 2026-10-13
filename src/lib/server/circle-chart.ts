@@ -5,7 +5,7 @@ import { cacheLife } from "next/cache";
 // 只取名次、專輯、藝人、銷量這些事實數據，不取封面圖；頁面標明來源並連回原榜單。結果快取幾小時，對方每週更新一次
 export const CIRCLE_CHART_URL = "https://circlechart.kr/page_chart/album.circle?nationGbn=T&serviceGbn=ALL";
 const API = "https://circlechart.kr/data/api/chart/album";
-const UA = "Mozilla/5.0 (compatible; IdolcaBot/0.1; +https://idolca.vercel.app)";
+const UA = "Mozilla/5.0 (compatible; IdolcaBot/0.1; +https://idolca.trade)";
 
 export type ChartRow = {
   rank: number;

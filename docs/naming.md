@@ -32,6 +32,6 @@
 
 ## 上線前要做的事
 
-1. 查網域：`idolca.com`、`idolca.xyz`、`idolca.io`、`idolca.app`。
+1. 網域：已註冊 `idolca.trade`。
 2. 查商標：韓國 KIPRIS、美國 USPTO、加拿大 CIPO、WIPO 全球品牌資料庫，類別 9（軟體）、35（線上市場）、36（金融服務）。
 3. 佔社交帳號：X、Instagram、TikTok、Discord 伺服器名稱。

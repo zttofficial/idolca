@@ -89,7 +89,7 @@ Arc 上的 USDC 原生支援 EIP-3009 的 `transferWithAuthorization`（主網�
 
 ## 現況
 
-- **線上**：<https://idolca.vercel.app> 接 Arc 主網、只限管理員付款（`ARC_PAY_ADMIN_ONLY=1`）。卡片那邊還是 Solana devnet。
+- **線上**：<https://idolca.trade> 接 Arc 主網、只限管理員付款（`ARC_PAY_ADMIN_ONLY=1`）。卡片那邊還是 Solana devnet。
 - **主網平台錢包**：`0x7a6c4D22fb05f715Cc47F4feC38d615a9369eF32`，私鑰在本機 `.data/arc-platform-mainnet.json` 和 Vercel 的 `ARC_PLATFORM_KEY`。
 - **體驗包**：正式站的 Idolca Trial Pack（`/packs/idolca-trial`），每包 0.01 USD，三張平台自有的 ITZY 卡，用樣本照片。
 - **第一筆主網付款**：[`0x800ef7da…6b9ee`](https://explorer.arc.io/tx/0x800ef7da983f4407793c335f7097b31dc5f06090afdbd39b3bc1f3221316b9ee)。這是一筆 0.01 USDC 的授權轉帳，由平台代送，gas 約 0.0017 USDC；抽到的 IC-001891 交付到 Solana。

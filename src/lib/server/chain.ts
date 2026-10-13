@@ -33,7 +33,7 @@ export function platformUmi() {
 export const platformAddress = () => platformUmi()?.identity.publicKey.toString() ?? null;
 
 // 網站的公開網址：NFT 的元數據和圖片都指向這裡
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://idolca.vercel.app").replace(/\/$/, "");
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://idolca.trade").replace(/\/$/, "");
 
 export type CollectorAttributes = { title: string; group: string; member: string; source: string; quantity: number; album: string | null; version: string | null };
 

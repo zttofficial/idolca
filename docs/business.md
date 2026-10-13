@@ -2,7 +2,7 @@
 
 Idolca 怎麼賺錢、錢流到哪個錢包、每條收入的算法，以及還沒解決的事。市場和競品的依據見 [research.md](research.md)，功能細節見 [tech-stack.md](tech-stack.md)。
 
-線上（<https://idolca.vercel.app>）就是測試網：卡片和 Solana 上的交易都在 devnet，用測試幣；Arc 收款接主網，只限管理員。所以目前所有收入都是測試數字。
+線上（<https://idolca.trade>）就是測試網：卡片和 Solana 上的交易都在 devnet，用測試幣；Arc 收款接主網，只限管理員。所以目前所有收入都是測試數字。
 
 ## 結論
 

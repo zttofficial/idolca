@@ -8,7 +8,7 @@ import { createCollection, ruleSet } from "@metaplex-foundation/mpl-core";
 import { cluster, explorer, platformUmi } from "./lib/umi";
 
 const CONFIG = `src/lib/chain/${cluster}.json`;
-const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "https://idolca.vercel.app").replace(/\/$/, "");
+const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "https://idolca.trade").replace(/\/$/, "");
 
 const config = JSON.parse(readFileSync(CONFIG, "utf8")) as { platform: string; vaultCollection: string; collectorCollection: string };
 const save = () => writeFileSync(CONFIG, JSON.stringify(config, null, 2) + "\n");
