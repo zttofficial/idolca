@@ -7,8 +7,7 @@ import HoloTile from "./HoloTile";
 import ListingTile from "./ListingTile";
 import TileSkeleton from "./TileSkeleton";
 import { openAddCard } from "@/components/binder/AddCard";
-import type { Listing } from "@/lib/items";
-import { useVaultCards } from "@/lib/chain-client";
+import { useListings, useVaultCards } from "@/lib/chain-client";
 import Select from "@/components/ui/Select";
 import { LANES, RARITIES, SORTS, applyListingQuery, applyQuery, facetCounts, parseQuery, toSearch, type MarketQuery } from "@/lib/market";
 
@@ -22,13 +21,7 @@ export default function MarketBrowser() {
   const sp = useSearchParams();
   const q = useMemo(() => parseQuery(new URLSearchParams(sp.toString())), [sp]);
   const free = q.lane === "free";
-  const [listings, setListings] = useState<Listing[] | null>(null);
-  useEffect(() => {
-    fetch("/api/listings")
-      .then((r) => (r.ok ? r.json() : { listings: [] }))
-      .then((d: { listings: Listing[] }) => setListings(d.listings))
-      .catch(() => setListings([]));
-  }, []);
+  const listings = useListings();
   const vault = useVaultCards();
   const cards = useMemo(() => vault ?? [], [vault]);
   const vaultResult = useMemo(() => applyQuery(cards, q), [cards, q]);

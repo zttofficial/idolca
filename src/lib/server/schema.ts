@@ -1,4 +1,5 @@
 import { integer, pgTable, primaryKey, real, text, timestamp } from "drizzle-orm/pg-core";
+import { CARD_SOURCES } from "@/lib/sources";
 
 // 兩種登入方式：郵箱 + 密碼（不懂加密的粉絲），或錢包簽名（加密用戶）。至少有其中一種
 export const users = pgTable("users", {
@@ -89,7 +90,7 @@ export const collectorItems = pgTable("collector_items", {
   quantity: integer("quantity").notNull().default(1),
   groupName: text("group_name").notNull(),
   // 來源：專輯、預購特典、幸運抽、簽售、演唱會周邊…（見 src/lib/sources.ts）
-  source: text("source").notNull().default("album"),
+  source: text("source", { enum: CARD_SOURCES }).notNull().default("album"),
   member: text("member").notNull(),
   album: text("album"),
   version: text("version"),

@@ -1,8 +1,9 @@
 "use client";
 
 // 瀏覽器端的鏈上狀態：金庫卡的即時持有人和掛單、錢包餘額，以及「伺服器組交易 → 錢包簽名 → 回報確認」的共用流程
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { Card } from "./cards";
+import type { Listing } from "./items";
 import { isTemplateOf, type Template } from "./catalog";
 import { signAndSend } from "./solana/wallets";
 import { signArcPayment, type EvmWallet } from "./evm/arc-wallet";
@@ -59,6 +60,9 @@ export const useChainState = () =>
 let vaultCards: Card[] | null = null;
 let vaultLoading: Promise<void> | null = null;
 const vaultListeners = new Set<() => void>();
+let listings: Listing[] | null = null;
+let listingsLoading: Promise<void> | null = null;
+const listingListeners = new Set<() => void>();
 export function refreshVaultCards() {
   vaultLoading ??= fetch("/api/vault/cards")
     .then((r) => (r.ok ? r.json() : { cards: [] }))
@@ -78,13 +82,37 @@ function subscribeVault(l: () => void) {
   return () => vaultListeners.delete(l);
 }
 
+// 伺服器端渲染時頁面先讀好的金庫卡和自由刊登。瀏覽器端的共用資料還沒讀到時用它，也就不必再請求一次；
+// 之後在站內切回這一頁，伺服器給的新資料會蓋掉舊的
+type MarketSeed = { vaultCards: Card[] | null; listings: Listing[] | null };
+const SeedContext = createContext<MarketSeed>({ vaultCards: null, listings: null });
+export function MarketDataProvider({ vaultCards: v, listings: l, children }: { vaultCards: Card[]; listings: Listing[]; children: ReactNode }) {
+  // 只寫瀏覽器端的模組變數：伺服器上的模組變數是所有請求共用的
+  if (typeof window !== "undefined") {
+    vaultCards ??= v;
+    listings ??= l;
+  }
+  useEffect(() => {
+    if (vaultCards !== v) {
+      vaultCards = v;
+      vaultListeners.forEach((x) => x());
+    }
+    if (listings !== l) {
+      listings = l;
+      listingListeners.forEach((x) => x());
+    }
+  }, [v, l]);
+  return createElement(SeedContext.Provider, { value: { vaultCards: v, listings: l } }, children);
+}
+
 // 金庫卡加上鏈上即時狀態（持有人、掛單價、提貨中）。預設只有還在金庫裡的；includeRedeemed 連已提貨銷毀的也給。
 // 還沒讀到時是 null
 export function useVaultCards(includeRedeemed = false): Card[] | null {
+  const seed = useContext(SeedContext).vaultCards;
   const cards = useSyncExternalStore(
     subscribeVault,
-    () => vaultCards,
-    () => null,
+    () => vaultCards ?? seed,
+    () => seed,
   );
   const chain = useChainState();
   return useMemo(() => (cards ? withLive(cards, chain).filter((c) => includeRedeemed || c.status !== "redeemed") : null), [cards, chain, includeRedeemed]);
@@ -168,28 +196,28 @@ export function withLive<T extends CardLike>(cards: T[], chain: ChainState | nul
   });
 }
 
-// 自由刊登清單（整站共用一份），給圖鑑算在售數量
-type ListingLite = { id: string; templateId: string | null; priceUsdt: number | null };
-let listings: ListingLite[] | null = null;
-let listingsLoading: Promise<void> | null = null;
-const listingListeners = new Set<() => void>();
+// 在售的自由刊登（整站共用一份）：市場頁的自由刊登頁籤，圖鑑用它算在售數量。讀不到時是空清單
 function subscribeListings(l: () => void) {
   listingListeners.add(l);
-  listingsLoading ??= fetch("/api/listings")
-    .then((r) => (r.ok ? r.json() : { listings: [] }))
-    .then((d: { listings: ListingLite[] }) => {
-      listings = d.listings;
-      listingListeners.forEach((x) => x());
-    })
-    .catch(() => {});
+  if (!listings)
+    listingsLoading ??= fetch("/api/listings")
+      .then((r) => (r.ok ? r.json() : { listings: [] }))
+      .then((d: { listings: Listing[] }) => d.listings)
+      .catch(() => [])
+      .then((d) => {
+        listings = d;
+        listingListeners.forEach((x) => x());
+      });
   return () => listingListeners.delete(l);
 }
-const useListings = () =>
-  useSyncExternalStore(
+export function useListings() {
+  const seed = useContext(SeedContext).listings;
+  return useSyncExternalStore(
     subscribeListings,
-    () => listings,
-    () => null,
+    () => listings ?? seed,
+    () => seed,
   );
+}
 
 // vaultCardId：最便宜的那張在售金庫卡，沒有金庫卡在售時為空
 export type TemplateMarket = { forSale: number; fromUsdt: number | null; vaultCardId: string | null };
