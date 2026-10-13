@@ -3,7 +3,7 @@ import { pageMetadata } from "@/lib/seo";
 import { getLocale } from "next-intl/server";
 import LegalPage from "@/components/legal/LegalPage";
 import { BUYBACK_RATE } from "@/lib/packs";
-import { ADDRESS_RETENTION_DAYS, ESCROW_CONFIRM_DAYS, ESCROW_SHIP_DAYS, FEE_BPS } from "@/lib/policy";
+import { ADDRESS_RETENTION_DAYS, AUCTION_DAYS, AUCTION_EXTEND_MINUTES, AUCTION_FEE_BPS, AUCTION_MIN_START, ESCROW_CONFIRM_DAYS, ESCROW_SHIP_DAYS, FEE_BPS } from "@/lib/policy";
 import { REDEEM_FEE_USDT } from "@/lib/shipping";
 import { CURRENCY } from "@/lib/fx";
 
@@ -13,13 +13,13 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const pct = (bps: number) => `${bps / 100}%`;
 
-// 服務條款。數字（抽成、期限、回購比例、運費）直接讀平台規則，改規則時條款跟著變
+// 服務條款。數字（抽成、期限、拍賣規則、回購比例、運費）直接讀平台規則，改規則時條款跟著變
 export default async function TermsPage() {
   const locale = await getLocale();
   return (
     <LegalPage
       title="Terms of Service"
-      updated="2026-10-10"
+      updated="2026-10-12"
       note={locale === "en" ? undefined : "These terms are provided in English, and the English version governs."}
       intro="These terms govern your use of Idolca, a marketplace and vault for K-pop photocards that records ownership on the Solana blockchain. By creating an account, connecting a wallet or making a transaction, you agree to them."
       sections={[
@@ -27,7 +27,7 @@ export default async function TermsPage() {
           title: "Accounts and wallets",
           body: [
             "You can sign in with an email and password or with a Solana wallet signature. You must be old enough to form a binding contract where you live, and at least 18 to open mystery packs.",
-            "Your wallet and its private keys are yours. Idolca never asks for your seed phrase, cannot reverse transactions you sign, and cannot recover a lost wallet. Cards held by email accounts without a linked wallet are kept in Idolca's custody wallet on your behalf.",
+            "Your wallet and its private keys are yours. Idolca never asks for your seed phrase, cannot reverse transactions you sign, and cannot recover a lost wallet. Email accounts can add and list cards without a wallet; paying, bidding and holding NFTs require a linked wallet.",
           ],
         },
         {
@@ -55,8 +55,16 @@ export default async function TermsPage() {
           body: [
             "Free listings are cards that stay with the seller. Idolca does not inspect them; they are marked unverified, and the listing photos and description are the seller's responsibility.",
             `Purchases of free listings go through Idolca escrow. The buyer's payment is held until the buyer confirms receipt. If the seller does not mark the order shipped within ${ESCROW_SHIP_DAYS} days of payment, the order is refunded in full. If the buyer neither confirms nor reports a problem within ${ESCROW_CONFIRM_DAYS} days of shipping, payment is released to the seller.`,
-            `A buyer who reports a problem pauses the release; Idolca reviews the case and either refunds the buyer or releases payment to the seller. On release, the seller receives the price minus a ${pct(FEE_BPS)} fee and the listing's NFT moves to the buyer.`,
+            `A buyer who reports a problem pauses the release; Idolca reviews the case and either refunds the buyer or releases payment to the seller. On release, the seller receives the price minus a ${pct(FEE_BPS)} fee, and if the seller made the card an NFT, it moves to the buyer.`,
             "Idolca may mark a card as fake if it is reported or found to be counterfeit. A fake card is delisted, relabelled and frozen on-chain, and this cannot be undone.",
+          ],
+        },
+        {
+          title: "Auctions",
+          body: [
+            `Sellers can sell a free listing or a vault card by auction instead of at a fixed price. The seller sets a starting bid of at least ${AUCTION_MIN_START} ${CURRENCY}, an optional reserve price that is not shown to bidders, and a duration of ${AUCTION_DAYS.join(", ")} days. An auction can be cancelled only before the first bid.`,
+            `Every bid is paid in full when it is placed and cannot be withdrawn. Bids on free listings are held by Idolca; bids on vault cards are locked in the on-chain escrow program. When you are outbid, or a bid arrives after the auction has ended, it is refunded in full to the wallet or address it was paid from. A bid placed in the last ${AUCTION_EXTEND_MINUTES} minutes moves the end time to ${AUCTION_EXTEND_MINUTES} minutes after that bid.`,
+            `When the auction ends, the highest bid wins if it meets the reserve price. A won free-listing auction becomes an escrow purchase under the terms above. A won vault-card auction settles on-chain: the NFT moves to the winner and the seller receives the winning bid in the same transaction. Either way the seller pays a fee of ${pct(AUCTION_FEE_BPS)} of the winning bid, and the winner pays only the bid. If no bid meets the reserve, the card stays with the seller and the highest bid is refunded.`,
           ],
         },
         {
@@ -70,7 +78,7 @@ export default async function TermsPage() {
         {
           title: "Prohibited conduct",
           body: [
-            "Do not list counterfeit or stolen cards, misrepresent a card's condition, manipulate prices with your own accounts, interfere with the service, or use Idolca to launder money or evade sanctions. We may suspend accounts that do.",
+            "Do not list counterfeit or stolen cards, misrepresent a card's condition, manipulate prices with your own accounts (including bidding on your own auctions), interfere with the service, or use Idolca to launder money or evade sanctions. We may suspend accounts that do.",
           ],
         },
         {

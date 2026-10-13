@@ -18,6 +18,7 @@
 | 鏈上紀錄 | `/card/[id]` | `src/lib/server/history.ts` |
 | 提貨（凍結、委託銷毀、付運費；後台出貨或取消） | `/card/[id]`、`/admin` | `RedeemDialog.tsx`、`vault-chain.ts`、`src/lib/shipping.ts` |
 | 自由上鏈、自由刊登、擔保交易 | 收藏冊、`/listing/[id]` | `src/components/binder/AddCard.tsx`、`src/lib/server/items.ts`、`orders.ts`、`src/lib/policy.ts` |
+| 拍賣（兩條線：自由刊登進平台託管，金庫卡在鏈上）、上架時選一口價或拍賣 | `/listing/[id]`、`/card/[id]`、收藏冊 | `src/lib/server/auctions.ts`、`vault-chain.ts`，`src/lib/auction.ts`，`src/components/auction/`、`src/components/market/ListingControl.tsx` |
 | 寄進金庫、收藏卡轉金庫卡 | 收藏冊、`/admin` | `src/app/api/items/[id]/vault`、`src/app/api/admin/items/[id]/vault`、`VaultConvert.tsx` |
 | 付款方式面板（Solana 錢包、Arc 上的 USDC、信用卡佔位） | 購買按鈕 | `src/components/pay/PaymentPicker.tsx`，標誌在 `public/pay/` |
 | Arc 收款通道（USDC 授權轉帳、平台代送、退款） | 開卡包、擔保交易 | `src/lib/arc.ts`、`src/lib/server/arc-pay.ts`、`src/lib/evm/arc-wallet.ts` |
@@ -30,7 +31,7 @@
 | 專輯銷量榜 | `/charts` | `src/lib/server/circle-chart.ts` |
 | 後台（入庫、卡包、擔保訂單、提貨、假卡） | `/admin` | `src/components/admin/`、`src/app/api/admin/` |
 | 照片處理和浮水印 | — | `src/lib/server/media.ts`、`src/lib/crop-card.ts` |
-| 每日排程（逾時訂單、清地址、清過期會話） | — | `src/app/api/cron/daily`、`vercel.json` |
+| 每日排程（逾時訂單、結標拍賣和退款、清地址、清過期會話） | — | `src/app/api/cron/daily`、`vercel.json` |
 | SEO（標題、hreflang、站點地圖、分享圖、JSON-LD） | 全站 | `src/lib/seo.ts`、`src/app/sitemap.ts`、`robots.ts`、`opengraph-image.tsx` |
 | 下拉選單元件 | 全站 | `src/components/ui/Combobox.tsx`（可自由輸入的建議清單）、`Select.tsx`（選單，可帶搜尋） |
 | 多語言（8 種） | 全站 | `messages/*.json` |
@@ -46,7 +47,8 @@
 | `collector_items` | 自由上鏈的卡：資料、刊登價格、鑑定狀態、NFT 地址、寄進金庫申請 |
 | `vault_cards` | 金庫卡實物資料；持有人和掛單以鏈上為準 |
 | `packs`、`pack_pulls`、`pack_orders` | 卡包、每一抽的紀錄、開包訂單 |
-| `orders` | 自由刊登的擔保訂單 |
+| `orders` | 自由刊登的擔保訂單（拍賣得標的記著 `auction_id`） |
+| `auctions`、`bids` | 自由刊登的拍賣和每一口出價（付款、退款、是否被接受）；金庫卡的拍賣在鏈上 |
 | `redemptions` | 提貨申請和收件地址 |
 | `media` | 照片（原圖和浮水印展示圖） |
 | `faucet_claims`、`rate_limits` | devnet 水龍頭領取紀錄、頻率限制計數 |
@@ -64,7 +66,8 @@
 - Vercel CLI 在 `C:/Software/VercelCLI/node_modules/.bin/vercel`，已登入並連結專案。每次部署的專屬網址有 Vercel 登入保護，對外只用 idolca.vercel.app。
 - 改 `next.config.ts` 或執行環境相關的設定，本機跑過不算數：Vercel 和本機的 Node 載入行為不同，要在部署後馬上檢查鏈上接口。出事先 `vercel rollback`；回滾後新的部署不會自動上線，修好後要 `vercel promote`。
 - 鏈上地址（程序、集合、平台錢包、測試 USDT）在 `src/lib/chain/devnet.json`，說明見 tech-stack.md「devnet 部署」。
-- 合約在 WSL 的 `~/idolca-onchain` 編譯（`/mnt/c` 下會記憶體錯誤），要用 `anchor build --arch v0`。
+- 合約在 WSL 的 `~/idolca-onchain` 編譯（`/mnt/c` 下會記憶體錯誤），要用 `anchor build --arch v0`；改了 `onchain/programs` 先複製過去。編譯後把 `target/idl`、`target/types` 複製回倉庫的 `onchain/target/` 和 `src/lib/chain/idl/`。
+- 合約測試：WSL 裡沒有 Node，`anchor test` 跑不起來。在 WSL 開本地驗證節點（`solana-test-validator --reset --upgradeable-program <程序 id> <.so> <平台錢包> --clone-upgradeable-program CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d --url https://api.mainnet-beta.solana.com`），再在 Windows 的 `onchain/` 下跑 `ANCHOR_PROVIDER_URL=http://127.0.0.1:8899 ANCHOR_WALLET=../.data/platform-devnet.json npx ts-mocha -p ./tsconfig.json -t 1000000 tests/idolca-market.ts`。每次重跑都要用全新的節點（`--reset`），Config 只能初始化一次。關節點用 `pkill -f "[s]olana-test-validator"`（不加方括號會連自己的 shell 一起結束）。
 - `.data/` 不進倉庫，放金鑰、本機資料庫和一次性的除錯腳本。
 
 ## 開發約定
@@ -95,5 +98,4 @@
 - 自己的網域（idolca.com、idolca.app 查過可註冊）；接上後改 `NEXT_PUBLIC_SITE_URL`。
 - 法幣入金（MoonPay 這類）、提現和 KYC、Google 和 Apple 登入、郵箱驗證。
 - 專輯代購代拆。
-- 拍賣：設計見 tech-stack.md「拍賣」，先做自由刊登（沿用擔保訂單和兩條付款通道），再擴充託管程序做金庫卡的鏈上拍賣。
 - 主網部署，清單見 tech-stack.md「上線主網」。資金、定價、庫存和法務的待辦見 [business.md](business.md)。

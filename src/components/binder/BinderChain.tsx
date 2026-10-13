@@ -32,7 +32,15 @@ export function OnChainCards() {
             <CardArt card={c} rarityLabel={tRarity(c.rarity)} className="block h-full w-full transition group-hover:scale-[1.03]" />
           </div>
           <p className="mt-2 truncate text-sm font-semibold">{c.member}</p>
-          <p className="text-xs text-ink-3">{c.status === "listed" ? t("onchainListed", { price: formatPrice(c.priceUsdt) }) : c.status === "redeeming" ? t("onchainRedeeming") : t("onchainHeld")}</p>
+          <p className="text-xs text-ink-3">
+            {c.status === "listed"
+              ? t("onchainListed", { price: formatPrice(c.priceUsdt) })
+              : c.status === "auction"
+                ? t("onchainAuction", { price: formatPrice(c.priceUsdt) })
+                : c.status === "redeeming"
+                  ? t("onchainRedeeming")
+                  : t("onchainHeld")}
+          </p>
         </Link>
       ))}
     </div>
@@ -49,6 +57,8 @@ type Order = {
   priceUsdt: number;
   feeUsdt: number;
   rail: "solana" | "arc";
+  // 拍賣得標的訂單
+  auction: boolean;
   payTx: string | null;
   payoutTx: string | null;
   payoutHeld: boolean;
@@ -118,7 +128,8 @@ export function Orders() {
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{o.title}</p>
             <p className="text-xs text-ink-3">
-              {t(`orderRole_${o.role}`)} · {formatPrice(o.priceUsdt)} · <span className="font-medium text-ink-2">{t(`orderStatus_${o.status}`)}</span>
+              {t(`orderRole_${o.role}`)}
+              {o.auction && ` · ${t("orderFromAuction")}`} · {formatPrice(o.priceUsdt)} · <span className="font-medium text-ink-2">{t(`orderStatus_${o.status}`)}</span>
               {o.role === "seller" && o.status === "completed" && o.payoutHeld && <span className="text-notice-ink"> · {t("payoutHeld")}</span>}
             </p>
             <p className="mt-0.5 flex flex-wrap gap-3 text-[11px] text-ink-3">

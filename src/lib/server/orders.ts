@@ -104,7 +104,8 @@ async function lock(db: Db, orderId: string, from: OrderStatus[], to: "refunding
 }
 const unlock = (db: Db, order: OrderRow) => db.update(orders).set({ status: order.status, updatedAt: new Date() }).where(eq(orders.id, order.id));
 
-// 退款給買家：全額退回，商品按原價重新上架（還是賣家的、也沒被標成假卡時）。NFT 一直在賣家手上，不用動
+// 退款給買家：全額退回，一口價的商品按原價重新上架（還是賣家的、也沒被標成假卡時）；拍賣得標的訂單不重新上架，卡回到賣家的收藏冊。
+// NFT 一直在賣家手上，不用動
 export async function refundOrder(db: Db, orderId: string, from: OrderStatus[] = ["paid", "shipped", "disputed"]) {
   const [before] = await db.select().from(orders).where(eq(orders.id, orderId));
   if (!before) return { error: "not_found" as const };
@@ -118,6 +119,7 @@ export async function refundOrder(db: Db, orderId: string, from: OrderStatus[] =
     throw err;
   }
   await db.update(orders).set({ status: "refunded", refundTx, updatedAt: new Date() }).where(eq(orders.id, orderId));
+  if (order.auctionId) return { ok: true as const, refundTx };
   await db
     .update(collectorItems)
     .set({ priceCents: order.priceCents, listedAt: new Date() })
@@ -208,6 +210,8 @@ export type PublicOrder = {
   status: OrderStatus;
   // 買家付款和退款的通道；放款一律在 Solana
   rail: PayRail;
+  // 拍賣得標的訂單
+  auction: boolean;
   itemId: string;
   title: string;
   photo: string | null;
@@ -230,6 +234,7 @@ const toPublic = (o: OrderRow, item: typeof collectorItems.$inferSelect | null, 
   role,
   status: o.status,
   rail: o.rail,
+  auction: Boolean(o.auctionId),
   itemId: o.itemId,
   title: item ? itemTitle({ title: item.title, group: item.groupName, member: item.member, version: item.version }) : "",
   photo: item?.photo ?? null,

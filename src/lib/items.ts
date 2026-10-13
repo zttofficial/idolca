@@ -4,6 +4,7 @@
 import { useSyncExternalStore } from "react";
 
 import type { CardSource } from "./sources";
+import type { AuctionView } from "./auction";
 import { signAndSend } from "./solana/wallets";
 
 // 自由上鏈的卡平台不查驗：一律待驗證，只有查出假卡時才會變成 fake
@@ -40,10 +41,14 @@ export type CollectorItem = {
   // 已申請寄進金庫、等實物寄到
   vaultRequestedAt: string | null;
   createdAt: string;
+  // 拍賣中時的拍賣狀態（收藏冊只帶進行中的；刊登頁也帶剛結束的）
+  auction?: ItemAuction | null;
 };
 
+export type ItemAuction = AuctionView & { id: string };
+
 // 自由刊登：收藏品加上賣家暱稱
-export type Listing = CollectorItem & { seller: string };
+export type Listing = CollectorItem & { seller: string; auction: ItemAuction | null };
 
 
 const EMPTY: CollectorItem[] = [];
@@ -119,6 +124,20 @@ export async function setListing(id: string, priceUsdt: number | null) {
   const res = await fetch(`/api/items/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ priceUsdt }) });
   const data = (await res.json()) as { item?: CollectorItem; error?: string };
   if (!data.item) throw new Error(data.error ?? "listing_failed");
+  items = items.map((i) => (i.id === id ? data.item! : i));
+  emit();
+  return data.item;
+}
+
+// 開拍（起標價、可選的保底價、天數；一口價刊登會同時下架），或在沒人出價前取消拍賣
+export async function setAuction(id: string, input: { startUsd: number; reserveUsd: number | null; days: number } | null) {
+  const res = await fetch(`/api/items/${id}/auction`, {
+    method: input ? "POST" : "DELETE",
+    headers: { "content-type": "application/json" },
+    body: input ? JSON.stringify(input) : undefined,
+  });
+  const data = (await res.json()) as { item?: CollectorItem; error?: string };
+  if (!data.item) throw new Error(data.error ?? "auction_failed");
   items = items.map((i) => (i.id === id ? data.item! : i));
   emit();
   return data.item;

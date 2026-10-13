@@ -47,14 +47,14 @@ export const arcReady = () => clients() !== null;
 const units = (cents: number) => BigInt(cents) * BigInt(10 ** (ARC_USDC.decimals - 2));
 export const arcNonce = (ref: string) => keccak256(toHex(ref));
 
-// 建單時發出的付款請求：收款人是平台錢包，金額、nonce 都由訂單決定
-export function arcPaymentRequest(ref: string, amountCents: number): ArcPaymentRequest {
+// 建單時發出的付款請求：收款人是平台錢包，金額、nonce 都由訂單決定。ttlSeconds 是授權有效期，拍賣出價用較短的期限
+export function arcPaymentRequest(ref: string, amountCents: number, ttlSeconds = ARC_AUTH_TTL_SECONDS): ArcPaymentRequest {
   return {
     chainId: ARC!.chainId,
     to: ARC!.platform,
     value: units(amountCents).toString(),
     validAfter: "0",
-    validBefore: String(Math.floor(Date.now() / 1000) + ARC_AUTH_TTL_SECONDS),
+    validBefore: String(Math.floor(Date.now() / 1000) + Math.min(ttlSeconds, ARC_AUTH_TTL_SECONDS)),
     nonce: arcNonce(ref),
   };
 }

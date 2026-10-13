@@ -232,8 +232,59 @@ export const orders = pgTable("orders", {
   disputeReason: text("dispute_reason"),
   paidAt: timestamp("paid_at", { withTimezone: true }),
   shippedAt: timestamp("shipped_at", { withTimezone: true }),
+  // 拍賣得標產生的訂單：記下是哪場拍賣，退款時不把卡按得標價重新上架
+  auctionId: text("auction_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 自由刊登的拍賣（金庫卡的拍賣在鏈上託管程序裡，不存這裡）。
+// live 進行中；sold 成交（得標款變成一張擔保訂單）；unsold 流拍（沒人出價或沒達到保底價）；cancelled 賣家在有人出價前取消，或卡被標成假卡
+export const AUCTION_STATUS = ["live", "sold", "unsold", "cancelled"] as const;
+export type AuctionStatus = (typeof AUCTION_STATUS)[number];
+export const auctions = pgTable("auctions", {
+  id: text("id").primaryKey(),
+  itemId: text("item_id").notNull(),
+  sellerId: text("seller_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  startCents: integer("start_cents").notNull(),
+  // 保底價，沒設時為空；不對外公開金額
+  reserveCents: integer("reserve_cents"),
+  // 開拍時的手續費，之後改規則不影響這場
+  feeBps: integer("fee_bps").notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  status: text("status").$type<AuctionStatus>().notNull().default("live"),
+  highBidId: text("high_bid_id"),
+  highCents: integer("high_cents"),
+  bidCount: integer("bid_count").notNull().default(0),
+  orderId: text("order_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 出價：每口都先付全額進平台錢包。pending 已建單、等付款；leading 目前最高；outbid 被超過或沒被接受（截止、加價不夠），等退款；
+// refunding 退款中；refunded 已退款；won 得標（款項轉成擔保訂單）
+export const BID_STATUS = ["pending", "leading", "outbid", "refunding", "refunded", "won"] as const;
+export type BidStatus = (typeof BID_STATUS)[number];
+export const bids = pgTable("bids", {
+  id: text("id").primaryKey(),
+  auctionId: text("auction_id").notNull(),
+  bidderId: text("bidder_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  bidderWallet: text("bidder_wallet").notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  status: text("status").$type<BidStatus>().notNull().default("pending"),
+  // 付款通道和 Arc 上的付款地址，退款退回原通道
+  rail: text("rail").$type<PayRail>().notNull().default("solana"),
+  payer: text("payer"),
+  payTx: text("pay_tx").unique(),
+  refundTx: text("refund_tx"),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
+  // 成為最高出價的時間；付了款但沒被接受（截止了、被別人搶先）的出價沒有，不列進出價紀錄
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // 開卡包訂單：pending（待付款）→ drawing（已對帳、抽卡和轉移中）→ drawn。
@@ -394,6 +445,41 @@ export const BOOTSTRAP_SQL = [
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipped_at timestamptz`,
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS rail text NOT NULL DEFAULT 'solana'`,
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS payer text`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS auction_id text`,
+  `CREATE TABLE IF NOT EXISTS auctions (
+    id text PRIMARY KEY,
+    item_id text NOT NULL,
+    seller_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    start_cents integer NOT NULL,
+    reserve_cents integer,
+    fee_bps integer NOT NULL,
+    ends_at timestamptz NOT NULL,
+    status text NOT NULL DEFAULT 'live',
+    high_bid_id text,
+    high_cents integer,
+    bid_count integer NOT NULL DEFAULT 0,
+    order_id text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  // 一張卡同時只能有一場進行中的拍賣
+  `CREATE UNIQUE INDEX IF NOT EXISTS auctions_live_item_idx ON auctions(item_id) WHERE status = 'live'`,
+  `CREATE TABLE IF NOT EXISTS bids (
+    id text PRIMARY KEY,
+    auction_id text NOT NULL,
+    bidder_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    bidder_wallet text NOT NULL,
+    amount_cents integer NOT NULL,
+    status text NOT NULL DEFAULT 'pending',
+    rail text NOT NULL DEFAULT 'solana',
+    payer text,
+    pay_tx text UNIQUE,
+    refund_tx text,
+    paid_at timestamptz,
+    accepted_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS bids_auction_idx ON bids(auction_id, created_at)`,
   `CREATE TABLE IF NOT EXISTS pack_orders (
     id text PRIMARY KEY,
     user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,

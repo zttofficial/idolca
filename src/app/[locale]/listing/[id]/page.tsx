@@ -8,6 +8,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import PhotoGallery from "@/components/market/PhotoGallery";
 import EscrowBuy from "@/components/market/EscrowBuy";
+import FreeAuction from "@/components/auction/FreeAuction";
 import Price from "@/components/web3/Price";
 import VerificationBadge from "@/components/binder/VerificationBadge";
 import { Link } from "@/i18n/navigation";
@@ -29,7 +30,8 @@ export async function generateMetadata(props: PageProps<"/[locale]/listing/[id]"
 
 const SECTION = "rounded-2xl border border-line bg-surface p-5";
 
-// 自由刊登的商品頁：卡在賣家手上、平台未查驗。和金庫卡的卡片頁（/card/[id]）分開，免責聲明放在價格旁邊
+// 自由刊登的商品頁：卡在賣家手上、平台未查驗。和金庫卡的卡片頁（/card/[id]）分開，免責聲明放在價格旁邊。
+// 拍賣中的卡在同一頁顯示拍賣面板（目前出價、倒數、出價紀錄）；拍賣結束 7 天內還看得到結果
 export default function ListingPage(props: PageProps<"/[locale]/listing/[id]">) {
   return (
     <>
@@ -95,18 +97,27 @@ async function ListingContent({ params }: { params: PageProps<"/[locale]/listing
           </div>
 
           <div className={SECTION}>
-            <p className="text-xs text-ink-3">{t("price")}</p>
-            <Price amount={listing.priceUsdt ?? 0} className="mt-1 text-3xl font-bold tabular-nums" />
-            <SellerCard seller={seller} />
-            <EscrowBuy itemId={listing.id} priceUsdt={listing.priceUsdt ?? 0} />
-            <ol className="mt-4 space-y-1.5 text-xs leading-relaxed text-ink-2">
-              {(["step1", "step2", "step3"] as const).map((k, i) => (
-                <li key={k} className="flex gap-2">
-                  <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-surface-3 text-[10px] font-bold">{i + 1}</span>
-                  {t(k)}
-                </li>
-              ))}
-            </ol>
+            {listing.auction ? (
+              <>
+                <FreeAuction itemId={listing.id} initial={listing.auction} />
+                <SellerCard seller={seller} />
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-ink-3">{t("price")}</p>
+                <Price amount={listing.priceUsdt ?? 0} className="mt-1 text-3xl font-bold tabular-nums" />
+                <SellerCard seller={seller} />
+                <EscrowBuy itemId={listing.id} priceUsdt={listing.priceUsdt ?? 0} />
+                <ol className="mt-4 space-y-1.5 text-xs leading-relaxed text-ink-2">
+                  {(["step1", "step2", "step3"] as const).map((k, i) => (
+                    <li key={k} className="flex gap-2">
+                      <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-surface-3 text-[10px] font-bold">{i + 1}</span>
+                      {t(k)}
+                    </li>
+                  ))}
+                </ol>
+              </>
+            )}
           </div>
 
           {listing.description && (

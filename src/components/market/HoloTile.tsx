@@ -8,6 +8,7 @@ import OnSolanaBadge from "@/components/web3/OnSolanaBadge";
 import Price from "@/components/web3/Price";
 import type { Card } from "@/lib/cards";
 import { useChainState } from "@/lib/chain-client";
+import { AuctionBadge } from "./ListingTile";
 
 // 全息卡面：滑鼠位置驅動 CSS 3D 傾斜、彩虹箔和高光（樣式見 globals.css 的 .holo-tile）
 export function HoloCardFace({ card }: { card: Card }) {
@@ -46,17 +47,19 @@ export function HoloCardFace({ card }: { card: Card }) {
   );
 }
 
-// 列表卡：卡面 + 名稱；價格只在鏈上真的掛單時顯示，否則顯示目前狀態
+// 列表卡：卡面 + 名稱；價格只在鏈上真的掛單或拍賣時顯示（拍賣顯示目前出價），否則顯示目前狀態
 export default function HoloTile({ card }: { card: Card }) {
   const tRarity = useTranslations("Rarity");
   const tStatus = useTranslations("Status");
+  const tAuction = useTranslations("Auction");
   const chain = useChainState();
   const live = chain?.ready ? chain.cards[card.id] : undefined;
 
   return (
     <article className="group">
-      <Link href={`/card/${card.id}`} className="holo-stage block" aria-label={`${card.group} ${card.member} ${card.version}`}>
+      <Link href={`/card/${card.id}`} className="holo-stage relative block" aria-label={`${card.group} ${card.member} ${card.version}`}>
         <HoloCardFace card={card} />
+        {live?.auction?.status === "live" && <AuctionBadge endsAt={live.auction.endsAt} label={tAuction("auction")} />}
       </Link>
       <div className="mt-3 space-y-1 px-1">
         <div className="flex items-center justify-between text-xs text-ink-3">
@@ -70,6 +73,8 @@ export default function HoloTile({ card }: { card: Card }) {
         </p>
         {!chain ? (
           <span className="block h-5 w-20 animate-pulse rounded bg-surface-2" />
+        ) : live?.auction ? (
+          <Price amount={live.auction.highUsd ?? live.auction.startUsd} className="text-base font-bold tabular-nums" />
         ) : live?.listing ? (
           <Price amount={live.listing.priceUsdt} className="text-base font-bold tabular-nums" />
         ) : (

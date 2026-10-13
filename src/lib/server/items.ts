@@ -1,9 +1,10 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { TEMPLATES } from "@/lib/catalog";
-import { and, count, desc, eq, isNotNull, ne } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, ne, or } from "drizzle-orm";
 import type { Db } from "./db";
-import { collectorItems, orders, users } from "./schema";
+import { auctions, collectorItems, orders, users } from "./schema";
+import { auctionView, latestAuctions, recentAuction, type AuctionRow } from "./auctions";
 
 export type ItemRow = typeof collectorItems.$inferSelect;
 
@@ -39,8 +40,20 @@ export function publicItem(r: ItemRow) {
   };
 }
 
-// 自由刊登對外顯示的內容：收藏品加上賣家暱稱，不含賣家帳號資料
-export const publicListing = (r: ItemRow, seller: string) => ({ ...publicItem(r), seller });
+// 自由刊登對外顯示的內容：收藏品加上賣家暱稱，不含賣家帳號資料。拍賣中的卡附上拍賣狀態，上架時間用開拍時間
+export const publicListing = (r: ItemRow, seller: string, auction?: AuctionRow | null) => {
+  const item = publicItem(r);
+  return {
+    ...item,
+    listedAt: item.listedAt ?? auction?.createdAt.toISOString() ?? null,
+    seller,
+    auction: auction ? { ...auctionView(auction), id: auction.id } : null,
+  };
+};
+
+// 在售：一口價刊登中，或拍賣進行中。假卡一律不算
+const liveAuctionItems = (db: Db) => db.select({ id: auctions.itemId }).from(auctions).where(eq(auctions.status, "live"));
+const onSale = (db: Db) => and(or(isNotNull(collectorItems.priceCents), inArray(collectorItems.id, liveAuctionItems(db))), eq(collectorItems.verification, "unverified"));
 
 export const MAX_PHOTOS = 8;
 export const MAX_DESCRIPTION = 500;
@@ -69,25 +82,34 @@ export function matchTemplate(group: string, member: string, album?: string | nu
 
 export const newItemId = () => randomUUID();
 
-// 刊登中的自由刊登，新的在前；假卡即使有價格也不出現
+// 在售的自由刊登（一口價和拍賣中），新的在前；假卡即使有價格也不出現
 export async function listListings(db: Db, limit = 200) {
   const rows = await db
     .select({ item: collectorItems, seller: users.displayName })
     .from(collectorItems)
     .innerJoin(users, eq(users.id, collectorItems.userId))
-    .where(and(isNotNull(collectorItems.priceCents), eq(collectorItems.verification, "unverified")))
-    .orderBy(desc(collectorItems.listedAt))
+    .where(onSale(db))
     .limit(limit);
-  return rows.map((r) => publicListing(r.item, r.seller));
+  const live = await latestAuctions(
+    db,
+    rows.filter((r) => r.item.priceCents === null).map((r) => r.item.id),
+  );
+  return rows
+    .map((r) => publicListing(r.item, r.seller, live.get(r.item.id)))
+    .sort((a, b) => (b.listedAt ?? "").localeCompare(a.listedAt ?? ""));
 }
 
+// 刊登頁：一口價刊登中、拍賣中，或拍賣成交、流拍不到 7 天的卡（出價的人回來看得到結果）
 export async function getListing(db: Db, id: string) {
   const [r] = await db
     .select({ item: collectorItems, seller: users.displayName })
     .from(collectorItems)
     .innerJoin(users, eq(users.id, collectorItems.userId))
-    .where(and(eq(collectorItems.id, id), isNotNull(collectorItems.priceCents), eq(collectorItems.verification, "unverified")));
-  return r ? publicListing(r.item, r.seller) : null;
+    .where(eq(collectorItems.id, id));
+  if (!r || r.item.verification !== "unverified") return null;
+  const auction = r.item.priceCents === null ? await recentAuction(db, id) : null;
+  if (r.item.priceCents === null && !auction) return null;
+  return publicListing(r.item, r.seller, auction);
 }
 
 export type Listing = ReturnType<typeof publicListing>;
@@ -101,19 +123,23 @@ export async function getSeller(db: Db, itemId: string) {
     .innerJoin(users, eq(users.id, collectorItems.userId))
     .where(eq(collectorItems.id, itemId));
   if (!row) return null;
-  const onSale = and(eq(collectorItems.userId, row.id), isNotNull(collectorItems.priceCents), eq(collectorItems.verification, "unverified"));
+  const mine = and(eq(collectorItems.userId, row.id), onSale(db));
   const [[sales], [active], others] = await Promise.all([
     db.select({ n: count() }).from(orders).where(and(eq(orders.sellerId, row.id), eq(orders.status, "completed"))),
-    db.select({ n: count() }).from(collectorItems).where(onSale),
-    db.select().from(collectorItems).where(and(onSale, ne(collectorItems.id, itemId))).orderBy(desc(collectorItems.listedAt)).limit(4),
+    db.select({ n: count() }).from(collectorItems).where(mine),
+    db.select().from(collectorItems).where(and(mine, ne(collectorItems.id, itemId))).orderBy(desc(collectorItems.listedAt)).limit(4),
   ]);
+  const othersLive = await latestAuctions(
+    db,
+    others.filter((r) => r.priceCents === null).map((r) => r.id),
+  );
   return {
     name: row.name,
     joinedAt: row.joinedAt.toISOString(),
     sales: sales.n,
     active: active.n,
     walletLinked: Boolean(row.wallet),
-    others: others.map((r) => publicListing(r, row.name)),
+    others: others.map((r) => publicListing(r, row.name, othersLive.get(r.id))),
   };
 }
 

@@ -59,6 +59,10 @@ export function toSearch(q: MarketQuery) {
   return sp.toString();
 }
 
+// 在售：一口價掛單或拍賣中（拍賣的價格是目前出價，沒人出價時是起標價）
+const forSale = (c: Card) => c.status === "listed" || c.status === "auction";
+const listingPrice = (l: Listing) => l.priceUsdt ?? l.auction?.highUsd ?? l.auction?.startUsd ?? 0;
+
 // 關鍵字比對，多個詞要全部命中
 function hit(hay: string, q: string) {
   if (!q) return true;
@@ -84,17 +88,17 @@ export function applyQuery(cards: Card[], q: MarketQuery) {
       (!q.group || c.group === q.group) &&
       (!q.member || c.member === q.member) &&
       (!q.types.length || q.types.includes(c.rarity)) &&
-      // 價格篩選只看在售的卡（價格是鏈上的掛單價）
-      ((q.min === null && q.max === null) || (c.status === "listed" && (q.min === null || c.priceUsdt >= q.min) && (q.max === null || c.priceUsdt <= q.max))) &&
-      (!q.listedOnly || c.status === "listed"),
+      // 價格篩選只看在售的卡（價格是鏈上的掛單價或拍賣的目前出價）
+      ((q.min === null && q.max === null) || (forSale(c) && (q.min === null || c.priceUsdt >= q.min) && (q.max === null || c.priceUsdt <= q.max))) &&
+      (!q.listedOnly || forSale(c)),
   );
   const sorted = [...filtered].sort((a, b) => {
     switch (q.sort) {
       // 按價格排序時，沒在售的卡排在最後
       case "priceAsc":
-        return Number(b.status === "listed") - Number(a.status === "listed") || a.priceUsdt - b.priceUsdt;
+        return Number(forSale(b)) - Number(forSale(a)) || a.priceUsdt - b.priceUsdt;
       case "priceDesc":
-        return Number(b.status === "listed") - Number(a.status === "listed") || b.priceUsdt - a.priceUsdt;
+        return Number(forSale(b)) - Number(forSale(a)) || b.priceUsdt - a.priceUsdt;
       default:
         return b.intakeDate.localeCompare(a.intakeDate);
     }
@@ -108,12 +112,12 @@ export function applyListingQuery(listings: Listing[], q: MarketQuery) {
     (l) =>
       hit(`${l.title ?? ""} ${l.group} ${l.member} ${l.album ?? ""} ${l.version ?? ""}`, q.q) &&
       (!q.group || l.group.toLowerCase() === q.group.toLowerCase()) &&
-      (q.min === null || (l.priceUsdt ?? 0) >= q.min) &&
-      (q.max === null || (l.priceUsdt ?? 0) <= q.max),
+      (q.min === null || listingPrice(l) >= q.min) &&
+      (q.max === null || listingPrice(l) <= q.max),
   );
   const sorted = [...filtered].sort((a, b) => {
-    if (q.sort === "priceAsc") return (a.priceUsdt ?? 0) - (b.priceUsdt ?? 0);
-    if (q.sort === "priceDesc") return (b.priceUsdt ?? 0) - (a.priceUsdt ?? 0);
+    if (q.sort === "priceAsc") return listingPrice(a) - listingPrice(b);
+    if (q.sort === "priceDesc") return listingPrice(b) - listingPrice(a);
     return (b.listedAt ?? "").localeCompare(a.listedAt ?? "");
   });
   return paginate(sorted, q.page);
@@ -121,7 +125,7 @@ export function applyListingQuery(listings: Listing[], q: MarketQuery) {
 
 // 各團體、成員在目前其他篩選條件下的數量，用來在選項旁顯示
 export function facetCounts(cards: Card[], q: MarketQuery) {
-  const base = cards.filter((c) => matches(c, q.q) && (!q.types.length || q.types.includes(c.rarity)) && (!q.listedOnly || c.status === "listed"));
+  const base = cards.filter((c) => matches(c, q.q) && (!q.types.length || q.types.includes(c.rarity)) && (!q.listedOnly || forSale(c)));
   const groups = new Map<string, number>();
   const members = new Map<string, number>();
   for (const c of base) {

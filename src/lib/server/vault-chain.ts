@@ -12,6 +12,7 @@ import type { IdolcaMarket } from "@/lib/chain/idl/idolca_market";
 import { SERVER_RPC, platformSecret, platformUmi } from "./chain";
 import { getDb } from "./db";
 import { getVaultRow, markBurned, vaultRows } from "./vault-cards";
+import { minNextBid, type AuctionView } from "@/lib/auction";
 
 // 金庫卡的鏈上交易。伺服器組好交易、設好手續費付款人，錢包只負責簽名發送；
 // 需要平台簽名的部分（例如提貨時平台當凍結代理）由伺服器先簽
@@ -36,12 +37,22 @@ const usdtMint = () => new PublicKey(CHAIN.market!.usdtMint);
 const configPda = () => new PublicKey(CHAIN.market!.config);
 const vaultCollection = () => new PublicKey(CHAIN.vaultCollection);
 export const listingPda = (asset: PublicKey) => PublicKey.findProgramAddressSync([Buffer.from("listing"), asset.toBuffer()], program.programId)[0];
+export const auctionPda = (asset: PublicKey) => PublicKey.findProgramAddressSync([Buffer.from("auction"), asset.toBuffer()], program.programId)[0];
+const auctionConfigPda = () => PublicKey.findProgramAddressSync([Buffer.from("auction_config")], program.programId)[0];
 const coreAccounts = () => ({ config: configPda(), collection: vaultCollection(), mplCoreProgram: MPL_CORE_ID, systemProgram: SystemProgram.programId });
+const tokenAccounts = () => ({ tokenProgram: TOKEN_PROGRAM_ID, associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID });
+const UNIT = 10 ** USDT_DECIMALS;
+const toUnits = (usd: number) => new anchor.BN(Math.round(usd * UNIT));
+
+// 鏈上拍賣的狀態：公開的拍賣資訊，加上賣家和目前最高出價者的錢包（鏈上本來就公開）
+export type VaultAuction = AuctionView & { seller: string; highBidder: string | null };
 
 export type VaultCardState = {
   owner: string;
   // 在託管程序裡掛單時：賣家和價格（USDT）
   listing: { seller: string; priceUsdt: number } | null;
+  // 在託管程序裡拍賣時（這時 owner 是拍賣帳戶，卡的主人是 auction.seller）
+  auction: VaultAuction | null;
   // 已申請提貨，NFT 凍結中
   redeeming: boolean;
   // 已提貨，NFT 已銷毀
@@ -71,9 +82,10 @@ async function readVaultState() {
   if (!rows.length) return {};
   const ids = rows.map((r) => r.id);
   const assets = rows.map((r) => new PublicKey(r.asset));
-  const [existing, listings] = await Promise.all([
+  const [existing, listings, auctionAccounts] = await Promise.all([
     connection.getMultipleAccountsInfo(assets),
     connection.getMultipleAccountsInfo(assets.map(listingPda)),
+    connection.getMultipleAccountsInfo(assets.map(auctionPda)),
   ]);
   // Core 銷毀資產後會留一個 1 位元組的墓碑帳戶，第一個位元組不是 AssetV1（1）就當作已銷毀。
   // 帳戶讀不到（剛鑄造、節點還沒同步）不算銷毀
@@ -95,14 +107,48 @@ async function readVaultState() {
     const asset = byAddress.get(assets[i].toBase58());
     const raw = listings[i];
     const listing = raw ? program.coder.accounts.decode("listing", raw.data) : null;
+    const rawAuction = auctionAccounts[i];
     out[id] = {
       owner: asset?.owner.toString() ?? "",
       listing: listing ? { seller: listing.seller.toBase58(), priceUsdt: Number(listing.price) / 10 ** USDT_DECIMALS } : null,
+      auction: rawAuction ? decodeAuction(program.coder.accounts.decode("auction", rawAuction.data)) : null,
       redeeming: Boolean(asset?.freezeDelegate?.frozen),
       burned: tombstone[i],
     };
   });
   return out;
+}
+
+type AuctionAccount = {
+  seller: PublicKey;
+  startPrice: anchor.BN;
+  reservePrice: anchor.BN;
+  endTs: anchor.BN;
+  highBidder: PublicKey;
+  highBid: anchor.BN;
+  bidCount: number;
+  feeBps: number;
+};
+
+function decodeAuction(a: AuctionAccount): VaultAuction {
+  const high = a.bidCount > 0 ? Number(a.highBid) : null;
+  const reserve = Number(a.reservePrice);
+  const endsAt = Number(a.endTs) * 1000;
+  return {
+    lane: "vault",
+    startUsd: Number(a.startPrice) / UNIT,
+    hasReserve: reserve > 0,
+    reserveMet: reserve === 0 || (high ?? 0) >= reserve,
+    highUsd: high === null ? null : high / UNIT,
+    bidCount: a.bidCount,
+    // 鏈上以最小單位計算，換成分時無條件進位，顯示的最低出價一定被鏈上接受
+    minNextUsd: Math.ceil(minNextBid(high, Number(a.startPrice), UNIT) / (UNIT / 100)) / 100,
+    endsAt: new Date(endsAt).toISOString(),
+    feeBps: a.feeBps,
+    status: endsAt <= Date.now() ? "settling" : "live",
+    seller: a.seller.toBase58(),
+    highBidder: high === null ? null : a.highBidder.toBase58(),
+  };
 }
 
 // 組一筆由用戶付手續費的交易，回傳 base64，錢包簽名後送出
@@ -164,6 +210,134 @@ export async function buildCancel(cardId: string, seller: PublicKey) {
   const asset = await cardAsset(cardId);
   const ix = await program.methods.cancel().accountsPartial({ seller, listing: listingPda(asset), asset, ...coreAccounts() }).instruction();
   return forUser(seller, [ix]);
+}
+
+// 金庫卡拍賣開通了沒有：鏈上的 AuctionConfig 建好了才開放（程序升級、執行 npm run chain:setup-market 之後）。結果快取 1 分鐘
+let auctionsCache: { at: number; value: boolean } | null = null;
+export async function vaultAuctionsReady() {
+  if (!marketReady()) return false;
+  if (auctionsCache && Date.now() - auctionsCache.at < 60_000) return auctionsCache.value;
+  const value = Boolean(await connection.getAccountInfo(auctionConfigPda()).catch(() => null));
+  auctionsCache = { at: Date.now(), value };
+  return value;
+}
+
+// 開拍：資產轉進拍賣帳戶。reserveUsd 為空表示不設保底價；時長、起標價下限由鏈上的 AuctionConfig 再檢查一次
+export async function buildCreateAuction(cardId: string, seller: PublicKey, startUsd: number, reserveUsd: number | null, days: number) {
+  const asset = await cardAsset(cardId);
+  const auction = auctionPda(asset);
+  const mint = usdtMint();
+  const ix = await program.methods
+    .createAuction(toUnits(startUsd), toUnits(reserveUsd ?? 0), new anchor.BN(days * 86_400))
+    .accountsPartial({
+      seller,
+      auctionConfig: auctionConfigPda(),
+      auction,
+      escrow: getAssociatedTokenAddressSync(mint, auction, true),
+      asset,
+      paymentMint: mint,
+      ...tokenAccounts(),
+      ...coreAccounts(),
+    })
+    .instruction();
+  return forUser(seller, [ix]);
+}
+
+// 出價：全額轉進拍賣帳戶，同一個指令退回前一位最高出價者
+export async function buildBid(cardId: string, bidder: PublicKey, amountUsd: number) {
+  const asset = await cardAsset(cardId);
+  const state = (await vaultState())[cardId]?.auction;
+  if (!state || state.status !== "live") throw new Error("auction_ended");
+  if (state.seller === bidder.toBase58()) throw new Error("own_auction");
+  if (state.highBidder === bidder.toBase58()) throw new Error("already_leading");
+  if (amountUsd < state.minNextUsd) throw new Error("bid_too_low");
+  const auction = auctionPda(asset);
+  const mint = usdtMint();
+  const prev = state.highBidder ? new PublicKey(state.highBidder) : bidder;
+  const ix = await program.methods
+    .bid(toUnits(amountUsd))
+    .accountsPartial({
+      bidder,
+      auctionConfig: auctionConfigPda(),
+      auction,
+      paymentMint: mint,
+      bidderToken: getAssociatedTokenAddressSync(mint, bidder),
+      escrow: getAssociatedTokenAddressSync(mint, auction, true),
+      prevBidder: prev,
+      prevBidderToken: getAssociatedTokenAddressSync(mint, prev),
+      ...tokenAccounts(),
+      systemProgram: SystemProgram.programId,
+    })
+    .instruction();
+  return forUser(bidder, [ix]);
+}
+
+export async function buildCancelAuction(cardId: string, seller: PublicKey) {
+  const asset = await cardAsset(cardId);
+  const auction = auctionPda(asset);
+  const mint = usdtMint();
+  const ix = await program.methods
+    .cancelAuction()
+    .accountsPartial({ seller, auction, escrow: getAssociatedTokenAddressSync(mint, auction, true), asset, paymentMint: mint, tokenProgram: TOKEN_PROGRAM_ID, ...coreAccounts() })
+    .instruction();
+  return forUser(seller, [ix]);
+}
+
+// 結標：平台錢包呼叫 settle_auction（任何人都能呼叫，平台負責準時），手續費和新建代幣帳戶的租金由平台付
+async function settleVaultAuction(cardId: string, a: VaultAuction) {
+  const me = platform()!;
+  const asset = await cardAsset(cardId);
+  const auction = auctionPda(asset);
+  const mint = usdtMint();
+  const seller = new PublicKey(a.seller);
+  const high = a.highBidder ? new PublicKey(a.highBidder) : seller;
+  const treasury = new PublicKey(CHAIN.market!.treasury);
+  const ix = await program.methods
+    .settleAuction()
+    .accountsPartial({
+      cranker: me.publicKey,
+      seller,
+      highBidder: high,
+      auction,
+      escrow: getAssociatedTokenAddressSync(mint, auction, true),
+      asset,
+      paymentMint: mint,
+      sellerToken: getAssociatedTokenAddressSync(mint, seller),
+      highBidderToken: getAssociatedTokenAddressSync(mint, high),
+      treasury,
+      treasuryToken: getAssociatedTokenAddressSync(mint, treasury),
+      ...tokenAccounts(),
+      ...coreAccounts(),
+    })
+    .instruction();
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+  const tx = new Transaction({ feePayer: me.publicKey, blockhash, lastValidBlockHeight }).add(ix);
+  tx.sign(me);
+  const signature = await connection.sendRawTransaction(tx.serialize());
+  await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
+  return signature;
+}
+
+// 結標所有已截止的金庫卡拍賣。同一個伺服器實例裡同一張卡不會同時送兩次；
+// 不同實例重複送出時，第二筆會因為拍賣帳戶已關閉而失敗，不影響結果
+const settling = new Set<string>();
+export async function settleEndedVaultAuctions() {
+  if (!marketReady()) return 0;
+  const ended = Object.entries(await vaultState()).filter(([id, s]) => s.auction && new Date(s.auction.endsAt).getTime() <= Date.now() && !settling.has(id));
+  let done = 0;
+  for (const [id, s] of ended) {
+    settling.add(id);
+    try {
+      await settleVaultAuction(id, s.auction!);
+      done++;
+    } catch (err) {
+      console.error("settle vault auction failed", id, err);
+    } finally {
+      settling.delete(id);
+    }
+  }
+  if (done) invalidateVaultState();
+  return done;
 }
 
 export const MEMO_PROGRAM = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");

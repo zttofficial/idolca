@@ -3,8 +3,10 @@ import { requireAdmin } from "@/lib/server/admin";
 import { VERIFICATION, collectorItems, type Verification } from "@/lib/server/schema";
 import { chainAttributes, publicItem } from "@/lib/server/items";
 import { markFakeOnChain } from "@/lib/server/chain";
+import { refundBids, voidAuction } from "@/lib/server/auctions";
+import { after } from "next/server";
 
-// 平台把自由上鏈的卡標成假卡（被檢舉或寄到金庫查出是假），同時下架。
+// 平台把自由上鏈的卡標成假卡（被檢舉或寄到金庫查出是假），同時下架；拍賣中的取消拍賣，最高出價全額退回。
 // 已上鏈的卡同步改寫鏈上名稱和屬性並凍結 NFT，這一步不可逆，所以鏈上的假卡不能再改回待驗證。
 // 只有管理員能操作
 export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/items/[id]">) {
@@ -42,5 +44,9 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/item
     })
     .where(eq(collectorItems.id, id))
     .returning();
+  if (fake) {
+    await voidAuction(db, id);
+    after(() => refundBids(db));
+  }
   return Response.json({ item: publicItem(row) });
 }

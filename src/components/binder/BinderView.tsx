@@ -13,7 +13,7 @@ import BinderBook from "./BinderBook";
 import BinderArranger from "./BinderArranger";
 import { arrange, clearPocket, EMPTY_LAYOUT, isTrackedOnly, takeOut } from "@/lib/binder-layout";
 import { OnChainCards, Orders } from "./BinderChain";
-import { listVaultCard, refreshChainState, useTemplateMarket, useVaultCards, vaultAction } from "@/lib/chain-client";
+import { listVaultCard, refreshChainState, useChainState, useTemplateMarket, useVaultCards, vaultAction } from "@/lib/chain-client";
 import { useAuth } from "@/components/auth/AuthContext";
 import { Thumbs } from "@/components/market/PhotoGallery";
 import { Link } from "@/i18n/navigation";
@@ -23,7 +23,7 @@ import type { Card } from "@/lib/cards";
 import { formatPrice } from "@/lib/fx";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 import { itemTitle } from "@/lib/item-title";
-import { putOnChain, setDescription, setListing, useMyItems, type CollectorItem, requestVault } from "@/lib/items";
+import { putOnChain, setAuction, setDescription, setListing, useMyItems, type CollectorItem, requestVault } from "@/lib/items";
 
 type Tab = "binder" | "onchain" | "orders" | "progress" | "wants";
 const TABS: Tab[] = ["binder", "onchain", "orders", "progress", "wants"];
@@ -123,8 +123,10 @@ export default function BinderView() {
     binderActions.setLayout(clearPocket(layout, key));
     binderActions.setCount(key.slice("card:".length), 0);
   };
-  // 在售中：自己上鏈並刊登的卡，和在託管程序裡掛單的金庫卡（拿出冊子的也算）
-  const listedSlots = slots.filter((slot) => (slot.kind === "vault" && slot.card.status === "listed") || (slot.kind === "item" && slot.item.priceUsdt !== null));
+  // 在售中：一口價刊登或拍賣中的收藏卡，和在託管程序裡掛單或拍賣的金庫卡（拿出冊子的也算）
+  const listedSlots = slots.filter(
+    (slot) => (slot.kind === "vault" && (slot.card.status === "listed" || slot.card.status === "auction")) || (slot.kind === "item" && (slot.item.priceUsdt !== null || Boolean(slot.item.auction))),
+  );
   const openSlot = (slot: Slot) => (slot.kind === "vault" ? setSelectedVault(slot.card.id) : slot.kind === "item" ? setSelectedItem(slot.item.id) : setSelected(slot.owned.template.id));
   const selectedOwned = owned.find((o) => o.template.id === selected);
   const pickedItem = items.find((i) => i.id === selectedItem);
@@ -464,13 +466,16 @@ function ItemSheet({ item, onClose, onTakeOut }: { item: CollectorItem; onClose:
             {!fake && !item.vaultRequestedAt && (
               <ListingControl
                 price={item.priceUsdt}
+                auction={item.auction}
                 viewHref={`/listing/${item.id}`}
                 note={t("listingNote")}
                 onList={(price) => setListing(item.id, price)}
                 onUnlist={() => setListing(item.id, null)}
+                onAuction={(input) => setAuction(item.id, input)}
+                onCancelAuction={() => setAuction(item.id, null)}
               />
             )}
-            {!fake && <VaultRequest item={item} />}
+            {!fake && !item.auction && <VaultRequest item={item} />}
             <TakeOutButton onTakeOut={onTakeOut} />
           </div>
         </div>
@@ -706,6 +711,8 @@ function VaultSheet({ card, onClose, onTakeOut }: { card: Card; onClose: () => v
   const tStatus = useTranslations("Status");
   const wallet = useAuth().user?.walletAddress;
   const listed = card.status === "listed";
+  const chain = useChainState();
+  const auction = chain?.cards[card.id]?.auction ?? null;
   return (
     <Dialog label={`${card.group} ${card.member}`} onClose={onClose}>
       <div className="grid gap-6 sm:grid-cols-[180px_1fr]">
@@ -719,18 +726,21 @@ function VaultSheet({ card, onClose, onTakeOut }: { card: Card; onClose: () => v
           <h3 className="mt-1 text-xl font-bold">{card.member}</h3>
           <p className="text-sm text-ink-2">{card.version}</p>
           <p className="mt-3 font-mono text-[11px] text-ink-3">{card.serial}</p>
-          {!listed && <p className="mt-3 text-sm font-semibold text-accent-ink">{tStatus(card.status)}</p>}
+          {!listed && !auction && <p className="mt-3 text-sm font-semibold text-accent-ink">{tStatus(card.status)}</p>}
           <div className="mt-auto flex flex-col gap-2 pt-5">
-            {wallet && (card.status === "vaulted" || listed) && (
+            {wallet && (card.status === "vaulted" || listed || auction) && (
               <ListingControl
                 price={listed ? card.priceUsdt : null}
+                auction={auction}
                 viewHref={`/card/${card.id}`}
                 note={t("vaultListingNote")}
                 onList={(price) => listVaultCard(card.id, wallet, price, listed)}
                 onUnlist={() => vaultAction("cancel", card.id, wallet)}
+                onAuction={chain?.auctions ? (input) => vaultAction("auction", card.id, wallet, input) : undefined}
+                onCancelAuction={() => vaultAction("cancelAuction", card.id, wallet)}
               />
             )}
-            {!listed && (
+            {!listed && !auction && (
               <Link href={`/card/${card.id}`} className="btn-secondary rounded-full py-2.5 text-center text-sm font-semibold">
                 {t("viewCard")} →
               </Link>

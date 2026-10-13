@@ -41,7 +41,7 @@ npm run admin:grant -- you@example.com     # 或錢包地址；加 --revoke 撤�
 
 ## 測試
 
-- `npm test`：單元測試（卡包機率、抽卡公平性、收件地址驗證、收藏冊擺法、八種語言的文字一致、程式碼用到的翻譯鍵都存在）。
+- `npm test`：單元測試（卡包機率、抽卡公平性、拍賣加價規則、收件地址驗證、收藏冊擺法、八種語言的文字一致、程式碼用到的翻譯鍵都存在）。
 - 端到端測試對著跑起來的網站和 devnet 執行，每次都是真實交易，會消耗平台錢包的 SOL，也會入庫測試卡、建測試卡包。網站要用獨立的測試資料庫啟動（`PGLITE_DIR=.data/pglite-e2e npm run dev`），不要對著日常開發的資料庫或線上環境跑。管理員錢包金鑰檔用 `E2E_ADMIN_KEYPAIR` 指定（預設 `.data/admin-test-devnet.json`），地址要在網站的 `ADMIN_WALLETS` 裡。
 
 ```bash
@@ -49,6 +49,9 @@ PGLITE_DIR=.data/pglite-e2e npm run dev   # 另開一個終端
 npm run test:e2e:vault     # 入庫、卡包、公平性核對、回購、提貨和取消、收藏卡轉金庫卡
 npm run test:e2e:ui        # 無頭 Chrome 點完主要流程並截圖（CHROME_PATH 指定 Chrome）
 npm run test:e2e:binder    # 收藏冊同步：刪掉的卡換裝置也不會回來，沒送出的改動會補傳
+# 拍賣要用縮短的時間啟動網站（拍賣的一「天」只有 25 秒）：
+#   PGLITE_DIR=.data/pglite-e2e AUCTION_DAY_SECONDS=25 AUCTION_BID_WINDOW_SECONDS=6 AUCTION_EXTEND_SECONDS=4 npm run dev
+npm run test:e2e:auction   # 出價鎖款、被超過退款、結標轉成擔保訂單、保底價流拍、賣家取消、截止後的出價、假卡作廢
 # 擔保交易要用縮短的期限啟動網站：
 #   PGLITE_DIR=.data/pglite-e2e ESCROW_SHIP_DAYS=0.0003 ESCROW_CONFIRM_DAYS=0.0003 CRON_SECRET=testcron npm run dev
 E2E_CRON_SECRET=testcron npm run test:e2e:escrow
@@ -82,7 +85,7 @@ cd onchain
 npm install
 anchor keys sync          # 生成程序地址並寫進 lib.rs 和 Anchor.toml
 anchor build --arch v0    # devnet 還沒啟用 Anchor 1.2.1 預設的 SBF v3
-anchor test               # 本地驗證節點會從主網複製 Metaplex Core 程序
+anchor test --validator legacy   # 本地驗證節點會從主網複製 Metaplex Core 程序；要有 Linux 版的 Node，WSL 裡沒有時的做法見 docs/status.md
 solana program deploy target/deploy/idolca_market.so --program-id target/deploy/idolca_market-keypair.json --url devnet
 ```
 

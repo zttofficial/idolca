@@ -7,14 +7,20 @@ import { isTemplateOf, type Template } from "./catalog";
 import { signAndSend } from "./solana/wallets";
 import { signArcPayment, type EvmWallet } from "./evm/arc-wallet";
 import type { ArcPaymentRequest } from "./arc";
+import type { AuctionView } from "./auction";
+
+// 鏈上拍賣：公開的拍賣資訊，加上賣家和目前最高出價者的錢包
+export type VaultAuction = AuctionView & { seller: string; highBidder: string | null };
 
 export type VaultCardState = {
   owner: string;
   listing: { seller: string; priceUsdt: number } | null;
+  auction: VaultAuction | null;
   redeeming: boolean;
   burned: boolean;
 };
-type ChainState = { ready: boolean; cards: Record<string, VaultCardState> };
+// auctions：金庫卡拍賣開通了沒有（鏈上的拍賣設定建好了才開放開拍）
+type ChainState = { ready: boolean; auctions?: boolean; cards: Record<string, VaultCardState> };
 
 let state: ChainState | null = null;
 let loading: Promise<void> | null = null;
@@ -93,14 +99,16 @@ async function postJson<T>(url: string, body?: unknown): Promise<T> {
   return data;
 }
 
-export type VaultAction = "buy" | "list" | "cancel" | "redeem";
+export type VaultAction = "buy" | "list" | "cancel" | "redeem" | "auction" | "bid" | "cancelAuction";
+
+// 各動作要帶的參數：list 帶價格，redeem 帶收件地址，auction 帶起標價、保底價和天數，bid 帶出價
+export type VaultActionParams = { priceUsdt?: number; address?: unknown; startUsd?: number; reserveUsd?: number | null; days?: number; amountUsd?: number };
 
 // 金庫卡的動作：伺服器組交易 → 錢包簽名送出 → 伺服器等確認、刷新狀態。回傳交易簽名
-// 提貨（redeem）要帶收件地址
-export async function vaultAction(action: VaultAction, cardId: string, wallet: string, priceUsdt?: number, address?: unknown) {
-  const { tx } = await postJson<{ tx: string }>("/api/chain/vault/tx", { action, cardId, priceUsdt, address });
+export async function vaultAction(action: VaultAction, cardId: string, wallet: string, params: VaultActionParams = {}) {
+  const { tx } = await postJson<{ tx: string }>("/api/chain/vault/tx", { action, cardId, ...params });
   const signature = await signAndSend(tx, wallet);
-  await postJson("/api/chain/vault/confirm", { action, cardId, signature, address });
+  await postJson("/api/chain/vault/confirm", { action, cardId, signature, address: params.address });
   await refreshChainState();
   return signature;
 }
@@ -108,7 +116,7 @@ export async function vaultAction(action: VaultAction, cardId: string, wallet: s
 // 金庫卡上架或改價。託管程序沒有改價：改價是先取消掛單，再用新價格掛單，錢包簽兩次
 export async function listVaultCard(cardId: string, wallet: string, priceUsdt: number, relist: boolean) {
   if (relist) await vaultAction("cancel", cardId, wallet);
-  return vaultAction("list", cardId, wallet, priceUsdt);
+  return vaultAction("list", cardId, wallet, { priceUsdt });
 }
 
 // 付款類動作（擔保交易、開卡包）：先建訂單拿到付款交易，簽名送出後回報確認
@@ -144,15 +152,17 @@ export function useBalance(wallet: string | null | undefined) {
   return { balance: wallet ? balance : null, refresh };
 }
 
-type CardLike = { id: string; priceUsdt: number; owner: string; status: "vaulted" | "listed" | "redeeming" | "redeemed" };
+type CardLike = { id: string; priceUsdt: number; owner: string; status: "vaulted" | "listed" | "auction" | "redeeming" | "redeemed" };
 
-// 把鏈上即時狀態疊到卡片資料上：持有人、掛單價、狀態；鏈上已銷毀的標成已提貨
+// 把鏈上即時狀態疊到卡片資料上：持有人、價格、狀態；鏈上已銷毀的標成已提貨。
+// 掛單和拍賣時 NFT 在託管程序裡，持有人顯示賣家；拍賣的價格是目前最高出價，沒人出價時是起標價
 export function withLive<T extends CardLike>(cards: T[], chain: ChainState | null): T[] {
   if (!chain?.ready) return cards;
   return cards.map((c) => {
     const s = chain.cards[c.id];
     if (!s || c.status === "redeemed") return c;
     if (s.burned) return { ...c, owner: "", status: "redeemed" };
+    if (s.auction) return { ...c, owner: s.auction.seller, status: "auction", priceUsdt: s.auction.highUsd ?? s.auction.startUsd };
     const status = s.listing ? "listed" : s.redeeming ? "redeeming" : "vaulted";
     return { ...c, owner: s.listing?.seller ?? s.owner, status, priceUsdt: s.listing?.priceUsdt ?? c.priceUsdt };
   });

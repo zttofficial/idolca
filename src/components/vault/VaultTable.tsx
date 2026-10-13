@@ -12,10 +12,11 @@ export type VaultRow = { serial: string; title: string; asset: string; owner: st
 const STATUS_STYLE: Record<VaultStatus, string> = {
   vaulted: "bg-up/10 text-up",
   listed: "bg-accent-soft text-accent-ink",
+  auction: "bg-accent-soft text-accent-ink",
   redeeming: "bg-notice-bg text-notice-ink",
   redeemed: "bg-surface-3 text-ink-3",
 };
-const STATUSES: VaultStatus[] = ["vaulted", "listed", "redeeming", "redeemed"];
+const STATUSES: VaultStatus[] = ["vaulted", "listed", "auction", "redeeming", "redeemed"];
 
 // 金庫清單：資料庫裡的卡加上鏈上即時的持有人和狀態，包括已提貨銷毀的。還沒讀到時是 null
 function useRows(): VaultRow[] | null {

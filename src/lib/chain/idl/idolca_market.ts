@@ -14,6 +14,228 @@ export type IdolcaMarket = {
   },
   "instructions": [
     {
+      "name": "bid",
+      "docs": [
+        "出價：全額轉進拍賣的代幣帳戶，同一個指令退回前一位最高出價者。沒有前一位時 prev_bidder 傳出價者自己"
+      ],
+      "discriminator": [
+        199,
+        56,
+        85,
+        38,
+        146,
+        243,
+        37,
+        158
+      ],
+      "accounts": [
+        {
+          "name": "bidder",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "auctionConfig",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  99,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "auction",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  99,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "auction.asset",
+                "account": "auction"
+              }
+            ]
+          }
+        },
+        {
+          "name": "paymentMint",
+          "relations": [
+            "auction"
+          ]
+        },
+        {
+          "name": "bidderToken",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "auction"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "paymentMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "prevBidder"
+        },
+        {
+          "name": "prevBidderToken",
+          "docs": [
+            "退款收款帳戶。前一位出價者關掉了 USDT 帳戶也照樣能退（由這次的出價者建回來），沒人能用關帳戶擋住別人出價。",
+            "第一口出價時它就是出價者自己的帳戶，不會轉帳"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "prevBidder"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "paymentMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "buy",
       "docs": [
         "`expected_price` 防止賣家在買家簽名後改價（目前不支持改價，留作前端的價格確認）"
@@ -328,6 +550,434 @@ export type IdolcaMarket = {
       "args": []
     },
     {
+      "name": "cancelAuction",
+      "docs": [
+        "賣家取消：只有還沒人出價時可以"
+      ],
+      "discriminator": [
+        156,
+        43,
+        197,
+        110,
+        218,
+        105,
+        143,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "seller",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "auction"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "auction",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  99,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "auction"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "paymentMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "asset",
+          "writable": true,
+          "relations": [
+            "auction"
+          ]
+        },
+        {
+          "name": "collection"
+        },
+        {
+          "name": "paymentMint",
+          "relations": [
+            "auction"
+          ]
+        },
+        {
+          "name": "mplCoreProgram",
+          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "createAuction",
+      "docs": [
+        "開拍：資產轉進 Auction PDA，同時建好存放出價的代幣帳戶。reserve_price 為 0 表示不設保底價"
+      ],
+      "discriminator": [
+        234,
+        6,
+        201,
+        246,
+        47,
+        219,
+        176,
+        107
+      ],
+      "accounts": [
+        {
+          "name": "seller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "auctionConfig",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  99,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "auction",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  99,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "docs": [
+            "存放出價的代幣帳戶，屬於 Auction PDA"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "auction"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "paymentMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "asset",
+          "writable": true
+        },
+        {
+          "name": "collection"
+        },
+        {
+          "name": "paymentMint"
+        },
+        {
+          "name": "mplCoreProgram",
+          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "startPrice",
+          "type": "u64"
+        },
+        {
+          "name": "reservePrice",
+          "type": "u64"
+        },
+        {
+          "name": "durationSecs",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "initAuctionConfig",
+      "docs": [
+        "拍賣設定：只有 Config 的 authority 能建立和修改"
+      ],
+      "discriminator": [
+        15,
+        30,
+        69,
+        92,
+        179,
+        70,
+        68,
+        251
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "auctionConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  99,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "auctionConfigArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "initialize",
       "docs": [
         "只有程序的升級權限持有人能初始化，防止部署後被搶先寫入配置"
@@ -485,6 +1135,425 @@ export type IdolcaMarket = {
       ]
     },
     {
+      "name": "settleAuction",
+      "docs": [
+        "結標：截止後任何人都能呼叫（平台的排程負責），手續費和新建代幣帳戶的租金由呼叫者付。",
+        "有出價且達到保底價時成交，否則資產退回賣家、最高出價全額退回。拍賣帳戶和代幣帳戶關閉，租金退回賣家"
+      ],
+      "discriminator": [
+        246,
+        196,
+        183,
+        98,
+        222,
+        139,
+        46,
+        133
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "docs": [
+            "呼叫者：付手續費和新建代幣帳戶的租金"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "seller",
+          "writable": true
+        },
+        {
+          "name": "highBidder"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "auction",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  99,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "auction"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "paymentMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "asset",
+          "writable": true,
+          "relations": [
+            "auction"
+          ]
+        },
+        {
+          "name": "collection"
+        },
+        {
+          "name": "paymentMint",
+          "relations": [
+            "auction"
+          ]
+        },
+        {
+          "name": "sellerToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "seller"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "paymentMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "highBidderToken",
+          "docs": [
+            "流拍時的退款帳戶；沒人出價時就是賣家的帳戶，不會轉帳"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "highBidder"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "paymentMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "treasury"
+        },
+        {
+          "name": "treasuryToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "treasury"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "paymentMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "mplCoreProgram",
+          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "updateAuctionConfig",
+      "discriminator": [
+        131,
+        54,
+        27,
+        22,
+        187,
+        251,
+        73,
+        69
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "auctionConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  99,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "auctionConfigArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "updateConfig",
       "discriminator": [
         29,
@@ -538,6 +1607,32 @@ export type IdolcaMarket = {
   ],
   "accounts": [
     {
+      "name": "auction",
+      "discriminator": [
+        218,
+        94,
+        247,
+        242,
+        126,
+        233,
+        131,
+        81
+      ]
+    },
+    {
+      "name": "auctionConfig",
+      "discriminator": [
+        195,
+        54,
+        8,
+        51,
+        28,
+        231,
+        33,
+        142
+      ]
+    },
+    {
       "name": "config",
       "discriminator": [
         155,
@@ -565,6 +1660,58 @@ export type IdolcaMarket = {
     }
   ],
   "events": [
+    {
+      "name": "auctionCancelled",
+      "discriminator": [
+        22,
+        32,
+        51,
+        83,
+        215,
+        194,
+        171,
+        209
+      ]
+    },
+    {
+      "name": "auctionCreated",
+      "discriminator": [
+        133,
+        190,
+        194,
+        65,
+        172,
+        0,
+        70,
+        178
+      ]
+    },
+    {
+      "name": "auctionSettled",
+      "discriminator": [
+        61,
+        151,
+        131,
+        170,
+        95,
+        203,
+        219,
+        147
+      ]
+    },
+    {
+      "name": "bidPlaced",
+      "discriminator": [
+        135,
+        53,
+        176,
+        83,
+        193,
+        69,
+        108,
+        61
+      ]
+    },
     {
       "name": "cancelled",
       "discriminator": [
@@ -630,9 +1777,294 @@ export type IdolcaMarket = {
       "code": 6004,
       "name": "unauthorized",
       "msg": "無權操作"
+    },
+    {
+      "code": 6005,
+      "name": "startTooLow",
+      "msg": "起標價低於下限"
+    },
+    {
+      "code": 6006,
+      "name": "invalidReserve",
+      "msg": "保底價不能低於起標價"
+    },
+    {
+      "code": 6007,
+      "name": "invalidDuration",
+      "msg": "拍賣時長不在允許範圍內"
+    },
+    {
+      "code": 6008,
+      "name": "auctionEnded",
+      "msg": "拍賣已截止"
+    },
+    {
+      "code": 6009,
+      "name": "auctionNotEnded",
+      "msg": "拍賣還沒截止"
+    },
+    {
+      "code": 6010,
+      "name": "bidTooLow",
+      "msg": "出價低於下一口最低價"
+    },
+    {
+      "code": 6011,
+      "name": "sellerCannotBid",
+      "msg": "賣家不能對自己的拍賣出價"
+    },
+    {
+      "code": 6012,
+      "name": "alreadyLeading",
+      "msg": "你已經是最高出價者"
+    },
+    {
+      "code": 6013,
+      "name": "wrongBidder",
+      "msg": "出價者帳戶不符"
+    },
+    {
+      "code": 6014,
+      "name": "hasBids",
+      "msg": "已經有人出價，不能取消"
     }
   ],
   "types": [
+    {
+      "name": "auction",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "asset",
+            "type": "pubkey"
+          },
+          {
+            "name": "paymentMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "startPrice",
+            "type": "u64"
+          },
+          {
+            "name": "reservePrice",
+            "docs": [
+              "0 表示不設保底價"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "endTs",
+            "type": "i64"
+          },
+          {
+            "name": "highBidder",
+            "docs": [
+              "還沒人出價時是預設值（全 0）"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "highBid",
+            "type": "u64"
+          },
+          {
+            "name": "bidCount",
+            "type": "u32"
+          },
+          {
+            "name": "feeBps",
+            "docs": [
+              "開拍時的抽成，之後改設定不影響這場"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "auctionCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "asset",
+            "type": "pubkey"
+          },
+          {
+            "name": "seller",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "auctionConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feeBps",
+            "type": "u16"
+          },
+          {
+            "name": "minStart",
+            "docs": [
+              "起標價下限（結算代幣的最小單位）"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "minDuration",
+            "docs": [
+              "拍賣時長範圍（秒）"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "maxDuration",
+            "type": "i64"
+          },
+          {
+            "name": "extendSecs",
+            "docs": [
+              "截止前這麼多秒內有新出價，截止時間延到出價後這麼多秒"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "auctionConfigArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feeBps",
+            "type": "u16"
+          },
+          {
+            "name": "minStart",
+            "type": "u64"
+          },
+          {
+            "name": "minDuration",
+            "type": "i64"
+          },
+          {
+            "name": "maxDuration",
+            "type": "i64"
+          },
+          {
+            "name": "extendSecs",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "auctionCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "asset",
+            "type": "pubkey"
+          },
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "paymentMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "startPrice",
+            "type": "u64"
+          },
+          {
+            "name": "reservePrice",
+            "type": "u64"
+          },
+          {
+            "name": "endTs",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "auctionSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "asset",
+            "type": "pubkey"
+          },
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "winner",
+            "docs": [
+              "流拍時為空"
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "bidPlaced",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "asset",
+            "type": "pubkey"
+          },
+          {
+            "name": "bidder",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "endTs",
+            "type": "i64"
+          }
+        ]
+      }
+    },
     {
       "name": "cancelled",
       "type": {

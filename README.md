@@ -43,6 +43,7 @@ K-pop fandoms have loudly rejected NFT projects before. Idolca keeps the technol
 | Redemption | One signed transaction freezes the NFT, delegates burn authority to Idolca and pays the shipping fee. Shipping burns the NFT; cancelling unfreezes it and refunds the fee. Redeemed cards stay visible with their full history. |
 | Payments | One buy button opens a payment picker: a Solana wallet (USDT), USDC on Arc, or card (coming soon). Methods that don't fit a flow say why; vault trades, for example, settle only on Solana. |
 | Fan listings and escrow | For cards still in a fan's hands, listed with photos and a description, no minting needed: the buyer's payment is held in escrow. The seller has 7 days to ship or the buyer is refunded; the buyer has 14 days to confirm or report a problem before payment releases. Admins settle disputes. |
+| Auctions | Sellers choose fixed price or auction when they list. Every bid is paid in full when placed and refunded automatically when outbid, so a winner can never back out. Vault-card auctions run in the Anchor program: bids are locked in the auction PDA, the previous bid is refunded in the same instruction, and anyone can settle once it ends, swapping the NFT and the payment in one transaction. Fan-listing auctions settle into an escrow order. Bids in the last 5 minutes extend the end time; an optional reserve price stays hidden. |
 | Self-minted collectibles | A fan with a wallet can turn a listed card into a digital collectible: the server builds the mint, the fan's wallet signs and pays about 0.003 SOL, and Idolca co-signs as collection authority. |
 | Seller profiles | Each listing shows the seller's name, join date, completed sales and other cards for sale. |
 | Vault conversion | A fan sends a self-minted card to the vault. If genuine, a vault NFT is minted to them and the collector NFT is burned (recovered through the collection's PermanentTransferDelegate). |
@@ -70,6 +71,7 @@ Cards and Solana payments run on devnet, so nothing costs real money. Arc paymen
 - 2.5% fee on every vault trade (split inside the swap transaction) and fan listing (deducted when escrow releases).
 - Mystery packs: the return rate (expected value ÷ price) is capped at 80% and published, so every pack is profitable and buyers see what they get.
 - Instant buyback at 70% of the card's pack value, which returns the card to the pool to sell again.
+- Auctions: a 4% seller fee on the winning bid. Their bigger value is price discovery for rare cards, which feeds pack pricing.
 - Shipping fees on redemption. Fans pay to mint their own collectibles, so free listings cost Idolca nothing.
 
 Vault cards carry real costs (intake, grading, storage), so packs and buyback fund the vault, while the 2.5% fee carries the asset-light fan listings. Details in [docs/business.md](docs/business.md) (Chinese).
@@ -80,7 +82,7 @@ Collectibles, payments and paid draws each carry regulatory risk. Each one has a
 
 - **Regulated settlement.** Payments can settle in USDC on Arc, the issuer's own chain, alongside USDT on Solana. Prices are quoted in USD and each payment rail's stablecoin is configuration, so the accepted coins can follow what each jurisdiction allows.
 - **Packs are treated as gambling-adjacent.** Live odds, the expected value and return rate of the next pack, a hard return-rate cap, provably fair draws anyone can recompute, 18+ confirmation, region blocking (`PACKS_BLOCKED_COUNTRIES`, Belgium and the Netherlands by default) and no refunds on opened packs. Open regions are confirmed with counsel before mainnet.
-- **Consumer protection.** Fan trades go through escrow with fixed deadlines and admin dispute resolution; fake cards are frozen and relabelled on-chain, visible in every wallet and marketplace.
+- **Consumer protection.** Fan trades go through escrow with fixed deadlines and admin dispute resolution; auction bids are prepaid, so there are no phantom winners, and sellers can't bid on their own auctions. Fake cards are frozen and relabelled on-chain, visible in every wallet and marketplace.
 - **Data minimization.** Shipping addresses never go on-chain and are deleted 90 days after shipping; IP addresses are used only for rate limiting and region checks. The terms and privacy policy read their numbers (fees, deadlines, buyback rate, retention) from the same code the platform runs on.
 - **AML.** No fiat touches Idolca today. Fiat on-ramp goes through a licensed provider, and withdrawals above a threshold will require KYC.
 - **Intellectual property.** Listings and collectibles show scans of the physical card only, and idol photos are never used for marketing. Devnet sample photos are CC BY and credited at `/credits`; album chart data is read from Circle Chart with attribution and moves to a licensed source before launch.
@@ -126,7 +128,7 @@ With no `DATABASE_URL`, local development uses PGlite in `.data/` and seeds the 
 
 ```bash
 npm run lint && npx next typegen && npx tsc --noEmit
-npm test                     # unit: odds, fair-draw verification, Arc EIP-712 domain, address validation, binder layout, translations
+npm test                     # unit: odds, fair-draw verification, auction bid steps, Arc EIP-712 domain, address validation, binder layout, translations
 ```
 
 End-to-end suites run against a live site and devnet with real transactions. Start the site on a separate test database first (`PGLITE_DIR=.data/pglite-e2e npm run dev`):
@@ -136,8 +138,11 @@ npm run test:e2e:vault       # intake, packs, fairness check, buyback, redemptio
 npm run test:e2e:ui          # headless Chrome with an injected Wallet Standard test wallet, clicking through every flow
 npm run test:e2e:binder      # binder sync: deletions stay deleted across devices, unsent changes are uploaded
 npm run test:e2e:arc         # Arc testnet: USDC authorization, relayed payment, pack delivery and refund
+npm run test:e2e:auction     # fan-listing auctions: prepaid bids, outbid refunds, settlement into escrow, reserve, late bids (needs shortened timing, see docs/tech-stack.md)
 E2E_CRON_SECRET=testcron npm run test:e2e:escrow   # needs shortened deadlines, see README.zh-Hant.md
 ```
+
+The escrow program's tests (`onchain/tests/`) cover listings, trades and auctions (prepaid bids, outbid refunds, settlement split, reserve, cancel rules, anti-sniping) on a local validator.
 
 GitHub Actions runs lint, type checking, unit tests and a production build on every push.
 

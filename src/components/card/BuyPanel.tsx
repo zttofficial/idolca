@@ -13,17 +13,27 @@ import { listVaultCard, useChainState, vaultAction, type VaultAction, type Vault
 import ListingControl from "@/components/market/ListingControl";
 import CopyButton from "@/components/ui/CopyButton";
 import PaymentPicker from "@/components/pay/PaymentPicker";
+import VaultAuction from "@/components/auction/VaultAuction";
 
 const PRIMARY = "btn-primary flex-1 rounded-full px-6 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 const SECONDARY =
   "flex-1 rounded-full border border-line bg-surface px-6 py-3 text-sm font-semibold text-ink transition hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-50";
 
-// 價格只在鏈上真的有掛單時顯示，是託管程序裡的掛單價
+// 價格只在鏈上真的有掛單時顯示，是託管程序裡的掛單價；拍賣中改顯示拍賣面板（目前出價、倒數、出價）
 export default function BuyPanel({ card }: { card: Card }) {
   const t = useTranslations("Detail");
   const tStatus = useTranslations("Status");
   const chain = useChainState();
   const live = chain?.ready ? chain.cards[card.id] : undefined;
+
+  if (live?.auction && !live.burned) {
+    return (
+      <div className="rounded-2xl border border-line bg-surface p-5">
+        <VaultAuction cardId={card.id} auction={live.auction} />
+        <ShareRow cardId={card.id} />
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl border border-line bg-surface p-5">
@@ -64,6 +74,8 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
   const t = useTranslations("Detail");
   const { user, login } = useAuth();
   const me = user?.walletAddress ?? null;
+  // 金庫卡拍賣開通了才給「拍賣」選項
+  const auctionsOpen = Boolean(useChainState()?.auctions);
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<string>();
   const [done, setDone] = useState<{ action: VaultAction; signature: string }>();
@@ -78,7 +90,7 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
     setError(undefined);
     setDone(undefined);
     try {
-      setDone({ action, signature: await vaultAction(action, card.id, me, priceUsdt, address) });
+      setDone({ action, signature: await vaultAction(action, card.id, me, { priceUsdt, address }) });
       setRedeeming(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "network");
@@ -107,6 +119,7 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
           note={tBinder("vaultListingNote")}
           onList={(price) => listVaultCard(card.id, me, price, Boolean(mine))}
           onUnlist={() => vaultAction("cancel", card.id, me)}
+          onAuction={auctionsOpen ? (input) => vaultAction("auction", card.id, me, input) : undefined}
         />
         {!mine && (
           <button className={SECONDARY + " w-full"} disabled={busy !== null} onClick={() => setRedeeming(true)}>

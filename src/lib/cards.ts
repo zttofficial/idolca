@@ -5,8 +5,9 @@ import type { Grade } from "./grading";
 export type Rarity = "album" | "pob" | "luckydraw" | "fansign";
 export const RARITY_LIST: Rarity[] = ["album", "pob", "luckydraw", "fansign"];
 
-// vaulted：在庫；listed：在託管程序裡掛單；redeeming：已申請提貨，NFT 凍結中；redeemed：已提貨寄出，NFT 已銷毀（鏈上紀錄還在）
-export type VaultStatus = "vaulted" | "listed" | "redeeming" | "redeemed";
+// vaulted：在庫；listed：在託管程序裡掛單；auction：在託管程序裡拍賣；redeeming：已申請提貨，NFT 凍結中；
+// redeemed：已提貨寄出，NFT 已銷毀（鏈上紀錄還在）
+export type VaultStatus = "vaulted" | "listed" | "auction" | "redeeming" | "redeemed";
 
 export type Card = {
   id: string;
@@ -20,7 +21,7 @@ export type Card = {
   grade?: Grade;
   // 入庫時的品相說明
   condition?: string;
-  // 掛單價格（USDT）；沒有掛單時為 0
+  // 掛單價格（USDT）；拍賣中是目前最高出價，還沒人出價時是起標價；不在售時為 0
   priceUsdt: number;
   palette: [string, string, string];
   asset: string;

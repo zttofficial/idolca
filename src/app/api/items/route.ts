@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/server/require-user";
 import { allow, tooMany } from "@/lib/server/rate-limit";
 import { collectorItems } from "@/lib/server/schema";
 import { MAX_DESCRIPTION, MAX_PHOTOS, matchTemplate, newItemId, priceToCents, publicItem } from "@/lib/server/items";
+import { auctionView, latestAuctions } from "@/lib/server/auctions";
 import { saveUploads } from "@/lib/server/media";
 import { isCardSource } from "@/lib/sources";
 
@@ -14,7 +15,17 @@ export async function GET() {
     .from(collectorItems)
     .where(and(eq(collectorItems.userId, a.user.id), isNull(collectorItems.vaultCardId)))
     .orderBy(desc(collectorItems.createdAt));
-  return Response.json({ items: rows.map(publicItem) });
+  // 拍賣中的卡附上拍賣狀態，收藏冊顯示目前出價和截止時間
+  const latest = await latestAuctions(
+    a.db,
+    rows.map((r) => r.id),
+  );
+  return Response.json({
+    items: rows.map((r) => {
+      const auction = latest.get(r.id);
+      return { ...publicItem(r), auction: auction?.status === "live" ? { ...auctionView(auction), id: auction.id } : null };
+    }),
+  });
 }
 
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
