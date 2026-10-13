@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import HoloTile from "./HoloTile";
 import ListingTile from "./ListingTile";
+import TileSkeleton from "./TileSkeleton";
 import { openAddCard } from "@/components/binder/AddCard";
 import type { Listing } from "@/lib/items";
 import { useVaultCards } from "@/lib/chain-client";
@@ -194,7 +195,9 @@ export default function MarketBrowser() {
           {free && <p className="mb-4 rounded-xl bg-notice-bg px-4 py-3 text-xs leading-relaxed text-notice-ink">{tListing("disclaimerShort")}</p>}
           <p className="text-sm text-ink-2">{t("results", { count: result.total })}</p>
           {(free ? listings === null : vault === null) ? (
-            <div className="mt-4 h-64 animate-pulse rounded-2xl bg-surface-2" />
+            <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 8 }, (_, i) => <TileSkeleton key={i} />)}
+            </div>
           ) : result.items.length ? (
             <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 xl:grid-cols-4">
               {free ? freeResult.items.map((l) => <ListingTile key={l.id} listing={l} />) : vaultResult.items.map((c) => <HoloTile key={c.id} card={c} />)}

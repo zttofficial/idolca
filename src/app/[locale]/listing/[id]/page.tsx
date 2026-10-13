@@ -37,7 +37,7 @@ export default function ListingPage(props: PageProps<"/[locale]/listing/[id]">) 
     <>
       <Navbar />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
-        <Suspense fallback={<div className="mt-10 h-[480px] animate-pulse rounded-2xl bg-surface-2" />}>
+        <Suspense fallback={<div className="mt-10 min-h-svh animate-pulse rounded-2xl bg-surface-2 md:min-h-[480px]" />}>
           <ListingContent params={props.params} />
         </Suspense>
       </main>

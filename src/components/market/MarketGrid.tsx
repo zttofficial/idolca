@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import HoloTile from "./HoloTile";
+import TileSkeleton from "./TileSkeleton";
 import { Link } from "@/i18n/navigation";
 import { useVaultCards } from "@/lib/chain-client";
 import { RARITIES } from "@/lib/market";
@@ -33,7 +34,7 @@ export default function MarketGrid() {
       <div className="mt-10 grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">
         {newest
           ? newest.map((c) => <HoloTile key={c.id} card={c} />)
-          : Array.from({ length: 8 }, (_, i) => <div key={i} className="aspect-[55/85] animate-pulse rounded-2xl bg-surface-2" />)}
+          : Array.from({ length: 8 }, (_, i) => <TileSkeleton key={i} />)}
       </div>
       <div className="mt-12 text-center">
         <Link href="/market" className="inline-block rounded-full border border-line px-6 py-2.5 text-sm font-semibold hover:bg-surface-2">

@@ -31,7 +31,7 @@ export default async function PacksPage() {
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-2">{t("subtitle")}</p>
 
-        <Suspense fallback={<div className="mt-10 h-64 animate-pulse rounded-2xl bg-surface-2" />}>
+        <Suspense fallback={<div className="mt-10 min-h-svh animate-pulse rounded-2xl bg-surface-2" />}>
           <PackList />
         </Suspense>
 

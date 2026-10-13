@@ -27,7 +27,7 @@ export default function GroupCatalogPage(props: PageProps<"/[locale]/catalog/[gr
     <>
       <Navbar />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-10 sm:px-6">
-        <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-surface-2" />}>
+        <Suspense fallback={<div className="min-h-svh animate-pulse rounded-2xl bg-surface-2" />}>
           <GroupContent params={props.params} />
         </Suspense>
       </main>
