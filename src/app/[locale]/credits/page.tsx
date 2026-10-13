@@ -12,8 +12,8 @@ import { getDb } from "@/lib/server/db";
 import { listVaultCards } from "@/lib/server/vault-cards";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("Meta");
-  return pageMetadata({ locale: await getLocale(), path: "/credits", title: t("creditsTitle") });
+  const [t, tc] = await Promise.all([getTranslations("Meta"), getTranslations("Credits")]);
+  return pageMetadata({ locale: await getLocale(), path: "/credits", title: t("creditsTitle"), description: tc("intro") });
 }
 
 // CC BY 要求的署名：作者、授權、原圖連結、是否修改。只列金庫卡實際用到的照片。

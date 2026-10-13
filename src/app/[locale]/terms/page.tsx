@@ -8,7 +8,7 @@ import { REDEEM_FEE_USDT } from "@/lib/shipping";
 import { CURRENCY } from "@/lib/fx";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return pageMetadata({ locale: await getLocale(), path: "/terms", title: "Terms of Service" });
+  return pageMetadata({ locale: await getLocale(), path: "/terms", title: "Terms of Service", description: "The rules for buying, selling, auctions, escrow, mystery packs and vault shipping on Idolca, including fees and how disputes are handled." });
 }
 
 const pct = (bps: number) => `${bps / 100}%`;

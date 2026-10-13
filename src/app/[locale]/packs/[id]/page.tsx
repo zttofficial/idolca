@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import Breadcrumb from "@/components/layout/Breadcrumb";
 import CardArt from "@/components/market/CardArt";
 import PackArt from "@/components/packs/PackArt";
 import Countdown from "@/components/packs/Countdown";
@@ -67,13 +68,12 @@ async function PackContent({ params }: { params: PageProps<"/[locale]/packs/[id]
 
   return (
     <>
-      <nav aria-label="breadcrumb" className="flex items-center gap-1.5 text-xs text-ink-3">
-        <Link href="/packs" className="hover:text-ink">
-          {t("title")}
-        </Link>
-        <span>/</span>
-        <span className="text-ink">{pack.name}</span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: t("title"), href: "/packs" },
+          { label: pack.name, href: `/packs/${pack.id}` },
+        ]}
+      />
 
       <div className="mt-6 grid items-start gap-10 md:grid-cols-[minmax(0,320px)_1fr]">
         <PackArt pack={pack} className="mx-auto w-full max-w-[320px]" />

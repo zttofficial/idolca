@@ -5,7 +5,7 @@ import LegalPage from "@/components/legal/LegalPage";
 import { ADDRESS_RETENTION_DAYS } from "@/lib/policy";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return pageMetadata({ locale: await getLocale(), path: "/privacy", title: "Privacy Policy" });
+  return pageMetadata({ locale: await getLocale(), path: "/privacy", title: "Privacy Policy", description: "What personal data Idolca collects, why, and how long we keep it. We collect only what the service needs and never sell personal data." });
 }
 
 // 隱私權政策：收什麼、為什麼、存多久、交給誰處理

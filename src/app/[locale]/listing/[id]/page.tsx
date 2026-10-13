@@ -6,6 +6,7 @@ import { connection } from "next/server";
 import { getLocale, getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import Breadcrumb from "@/components/layout/Breadcrumb";
 import PhotoGallery from "@/components/market/PhotoGallery";
 import EscrowBuy from "@/components/market/EscrowBuy";
 import FreeAuction from "@/components/auction/FreeAuction";
@@ -69,15 +70,13 @@ async function ListingContent({ params }: { params: PageProps<"/[locale]/listing
 
   return (
     <>
-      <nav aria-label="breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs text-ink-3">
-        <Link href="/market?lane=free" className="hover:text-ink">
-          {t("breadcrumb")}
-        </Link>
-        <span>/</span>
-        <span>{listing.group}</span>
-        <span>/</span>
-        <span className="text-ink">{listing.member}</span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: t("breadcrumb"), href: "/market?lane=free" },
+          { label: listing.group, href: `/market?${new URLSearchParams({ lane: "free", group: listing.group })}` },
+          { label: listing.member, href: `/listing/${listing.id}` },
+        ]}
+      />
 
       <div className="mt-6 grid gap-10 md:grid-cols-[minmax(0,380px)_1fr]">
         <div className="md:sticky md:top-24 md:self-start">

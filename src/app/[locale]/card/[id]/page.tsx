@@ -6,6 +6,7 @@ import { connection } from "next/server";
 import { getLocale, getTranslations } from "next-intl/server";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import Breadcrumb from "@/components/layout/Breadcrumb";
 import CardGallery from "@/components/card/CardGallery";
 import BuyPanel from "@/components/card/BuyPanel";
 import ChainActivity from "@/components/card/ChainActivity";
@@ -91,15 +92,13 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
           ...(card.grade ? { additionalProperty: [{ "@type": "PropertyValue", name: "Grade", value: gradeLabel(card.grade) }] } : {}),
         })}
       />
-      <nav aria-label="breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs text-ink-3">
-        <Link href="/market" className="hover:text-ink">
-          {t("breadcrumbMarket")}
-        </Link>
-        <span>/</span>
-        <span>{card.group}</span>
-        <span>/</span>
-        <span className="text-ink">{card.member}</span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: t("breadcrumbMarket"), href: "/market" },
+          { label: card.group, href: `/market?${new URLSearchParams({ group: card.group })}` },
+          { label: card.member, href: `/card/${card.id}` },
+        ]}
+      />
 
       <div className="mt-6 grid gap-10 md:grid-cols-[minmax(0,400px)_1fr]">
         <div className="md:sticky md:top-24 md:self-start">
