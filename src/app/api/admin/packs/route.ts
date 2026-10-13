@@ -9,6 +9,7 @@ import { vaultState } from "@/lib/server/vault-chain";
 import { toCard } from "@/lib/server/vault-cards";
 import { CHAIN } from "@/lib/chain";
 import { MAX_QTY } from "@/lib/packs";
+import { notifyIndexNow } from "@/lib/server/indexnow";
 
 // 卡包管理：所有卡包（含卡池），以及可以放進卡池的卡——平台自有（沒有寄存人）、還在平台錢包、沒掛單、沒在提貨、不在別的卡包
 export async function GET() {
@@ -55,5 +56,6 @@ export async function POST(request: Request) {
   if (await getPackRow(a.db, id)) return fail("pack_exists", 409);
   const seed = randomBytes(32).toString("hex");
   await a.db.insert(packs).values({ id, name, priceCents: Math.round(price * 100), maxQty, startsAt, endsAt, palette: JSON.stringify(palette), seed, seedHash: sha256(seed) });
+  notifyIndexNow(`/packs/${id}`);
   return Response.json({ ok: true });
 }

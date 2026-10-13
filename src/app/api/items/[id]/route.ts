@@ -3,6 +3,7 @@ import { collectorItems } from "@/lib/server/schema";
 import { MAX_DESCRIPTION, priceToCents, publicItem } from "@/lib/server/items";
 import { requireUser } from "@/lib/server/require-user";
 import { liveAuction } from "@/lib/server/auctions";
+import { notifyIndexNow } from "@/lib/server/indexnow";
 
 // 持有人改自己的卡：
 // - priceUsdt 為數字時刊登（或改價），為 null 時下架；假卡、拍賣中的卡不能一口價刊登。刊登不需要上鏈
@@ -35,5 +36,6 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/items/[id]
   if (!Object.keys(changes).length) return Response.json({ error: "nothing_to_change" }, { status: 400 });
 
   const [row] = await a.db.update(collectorItems).set(changes).where(where).returning();
+  if ("priceCents" in changes) notifyIndexNow(`/listing/${id}`);
   return Response.json({ item: publicItem(row) });
 }

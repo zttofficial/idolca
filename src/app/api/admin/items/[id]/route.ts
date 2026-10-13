@@ -5,6 +5,7 @@ import { chainAttributes, publicItem } from "@/lib/server/items";
 import { markFakeOnChain } from "@/lib/server/chain";
 import { refundBids, voidAuction } from "@/lib/server/auctions";
 import { after } from "next/server";
+import { notifyIndexNow } from "@/lib/server/indexnow";
 
 // 平台把自由上鏈的卡標成假卡（被檢舉或寄到金庫查出是假），同時下架；拍賣中的取消拍賣，最高出價全額退回。
 // 已上鏈的卡同步改寫鏈上名稱和屬性並凍結 NFT，這一步不可逆，所以鏈上的假卡不能再改回待驗證。
@@ -48,5 +49,6 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/item
     await voidAuction(db, id);
     after(() => refundBids(db));
   }
+  notifyIndexNow(`/listing/${id}`);
   return Response.json({ item: publicItem(row) });
 }

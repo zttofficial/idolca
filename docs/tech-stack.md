@@ -222,6 +222,7 @@ K-pop 小卡的鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Sola
 - 站點地圖（`/sitemap.xml`）列固定頁面、圖鑑團體、金庫卡（包括已提貨的）、刊登中的自由刊登和卡包，每條附八種語言版本；`robots.txt` 擋後台、接口和收藏冊，但放行卡片照片（`/api/media/`），Google 圖片和遵守 robots 的分享爬蟲要抓得到。沒有對應頁面的網址由 `[locale]/[...rest]` 交給帶導航、帶語言的 404 頁。
 - 分享卡片：預設用根目錄的品牌分享圖（`src/app/opengraph-image.tsx`，各語言共用，網址 `/opengraph-image` 不經語言中間件，後面帶按圖和字型算的版本號，圖改了社群平台才會重抓），卡片頁和自由刊登頁用卡片照片。這兩頁的 metadata 要查資料庫，預設串流進 `<body>`，只有 `next.config.ts` 的 `htmlLimitedBots` 名單上的爬蟲會在 `<head>` 拿到；名單在 Next 預設之外補了 KakaoTalk、LINE、Zalo、Telegram、Pinterest 等目標市場的分享爬蟲。
 - 結構化資料（JSON-LD）：首頁放網站名稱、站內搜尋框（送到市場頁）和組織資訊（`sameAs` 列官方社群帳號，和頁尾的圖示連結同一份清單 `src/lib/social.ts`）；卡片頁放 Product（名稱、編號、團體、評級、照片）；卡片、自由刊登、卡包和圖鑑團體頁放 BreadcrumbList，和頁面上的麵包屑是同一個元件（`src/components/layout/Breadcrumb.tsx`）。價格以 USDT 計，不是 ISO 貨幣，所以不放 offers。
+- IndexNow（`src/lib/server/indexnow.ts`）：金庫卡入庫、新卡包、自由刊登上架／改價／下架、開拍／取消拍賣、管理員改鑑定結果時，回應送出後把該頁八種語言的網址通知 Bing、Naver、Yandex 等搜尋引擎；金鑰檔在 `public/`，只有正式部署發。Google 不參加，靠站點地圖。提交記錄在 Bing Webmaster Tools 的 IndexNow 頁看。
 - 網站網址用 `NEXT_PUBLIC_SITE_URL` 設定（正式網域 `https://idolca.trade`），canonical、站點地圖、分享圖和新鑄造 NFT 的元數據網址都跟著它。鏈上已寫入的元數據網址不會變，所以舊網址要一直能服務。
 
 ## devnet 部署
