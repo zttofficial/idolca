@@ -4,6 +4,8 @@
 
 Live at **https://idolca.vercel.app**: cards and trading on Solana devnet, payments on Arc mainnet · 中文說明：[README.zh-Hant.md](README.zh-Hant.md)
 
+Follow us: [X](https://x.com/IdolcaOfficial) · [Telegram](https://t.me/IdolcaOfficial) · [YouTube](https://www.youtube.com/@IdolcaOfficial)
+
 ## The problem
 
 Photocards are the currency of K-pop fandom: every album hides one at random, and fans spend years completing sets. The secondary market is large and growing, yet stuck in the pre-internet era:

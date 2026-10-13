@@ -9,6 +9,7 @@ import Footer from "@/components/layout/Footer";
 import PackPromo from "@/components/packs/PackPromo";
 import BinderPromo from "@/components/binder/BinderPromo";
 import { SITE_URL, jsonLd, localePath, pageMetadata } from "@/lib/seo";
+import { SOCIAL } from "@/lib/social";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Meta");
@@ -31,7 +32,7 @@ export default async function Home() {
         description: t("description"),
         potentialAction: { "@type": "SearchAction", target: `${SITE_URL}${localePath(locale, "/market")}?q={search_term_string}`, "query-input": "required name=search_term_string" },
       },
-      { "@type": "Organization", name: "Idolca", url: SITE_URL, logo: `${SITE_URL}/icon.svg` },
+      { "@type": "Organization", name: "Idolca", url: SITE_URL, logo: `${SITE_URL}/icon.svg`, sameAs: SOCIAL.map((s) => s.url) },
     ],
   };
   return (
