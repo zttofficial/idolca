@@ -26,7 +26,7 @@
 | 盲盒卡包（承諾—揭示抽卡、即時回購） | `/packs` | `src/lib/server/packs.ts`、`pack-pool.ts`，`src/lib/pack-draw.ts`、`src/lib/packs.ts`，`src/components/packs/PackOpener.tsx` |
 | 收藏冊（卡冊、整理、同步） | `/binder` | `BinderView.tsx`、`BinderBook.tsx`、`BinderArranger.tsx`、`BinderChain.tsx`，`src/lib/binder.ts`、`binder-layout.ts`，`src/app/api/binder` |
 | 圖鑑 | `/catalog` | `src/lib/catalog.ts` |
-| 團體名錄（表單的團體、成員建議） | 上鏈、入庫表單 | `src/lib/kpop-groups.ts` |
+| 團體名錄（表單的團體、成員建議；按照片檔名預填名稱、團體、成員） | 上鏈、入庫表單 | `src/lib/kpop-groups.ts` |
 | 金庫頁（存貨證明） | `/vault` | `src/components/vault/` |
 | 專輯銷量榜 | `/charts` | `src/lib/server/circle-chart.ts` |
 | 後台（入庫、卡包、擔保訂單、提貨、假卡） | `/admin` | `src/components/admin/`、`src/app/api/admin/` |

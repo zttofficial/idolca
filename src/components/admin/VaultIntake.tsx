@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { RARITY_LIST, type Card, type Rarity } from "@/lib/cards";
 import { GROUPS, TEMPLATES } from "@/lib/catalog";
-import { findDirectoryGroup, groupOptions } from "@/lib/kpop-groups";
+import { findDirectoryGroup, groupOptions, parseCardFilename } from "@/lib/kpop-groups";
 import Combobox from "@/components/ui/Combobox";
 import Select from "@/components/ui/Select";
 import { cropToCard } from "@/lib/crop-card";
@@ -38,6 +38,13 @@ export default function VaultIntake() {
   const pick = (i: number) => async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // 按檔名預填空著的團體和成員；已填的團體和認出的不同，就不填成員
+    const hit = parseCardFilename(file.name);
+    if (hit)
+      setForm((f) => {
+        const sameGroup = !f.group.trim() || !hit.group || findDirectoryGroup(f.group)?.name === hit.group;
+        return { ...f, group: f.group || hit.group || "", member: f.member || (sameGroup && hit.member) || "" };
+      });
     const url = await cropToCard(file);
     setPhotos((p) => p.map((x, j) => (j === i ? url : x)));
   };

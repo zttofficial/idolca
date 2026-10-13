@@ -158,3 +158,34 @@ export const findDirectoryGroup = (name: string) => {
 
 // 團體欄的建議清單：別名可以搜得到，並顯示在右側
 export const groupOptions = GROUP_DIRECTORY.map((g) => ({ value: g.name, hint: g.aka?.join(" · "), keywords: g.aka }));
+
+// 檔名裡認團體和成員用：轉小寫、去掉重音、標點都當空格，前後補空格，比對時只認整詞（LIVE 不會認成 IVE）
+const words = (s: string) => ` ${s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()} `;
+
+// 同時命中「NCT」和「NCT 127」這類互相包含的名字時，只留長的
+const longest = <T>(hits: { item: T; key: string }[]) => hits.filter((h) => !hits.some((o) => o.key.length > h.key.length && o.key.includes(h.key)));
+
+const matchAll = <T>(text: string, entries: { item: T; names: string[] }[]) =>
+  longest(entries.flatMap(({ item, names }) => names.map(words).filter((key) => key.trim() && text.includes(key)).map((key) => ({ item, key }))));
+
+const MEMBERS = GROUP_DIRECTORY.flatMap((g) => (g.members ?? []).map((m) => ({ item: { group: g.name, member: m }, names: [m] })));
+
+// 從照片檔名預填表單：名稱用檔名（去掉副檔名），團體和成員按關鍵字認。
+// 認出不止一個團體就整個不填；團體確定但認出多個成員就不填成員；只認出成員時，名字只屬於一個團體才反推團體。
+// 團體和成員都沒認出來（例如手機拍的 IMG_1234.jpg）也不填名稱
+export function parseCardFilename(filename: string): { title: string; group?: string; member?: string } | undefined {
+  const base = filename.replace(/\.[^.]*$/, "").trim();
+  const text = words(base);
+  const title = base.slice(0, 80);
+  const groups = new Set(matchAll(text, GROUP_DIRECTORY.map((g) => ({ item: g, names: [g.name, ...(g.aka ?? [])] }))).map((h) => h.item));
+  if (groups.size > 1) return undefined;
+  const [group] = groups;
+  if (group) {
+    const members = new Set(matchAll(text, (group.members ?? []).map((m) => ({ item: m, names: [m] }))).map((h) => h.item));
+    return { title, group: group.name, member: members.size === 1 ? [...members][0] : undefined };
+  }
+  const hits = matchAll(text, MEMBERS);
+  if (new Set(hits.map((h) => h.key)).size !== 1) return undefined;
+  const owners = new Set(hits.map((h) => h.item.group));
+  return { title, member: hits[0].item.member, group: owners.size === 1 ? hits[0].item.group : undefined };
+}

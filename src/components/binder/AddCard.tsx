@@ -7,7 +7,7 @@ import { cropToCard } from "@/lib/crop-card";
 import { useAuth } from "@/components/auth/AuthContext";
 import { Link } from "@/i18n/navigation";
 import { GROUPS, TEMPLATES } from "@/lib/catalog";
-import { findDirectoryGroup, groupOptions } from "@/lib/kpop-groups";
+import { findDirectoryGroup, groupOptions, parseCardFilename } from "@/lib/kpop-groups";
 import Combobox from "@/components/ui/Combobox";
 import Select from "@/components/ui/Select";
 import { addItem, type CollectorItem } from "@/lib/items";
@@ -93,6 +93,16 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
   const priceOk = !sell || (price !== "" && priceValue > 0 && priceValue <= 100_000);
   const ready = Boolean(front && back && group.trim() && member.trim() && priceOk);
 
+  // 選照片時按檔名預填空著的欄位；已填的團體和認出的不同，就不填成員
+  const prefillFrom = (file: File) => {
+    const hit = parseCardFilename(file.name);
+    if (!hit) return;
+    const sameGroup = !group.trim() || !hit.group || findDirectoryGroup(group)?.name === hit.group;
+    setTitle((v) => v || hit.title);
+    if (hit.group) setGroup((v) => v || hit.group!);
+    if (hit.member && sameGroup) setMember((v) => v || hit.member!);
+  };
+
   const mint = async () => {
     if (!front || !back || !ready) return;
     setBusy(true);
@@ -122,8 +132,8 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
         <div className="mt-6 grid gap-6 sm:grid-cols-[230px_1fr]">
           <div>
             <div className="grid grid-cols-2 gap-3">
-              <PhotoSlot label={t("front")} value={front} onChange={setFront} disabled={Boolean(done)} hint={t("choosePhoto")} retake={t("retake")} />
-              <PhotoSlot label={t("back")} value={back} onChange={setBack} disabled={Boolean(done)} hint={t("chooseBack")} retake={t("retake")} />
+              <PhotoSlot label={t("front")} value={front} onChange={setFront} onFile={prefillFrom} disabled={Boolean(done)} hint={t("choosePhoto")} retake={t("retake")} />
+              <PhotoSlot label={t("back")} value={back} onChange={setBack} onFile={prefillFrom} disabled={Boolean(done)} hint={t("chooseBack")} retake={t("retake")} />
             </div>
             <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-ink-2">
               {t("morePhotos")}
@@ -255,6 +265,7 @@ function PhotoSlot({
   label,
   value,
   onChange,
+  onFile,
   disabled,
   hint,
   retake,
@@ -262,6 +273,7 @@ function PhotoSlot({
   label: string;
   value?: string;
   onChange: (v: string) => void;
+  onFile: (f: File) => void;
   disabled: boolean;
   hint: string;
   retake: string;
@@ -278,7 +290,9 @@ function PhotoSlot({
         className="hidden"
         onChange={async (e) => {
           const f = e.target.files?.[0];
-          if (f) onChange(await cropToCard(f));
+          if (!f) return;
+          onFile(f);
+          onChange(await cropToCard(f));
         }}
       />
       <button
