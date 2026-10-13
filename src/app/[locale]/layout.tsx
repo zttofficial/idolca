@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SITE_URL } from "@/lib/seo";
+import { DEFAULT_SHARE_IMAGE, SITE_URL } from "@/lib/seo";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -28,8 +28,8 @@ export async function generateMetadata(): Promise<Metadata> {
     title: { default: "Idolca", template: "%s · Idolca" },
     description: t("description"),
     applicationName: "Idolca",
-    openGraph: { siteName: "Idolca", type: "website" },
-    twitter: { card: "summary_large_image" },
+    openGraph: { siteName: "Idolca", type: "website", images: [DEFAULT_SHARE_IMAGE] },
+    twitter: { card: "summary_large_image", images: [DEFAULT_SHARE_IMAGE] },
   };
 }
 

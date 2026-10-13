@@ -15,12 +15,15 @@ export const languageAlternates = (path: string) => ({
   "x-default": `${SITE_URL}${localePath(routing.defaultLocale, path)}`,
 });
 
+// 預設分享圖（src/app/opengraph-image.tsx）。它在根目錄，[locale] 下的頁面不會自動帶上，要在 metadata 裡顯式寫出
+export const DEFAULT_SHARE_IMAGE = { url: "/opengraph-image", width: 1200, height: 630, type: "image/png", alt: "Idolca: every photocard finds its fan" };
+
 type PageSeo = {
   locale: string;
   path: string;
   title: string;
   description?: string;
-  // 分享卡片圖：相對網址或絕對網址；不給就用語言段的預設分享圖（opengraph-image）
+  // 分享卡片圖：相對網址或絕對網址；不給就用預設分享圖
   image?: string;
   // 首頁等不套「頁名 · Idolca」模板的標題
   absoluteTitle?: boolean;
@@ -28,13 +31,13 @@ type PageSeo = {
 };
 
 export function pageMetadata({ locale, path, title, description, image, absoluteTitle, noindex }: PageSeo): Metadata {
-  const images = image ? [{ url: image }] : undefined;
+  const images = [image ? { url: image } : DEFAULT_SHARE_IMAGE];
   return {
     title: absoluteTitle ? { absolute: title } : title,
     description,
     alternates: { canonical: localePath(locale, path), languages: languageAlternates(path) },
-    openGraph: { title, description, url: localePath(locale, path), siteName: "Idolca", type: "website", locale: OG_LOCALE[locale], ...(images ? { images } : {}) },
-    twitter: { card: "summary_large_image", title, description, ...(images ? { images } : {}) },
+    openGraph: { title, description, url: localePath(locale, path), siteName: "Idolca", type: "website", locale: OG_LOCALE[locale], images },
+    twitter: { card: "summary_large_image", title, description, images },
     ...(noindex ? { robots: { index: false, follow: false } } : {}),
   };
 }

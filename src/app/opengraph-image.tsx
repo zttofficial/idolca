@@ -1,8 +1,9 @@
 import { ImageResponse } from "next/og";
+import { DEFAULT_SHARE_IMAGE } from "@/lib/seo";
 
-// 預設分享圖：品牌字標和一句賣點。卡片頁另外用卡片照片
-export const alt = "Idolca: every photocard finds its fan";
-export const size = { width: 1200, height: 630 };
+// 預設分享圖：品牌字標和一句賣點，各語言共用。卡片頁另外用卡片照片
+export const alt = DEFAULT_SHARE_IMAGE.alt;
+export const size = { width: DEFAULT_SHARE_IMAGE.width, height: DEFAULT_SHARE_IMAGE.height };
 export const contentType = "image/png";
 
 export default function OpengraphImage() {
