@@ -1,5 +1,5 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { requireUser } from "@/lib/server/require-user";
+import { requireUser, unverifiedEmail } from "@/lib/server/require-user";
 import { allow, tooMany } from "@/lib/server/rate-limit";
 import { collectorItems } from "@/lib/server/schema";
 import { MAX_DESCRIPTION, MAX_PHOTOS, matchTemplate, newItemId, priceToCents, publicItem } from "@/lib/server/items";
@@ -49,6 +49,8 @@ export async function POST(request: Request) {
   if (!group || !member) return Response.json({ error: "missing_name" }, { status: 400 });
   const price = body.priceUsdt === undefined || body.priceUsdt === null ? null : priceToCents(body.priceUsdt);
   if (price === undefined) return Response.json({ error: "invalid_price" }, { status: 400 });
+  const unverified = price !== null && unverifiedEmail(a.user);
+  if (unverified) return unverified;
 
   // 第一張是正面、第二張是背面，都必填；其餘是補充照片
   const photos = Array.isArray(body.photos) ? body.photos : [];

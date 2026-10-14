@@ -21,7 +21,8 @@ export async function POST(request: Request) {
   // 只有凍結中的 NFT 的持有人能登記提貨，別人拿到簽名也改不了收件地址
   if (body.action === "redeem" && state?.redeeming && state.owner === a.wallet) {
     // 運費和凍結在同一筆交易裡：對帳成功才標記已付；沒付的申請後台看得到，不會寄出
-    const feePaid = REDEEM_FEE_USDT === 0 || (await verifyPayment(body.signature, new PublicKey(a.wallet), REDEEM_FEE_USDT, redeemMemo(body.cardId)));
+    const coin = REDEEM_FEE_USDT === 0 ? null : await verifyPayment(body.signature, new PublicKey(a.wallet), REDEEM_FEE_USDT, redeemMemo(body.cardId));
+    const feePaid = REDEEM_FEE_USDT === 0 || coin !== null;
     const address = parseAddress(body.address);
     const row = {
       cardId: body.cardId,
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
       shippingAddress: address ? JSON.stringify(address) : null,
       feeCents: Math.round(REDEEM_FEE_USDT * 100),
       feePaid: feePaid ? 1 : 0,
+      coin: coin ?? ("usdt" as const),
       shippedAt: null,
       cancelTx: null,
       refundTx: null,

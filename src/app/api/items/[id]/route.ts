@@ -1,12 +1,12 @@
 import { and, eq } from "drizzle-orm";
 import { collectorItems } from "@/lib/server/schema";
 import { MAX_DESCRIPTION, priceToCents, publicItem } from "@/lib/server/items";
-import { requireUser } from "@/lib/server/require-user";
+import { requireUser, unverifiedEmail } from "@/lib/server/require-user";
 import { liveAuction } from "@/lib/server/auctions";
 import { notifyIndexNow } from "@/lib/server/indexnow";
 
 // 持有人改自己的卡：
-// - priceUsdt 為數字時刊登（或改價），為 null 時下架；假卡、拍賣中的卡不能一口價刊登。刊登不需要上鏈
+// - priceUsdt 為數字時刊登（或改價），為 null 時下架；假卡、拍賣中的卡不能一口價刊登。刊登不需要上鏈，但郵箱帳號要先驗證信箱
 // - description 改描述（空字串清除）；NFT 元數據即時讀資料庫，不用改鏈上
 export async function PATCH(request: Request, ctx: RouteContext<"/api/items/[id]">) {
   const a = await requireUser();
@@ -22,6 +22,8 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/items/[id]
   if ("priceUsdt" in body) {
     const price = priceToCents(body.priceUsdt ?? null);
     if (price === undefined) return Response.json({ error: "invalid_price" }, { status: 400 });
+    const unverified = price !== null && unverifiedEmail(a.user);
+    if (unverified) return unverified;
     if (price !== null && current.verification === "fake") return Response.json({ error: "fake" }, { status: 409 });
     // 已申請寄進金庫（或已轉成金庫卡）的不能再刊登
     if (price !== null && (current.vaultRequestedAt || current.vaultCardId)) return Response.json({ error: "in_vault" }, { status: 409 });

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { GetWalletPrompt } from "@/components/auth/WalletSetup";
 import PackArt from "./PackArt";
 import { usePackPhase } from "./Countdown";
 import { HoloCardFace } from "@/components/market/HoloTile";
@@ -179,7 +180,7 @@ export default function PackOpener({ pack, regionBlocked }: { pack: Pack; region
         </button>
         {paused && phase === "live" && left >= qty && <InfoTip text={t("pausedNote", { max: Math.round(MAX_RTP * 100) })} label={t("paused")} align="end" />}
       </div>
-      {live && user && !wallet && <p className="mt-2 text-center text-xs text-ink-2">{t("linkWalletToOpen")}</p>}
+      {live && user && !wallet && <GetWalletPrompt text={t("linkWalletToOpen")} className="mt-3" />}
       {ageAsk && (
         <div className="mt-3 rounded-xl border border-line bg-surface-2 p-4 text-sm">
           <label className="flex items-start gap-2">

@@ -15,9 +15,11 @@
     "test:e2e:escrow": "tsx e2e/escrow.mjs",
     "test:e2e:ui": "tsx e2e/ui.mjs",
     "test:e2e:binder": "tsx e2e/binder-sync.mjs",
+    "test:e2e:email": "tsx e2e/email.mjs",
     "test:e2e:arc": "tsx e2e/arc.mjs",
     "test:e2e:auction": "tsx e2e/auction.mjs",
-    "test:e2e:mobile": "tsx e2e/mobile.mjs"
+    "test:e2e:mobile": "tsx e2e/mobile.mjs",
+    "test:e2e:privy": "tsx e2e/privy.mjs"
   },
   "dependencies": {
     "@anchor-lang/core": "^1.2.1",
@@ -27,6 +29,7 @@
     "@metaplex-foundation/umi-bundle-defaults": "^1.6.0",
     "@metaplex-foundation/umi-web3js-adapters": "^1.6.0",
     "@neondatabase/serverless": "^1.2.0",
+    "@privy-io/react-auth": "3.46.0",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
     "@solana-program/memo": "^0.15.0",
@@ -61,5 +64,10 @@
     "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^3.2.4"
+  },
+  "overrides": {
+    "permissionless": {
+      "ox": "0.14.45"
+    }
   }
 }

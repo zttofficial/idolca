@@ -16,7 +16,8 @@ export type IdolcaMarket = {
     {
       "name": "bid",
       "docs": [
-        "出價：全額轉進拍賣的代幣帳戶，同一個指令退回前一位最高出價者。沒有前一位時 prev_bidder 傳出價者自己"
+        "出價：全額轉進拍賣存放 bid_mint 的代幣帳戶，同一個指令用前一口的幣種退回前一位最高出價者。",
+        "沒有前一位時 prev_bidder 傳出價者自己、prev_mint 傳 bid_mint"
       ],
       "discriminator": [
         199,
@@ -31,8 +32,33 @@ export type IdolcaMarket = {
       "accounts": [
         {
           "name": "bidder",
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "付前一位出價者新代幣帳戶的租金"
+          ],
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "auctionConfig",
@@ -86,9 +112,9 @@ export type IdolcaMarket = {
           }
         },
         {
-          "name": "paymentMint",
-          "relations": [
-            "auction"
+          "name": "bidMint",
+          "docs": [
+            "這口出價用的代幣：USDT 或 USDC"
           ]
         },
         {
@@ -96,7 +122,7 @@ export type IdolcaMarket = {
           "writable": true
         },
         {
-          "name": "escrow",
+          "name": "bidEscrow",
           "writable": true,
           "pda": {
             "seeds": [
@@ -110,7 +136,73 @@ export type IdolcaMarket = {
               },
               {
                 "kind": "account",
-                "path": "paymentMint"
+                "path": "bidMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "prevMint",
+          "docs": [
+            "前一口的幣種（沒有前一口時傳 bid_mint），在指令裡核對"
+          ]
+        },
+        {
+          "name": "prevEscrow",
+          "docs": [
+            "存放前一口的代幣帳戶；和 bid_escrow 同幣種時是同一個帳戶"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "auction"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "prevMint"
               }
             ],
             "program": {
@@ -158,7 +250,7 @@ export type IdolcaMarket = {
         {
           "name": "prevBidderToken",
           "docs": [
-            "退款收款帳戶。前一位出價者關掉了 USDT 帳戶也照樣能退（由這次的出價者建回來），沒人能用關帳戶擋住別人出價。",
+            "退款收款帳戶。前一位出價者關掉了代幣帳戶也照樣能退（這次建回來），沒人能用關帳戶擋住別人出價。",
             "第一口出價時它就是出價者自己的帳戶，不會轉帳"
           ],
           "writable": true,
@@ -174,7 +266,7 @@ export type IdolcaMarket = {
               },
               {
                 "kind": "account",
-                "path": "paymentMint"
+                "path": "prevMint"
               }
             ],
             "program": {
@@ -253,12 +345,18 @@ export type IdolcaMarket = {
       "accounts": [
         {
           "name": "buyer",
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "付賣家新代幣帳戶的租金和 Core 轉移的費用"
+          ],
           "writable": true,
           "signer": true
         },
         {
           "name": "seller",
-          "writable": true,
           "relations": [
             "listing"
           ]
@@ -306,6 +404,13 @@ export type IdolcaMarket = {
           }
         },
         {
+          "name": "rentPayer",
+          "writable": true,
+          "relations": [
+            "listing"
+          ]
+        },
+        {
           "name": "asset",
           "writable": true,
           "relations": [
@@ -317,8 +422,8 @@ export type IdolcaMarket = {
         },
         {
           "name": "paymentMint",
-          "relations": [
-            "listing"
+          "docs": [
+            "買家這次用來付款的代幣：USDT 或 USDC"
           ]
         },
         {
@@ -480,11 +585,18 @@ export type IdolcaMarket = {
       "accounts": [
         {
           "name": "seller",
-          "writable": true,
           "signer": true,
           "relations": [
             "listing"
           ]
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "付 Core 轉移的費用"
+          ],
+          "writable": true,
+          "signer": true
         },
         {
           "name": "config",
@@ -529,6 +641,13 @@ export type IdolcaMarket = {
           }
         },
         {
+          "name": "rentPayer",
+          "writable": true,
+          "relations": [
+            "listing"
+          ]
+        },
+        {
           "name": "asset",
           "writable": true,
           "relations": [
@@ -567,11 +686,18 @@ export type IdolcaMarket = {
       "accounts": [
         {
           "name": "seller",
-          "writable": true,
           "signer": true,
           "relations": [
             "auction"
           ]
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "付 Core 轉移的費用"
+          ],
+          "writable": true,
+          "signer": true
         },
         {
           "name": "config",
@@ -616,7 +742,20 @@ export type IdolcaMarket = {
           }
         },
         {
-          "name": "escrow",
+          "name": "rentPayer",
+          "writable": true,
+          "relations": [
+            "auction"
+          ]
+        },
+        {
+          "name": "usdtMint"
+        },
+        {
+          "name": "usdcMint"
+        },
+        {
+          "name": "usdtEscrow",
           "writable": true,
           "pda": {
             "seeds": [
@@ -630,7 +769,64 @@ export type IdolcaMarket = {
               },
               {
                 "kind": "account",
-                "path": "paymentMint"
+                "path": "usdtMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "usdcEscrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "auction"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "usdcMint"
               }
             ],
             "program": {
@@ -683,12 +879,6 @@ export type IdolcaMarket = {
           "name": "collection"
         },
         {
-          "name": "paymentMint",
-          "relations": [
-            "auction"
-          ]
-        },
-        {
           "name": "mplCoreProgram",
           "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
         },
@@ -705,7 +895,7 @@ export type IdolcaMarket = {
     {
       "name": "createAuction",
       "docs": [
-        "開拍：資產轉進 Auction PDA，同時建好存放出價的代幣帳戶。reserve_price 為 0 表示不設保底價"
+        "開拍：資產轉進 Auction PDA，同時為 USDT、USDC 各建一個存放出價的代幣帳戶。reserve_price 為 0 表示不設保底價"
       ],
       "discriminator": [
         234,
@@ -720,6 +910,13 @@ export type IdolcaMarket = {
       "accounts": [
         {
           "name": "seller",
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "付拍賣帳戶、兩個代幣帳戶的租金和 Core 轉移的費用"
+          ],
           "writable": true,
           "signer": true
         },
@@ -792,9 +989,15 @@ export type IdolcaMarket = {
           }
         },
         {
-          "name": "escrow",
+          "name": "usdtMint"
+        },
+        {
+          "name": "usdcMint"
+        },
+        {
+          "name": "usdtEscrow",
           "docs": [
-            "存放出價的代幣帳戶，屬於 Auction PDA"
+            "存放 USDT 出價的代幣帳戶，屬於 Auction PDA"
           ],
           "writable": true,
           "pda": {
@@ -809,7 +1012,67 @@ export type IdolcaMarket = {
               },
               {
                 "kind": "account",
-                "path": "paymentMint"
+                "path": "usdtMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "usdcEscrow",
+          "docs": [
+            "存放 USDC 出價的代幣帳戶，屬於 Auction PDA"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "auction"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "usdcMint"
               }
             ],
             "program": {
@@ -857,9 +1120,6 @@ export type IdolcaMarket = {
         },
         {
           "name": "collection"
-        },
-        {
-          "name": "paymentMint"
         },
         {
           "name": "mplCoreProgram",
@@ -1063,6 +1323,13 @@ export type IdolcaMarket = {
       "accounts": [
         {
           "name": "seller",
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "付 Listing 的租金和 Core 轉移的費用"
+          ],
           "writable": true,
           "signer": true
         },
@@ -1116,9 +1383,6 @@ export type IdolcaMarket = {
           "name": "collection"
         },
         {
-          "name": "paymentMint"
-        },
-        {
           "name": "mplCoreProgram",
           "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
         },
@@ -1135,36 +1399,29 @@ export type IdolcaMarket = {
       ]
     },
     {
-      "name": "settleAuction",
+      "name": "migrateAuction",
       "docs": [
-        "結標：截止後任何人都能呼叫（平台的排程負責），手續費和新建代幣帳戶的租金由呼叫者付。",
-        "有出價且達到保底價時成交，否則資產退回賣家、最高出價全額退回。拍賣帳戶和代幣帳戶關閉，租金退回賣家"
+        "遷移舊版拍賣（只有 Config 的 authority 能呼叫）：不論是否截止，最高出價全額退回、資產退回賣家，",
+        "代幣帳戶和拍賣帳戶關閉、租金退回賣家（舊版由賣家付租金）"
       ],
       "discriminator": [
-        246,
-        196,
-        183,
-        98,
-        222,
-        139,
-        46,
-        133
+        177,
+        229,
+        202,
+        103,
+        229,
+        236,
+        201,
+        74
       ],
       "accounts": [
         {
-          "name": "cranker",
-          "docs": [
-            "呼叫者：付手續費和新建代幣帳戶的租金"
-          ],
+          "name": "authority",
           "writable": true,
-          "signer": true
-        },
-        {
-          "name": "seller",
-          "writable": true
-        },
-        {
-          "name": "highBidder"
+          "signer": true,
+          "relations": [
+            "config"
+          ]
         },
         {
           "name": "config",
@@ -1207,6 +1464,19 @@ export type IdolcaMarket = {
               }
             ]
           }
+        },
+        {
+          "name": "seller",
+          "writable": true
+        },
+        {
+          "name": "highBidder"
+        },
+        {
+          "name": "paymentMint",
+          "docs": [
+            "舊版拍賣的結算代幣，在指令裡核對"
+          ]
         },
         {
           "name": "escrow",
@@ -1266,6 +1536,433 @@ export type IdolcaMarket = {
           }
         },
         {
+          "name": "highBidderToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "highBidder"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "paymentMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "asset",
+          "writable": true
+        },
+        {
+          "name": "collection"
+        },
+        {
+          "name": "mplCoreProgram",
+          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "migrateListing",
+      "docs": [
+        "遷移舊版掛單（只有 Config 的 authority 能呼叫）：資產退回賣家，帳戶關閉、租金退回賣家（舊版由賣家付租金）"
+      ],
+      "discriminator": [
+        202,
+        10,
+        210,
+        83,
+        249,
+        147,
+        116,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "listing",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  105,
+                  115,
+                  116,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset"
+              }
+            ]
+          }
+        },
+        {
+          "name": "seller",
+          "writable": true
+        },
+        {
+          "name": "asset",
+          "writable": true
+        },
+        {
+          "name": "collection"
+        },
+        {
+          "name": "mplCoreProgram",
+          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "setMints",
+      "docs": [
+        "換登記的結算代幣（devnet 用平台自鑄的測試幣）。進行中的拍賣存放出價的帳戶是按舊代幣開的，換之前要先結束"
+      ],
+      "discriminator": [
+        176,
+        123,
+        110,
+        25,
+        240,
+        234,
+        43,
+        231
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdtMint"
+        },
+        {
+          "name": "usdcMint"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "settleAuction",
+      "docs": [
+        "結標：截止後任何人都能呼叫（平台的排程負責），手續費和新建代幣帳戶的租金由呼叫者付。",
+        "有出價且達到保底價時成交，否則資產退回賣家、最高出價全額退回。拍賣帳戶和兩個代幣帳戶關閉，租金退回付租金的人"
+      ],
+      "discriminator": [
+        246,
+        196,
+        183,
+        98,
+        222,
+        139,
+        46,
+        133
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "docs": [
+            "呼叫者：付手續費、新建代幣帳戶的租金和 Core 轉移的費用"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "seller"
+        },
+        {
+          "name": "highBidder"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "auction",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  99,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rentPayer",
+          "writable": true,
+          "relations": [
+            "auction"
+          ]
+        },
+        {
+          "name": "usdtMint"
+        },
+        {
+          "name": "usdcMint"
+        },
+        {
+          "name": "usdtEscrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "auction"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "usdtMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "usdcEscrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "auction"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "usdcMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "winMint",
+          "docs": [
+            "得標那口的幣種；沒人出價時傳 USDT"
+          ]
+        },
+        {
           "name": "asset",
           "writable": true,
           "relations": [
@@ -1274,12 +1971,6 @@ export type IdolcaMarket = {
         },
         {
           "name": "collection"
-        },
-        {
-          "name": "paymentMint",
-          "relations": [
-            "auction"
-          ]
         },
         {
           "name": "sellerToken",
@@ -1296,7 +1987,7 @@ export type IdolcaMarket = {
               },
               {
                 "kind": "account",
-                "path": "paymentMint"
+                "path": "winMint"
               }
             ],
             "program": {
@@ -1356,7 +2047,7 @@ export type IdolcaMarket = {
               },
               {
                 "kind": "account",
-                "path": "paymentMint"
+                "path": "winMint"
               }
             ],
             "program": {
@@ -1416,7 +2107,7 @@ export type IdolcaMarket = {
               },
               {
                 "kind": "account",
-                "path": "paymentMint"
+                "path": "winMint"
               }
             ],
             "program": {
@@ -1827,6 +2518,11 @@ export type IdolcaMarket = {
       "code": 6014,
       "name": "hasBids",
       "msg": "已經有人出價，不能取消"
+    },
+    {
+      "code": 6015,
+      "name": "notLegacy",
+      "msg": "不是舊版帳戶"
     }
   ],
   "types": [
@@ -1836,15 +2532,15 @@ export type IdolcaMarket = {
         "kind": "struct",
         "fields": [
           {
+            "name": "version",
+            "type": "u8"
+          },
+          {
             "name": "seller",
             "type": "pubkey"
           },
           {
             "name": "asset",
-            "type": "pubkey"
-          },
-          {
-            "name": "paymentMint",
             "type": "pubkey"
           },
           {
@@ -1874,6 +2570,13 @@ export type IdolcaMarket = {
             "type": "u64"
           },
           {
+            "name": "highBidMint",
+            "docs": [
+              "最高出價用的幣種；還沒人出價時是預設值"
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "bidCount",
             "type": "u32"
           },
@@ -1883,6 +2586,13 @@ export type IdolcaMarket = {
               "開拍時的抽成，之後改設定不影響這場"
             ],
             "type": "u16"
+          },
+          {
+            "name": "rentPayer",
+            "docs": [
+              "付拍賣帳戶和兩個代幣帳戶租金的人，關閉時租金退回給它"
+            ],
+            "type": "pubkey"
           },
           {
             "name": "bump",
@@ -1919,7 +2629,7 @@ export type IdolcaMarket = {
           {
             "name": "minStart",
             "docs": [
-              "起標價下限（結算代幣的最小單位）"
+              "起標價下限（美元的百萬分之一）"
             ],
             "type": "u64"
           },
@@ -1990,10 +2700,6 @@ export type IdolcaMarket = {
             "type": "pubkey"
           },
           {
-            "name": "paymentMint",
-            "type": "pubkey"
-          },
-          {
             "name": "startPrice",
             "type": "u64"
           },
@@ -2031,6 +2737,12 @@ export type IdolcaMarket = {
             }
           },
           {
+            "name": "paymentMint",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
             "name": "price",
             "type": "u64"
           },
@@ -2052,6 +2764,10 @@ export type IdolcaMarket = {
           },
           {
             "name": "bidder",
+            "type": "pubkey"
+          },
+          {
+            "name": "paymentMint",
             "type": "pubkey"
           },
           {
@@ -2137,10 +2853,6 @@ export type IdolcaMarket = {
             "type": "pubkey"
           },
           {
-            "name": "paymentMint",
-            "type": "pubkey"
-          },
-          {
             "name": "price",
             "type": "u64"
           }
@@ -2153,6 +2865,10 @@ export type IdolcaMarket = {
         "kind": "struct",
         "fields": [
           {
+            "name": "version",
+            "type": "u8"
+          },
+          {
             "name": "seller",
             "type": "pubkey"
           },
@@ -2161,15 +2877,18 @@ export type IdolcaMarket = {
             "type": "pubkey"
           },
           {
-            "name": "paymentMint",
-            "type": "pubkey"
-          },
-          {
             "name": "price",
             "docs": [
-              "以結算代幣的最小單位計（USDT、USDC 都是 6 位小數）"
+              "美元價格（百萬分之一），買家用 USDT 或 USDC 付都是這個數"
             ],
             "type": "u64"
+          },
+          {
+            "name": "rentPayer",
+            "docs": [
+              "付 Listing 租金的人，帳戶關閉時租金退回給它"
+            ],
+            "type": "pubkey"
           },
           {
             "name": "bump",

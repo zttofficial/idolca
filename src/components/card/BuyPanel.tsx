@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import RedeemDialog from "./RedeemDialog";
 import type { ShippingAddress } from "@/lib/shipping";
 import { useTranslations } from "next-intl";
+import { GetWalletPrompt } from "@/components/auth/WalletSetup";
 import { useAuth } from "@/components/auth/AuthContext";
 import Price from "@/components/web3/Price";
 import { formatPrice } from "@/lib/fx";
@@ -136,7 +137,7 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
         {t("connectToBuy")}
       </button>
     ) : !me ? (
-      note("linkWalletToBuy")
+      <GetWalletPrompt text={t("linkWalletToBuy")} />
     ) : (
       <>
         <button className={PRIMARY + " w-full"} disabled={busy !== null || picking} onClick={() => setPicking(true)}>

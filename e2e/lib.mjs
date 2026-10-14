@@ -48,7 +48,7 @@ export async function signSend(txBase64, kp) {
   return sig;
 }
 
-// 用戶自己付費把收藏卡上鏈：伺服器組交易、錢包（key）簽名送出並付手續費和押金、回報確認。回傳上鏈後的收藏卡
+// 用戶把收藏卡做成數位珍藏：伺服器組交易（平台付手續費和押金）、錢包（key）簽名送出並付鑄造費、回報確認。回傳上鏈後的收藏卡
 export async function mintSelf(itemId, key, cookie) {
   const { tx, asset } = await must("POST", `/api/items/${itemId}/mint`, undefined, cookie);
   const signature = await signSend(tx, key.kp);
@@ -70,4 +70,109 @@ export const step = (s) => console.log(`\n▶ ${s}`);
 export function finish() {
   console.log(failures ? `\n${failures} FAILED` : "\nALL PASSED");
   process.exit(failures ? 1 : 0);
+}
+
+// 開發伺服器沒設 RESEND_API_KEY 時把信寫進伺服器目錄的 .data/outbox.jsonl（E2E_OUTBOX 可以改路徑）：讀寄給某個信箱的最後一封、取出信裡的連結和令牌
+const OUTBOX = process.env.E2E_OUTBOX ?? ".data/outbox.jsonl";
+export const lastMail = (to) =>
+  readFileSync(OUTBOX, "utf8")
+    .trim()
+    .split("\n")
+    .map((l) => JSON.parse(l))
+    .filter((m) => m.to === to)
+    .at(-1);
+export const linkIn = (mail) => mail?.text.match(/https?:\/\/\S+token=[\w-]+/)?.[0];
+export const tokenIn = (mail) => new URL(linkIn(mail)).searchParams.get("token");
+
+// 無頭 Chrome（DevTools 協定）：開一個分頁，給測試點按、填表、截圖。只結束自己開的這個 Chrome
+export async function openBrowser({ out = process.env.E2E_OUT ?? ".data/e2e-shots", width = 1280, height = 900, init } = {}) {
+  const { spawn } = await import("node:child_process");
+  const { mkdirSync, writeFileSync } = await import("node:fs");
+  const { resolve } = await import("node:path");
+  mkdirSync(out, { recursive: true });
+  const port = 9300 + Math.floor(Math.random() * 600);
+  // 設定檔目錄要給絕對路徑，新版 Chrome 收到相對路徑會直接退出
+  const chrome = spawn(process.env.CHROME_PATH ?? "C:/Program Files/Google/Chrome/Application/chrome.exe", [
+    "--headless=new",
+    `--remote-debugging-port=${port}`,
+    `--user-data-dir=${resolve(out, `profile-${Date.now()}`)}`,
+    `--window-size=${width},${height}`,
+    "--hide-scrollbars",
+    "about:blank",
+  ]);
+  let targets;
+  for (let i = 0; i < 50; i++) {
+    try {
+      targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
+      if (targets.some((t) => t.type === "page")) break;
+    } catch {}
+    await sleep(200);
+  }
+  const ws = new WebSocket(targets.find((t) => t.type === "page").webSocketDebuggerUrl);
+  await new Promise((r) => ws.addEventListener("open", r));
+  let id = 0;
+  const pending = new Map();
+  // 頁面的主控台錯誤和未處理的例外，失敗時印出來除錯
+  const errors = [];
+  ws.addEventListener("message", (e) => {
+    const m = JSON.parse(e.data);
+    if (m.id && pending.has(m.id)) {
+      pending.get(m.id)(m);
+      pending.delete(m.id);
+    }
+    if (m.method === "Runtime.exceptionThrown") errors.push(m.params.exceptionDetails.exception?.description ?? m.params.exceptionDetails.text);
+    if (m.method === "Runtime.consoleAPICalled" && m.params.type === "error") errors.push(m.params.args.map((a) => a.value ?? a.description).join(" "));
+  });
+  const send = (method, params = {}) =>
+    new Promise((res) => {
+      const i = ++id;
+      pending.set(i, res);
+      ws.send(JSON.stringify({ id: i, method, params }));
+    });
+  const evaluate = async (expr) => (await send("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true })).result?.result?.value;
+  const waitFor = async (expr, ms = 60000) => {
+    const t0 = Date.now();
+    while (Date.now() - t0 < ms) {
+      if (await evaluate(expr)) return true;
+      await sleep(400);
+    }
+    return false;
+  };
+  await send("Page.enable");
+  await send("Runtime.enable");
+  if (init) await send("Page.addScriptToEvaluateOnNewDocument", { source: init });
+  return {
+    send,
+    evaluate,
+    waitFor,
+    has: (text) => `document.body.innerText.includes(${JSON.stringify(text)})`,
+    shot: async (name) => writeFileSync(`${out}/${name}.png`, Buffer.from((await send("Page.captureScreenshot", { format: "png" })).result.data, "base64")),
+    // 點文字包含 text 的按鈕或連結；inDialog 時只找彈窗裡、文字完全相同的按鈕
+    click: (text, { inDialog = false } = {}) =>
+      evaluate(
+        inDialog
+          ? `(() => { const b = [...document.querySelectorAll('[role=dialog] button')].find(b => b.textContent.trim() === ${JSON.stringify(text)}); if (!b) return false; b.click(); return true; })()`
+          : `(() => { const b = [...document.querySelectorAll('button, a')].find(b => b.textContent.trim().includes(${JSON.stringify(text)}) && !b.disabled); if (!b) return false; b.click(); return true; })()`,
+      ),
+    go: async (path) => {
+      await send("Page.navigate", { url: BASE + path });
+      await waitFor("document.readyState === 'complete'");
+      await sleep(1500);
+    },
+    // React 受控輸入：用原生 setter 設值再觸發 input
+    fill: (selector, value) =>
+      evaluate(
+        `(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return false; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, ${JSON.stringify(value)}); el.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`,
+      ),
+    // 帶入登入會話（api() 拿到的 cookie 字串 name=value）
+    setCookie: (cookie) => {
+      const [name, value] = cookie.split("=");
+      return send("Network.setCookie", { name, value, url: BASE });
+    },
+    errors,
+    close: () => {
+      chrome.kill();
+      ws.close();
+    },
+  };
 }

@@ -52,7 +52,7 @@ check("admin refund", ar.ok && Boolean(ar.json.refundTx), ar.json.refundTx ?? JS
 check("release after refund refused", (await api("POST", `/api/admin/orders/${b}/release`, undefined, AD)).status === 409);
 
 step("C. 寄出後逾時未確認 → 排程自動放款");
-// C 由賣家自己付費上鏈：成交時數位珍藏也要轉給買家；其他刊登沒上鏈，只過戶不轉 NFT
+// C 由賣家做成數位珍藏：成交時數位珍藏也要轉給買家；其他刊登沒上鏈，只過戶不轉 NFT
 const itemC = await mintSelf((await list("Escrow C")).id, seller, S);
 const c = await buy(itemC.id);
 await must("POST", `/api/orders/${c}/ship`, undefined, S);

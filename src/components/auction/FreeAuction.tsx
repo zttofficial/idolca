@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { GetWalletPrompt } from "@/components/auth/WalletSetup";
 import { useAuth } from "@/components/auth/AuthContext";
 import { payAndConfirm, payOnArc } from "@/lib/chain-client";
 import type { EvmWallet } from "@/lib/evm/arc-wallet";
@@ -47,7 +48,6 @@ export default function FreeAuction({ itemId, initial }: { itemId: string; initi
     },
   });
 
-  const note = (text: string) => <p className="rounded-xl bg-surface-2 px-4 py-3 text-center text-sm text-ink-2">{text}</p>;
   return (
     <AuctionPanel
       view={detail}
@@ -68,7 +68,7 @@ export default function FreeAuction({ itemId, initial }: { itemId: string; initi
             {t("loginToBid")}
           </button>
         ) : (
-          note(tListing("linkWalletToBuy"))
+          <GetWalletPrompt text={tListing("linkWalletToBuy")} />
         )
       }
     />

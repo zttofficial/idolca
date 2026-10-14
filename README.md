@@ -139,6 +139,8 @@ End-to-end suites run against a live site and devnet with real transactions. Sta
 npm run test:e2e:vault       # intake, packs, fairness check, buyback, redemption and cancel, vault conversion
 npm run test:e2e:ui          # headless Chrome with an injected Wallet Standard test wallet, clicking through every flow
 npm run test:e2e:binder      # binder sync: deletions stay deleted across devices, unsent changes are uploaded
+npm run test:e2e:email       # email accounts: verification, gated selling, password reset and change (reads .data/outbox.jsonl)
+E2E_PRIVY_EMAIL=… E2E_PRIVY_CODE=… npm run test:e2e:privy   # collection wallet: create with a Privy test account, pay gas-free
 npm run test:e2e:mobile      # 390px phone emulation: screenshots, horizontal overflow, mobile menu (read-only, can target the live site)
 npm run test:e2e:arc         # Arc testnet: USDC authorization, relayed payment, pack delivery and refund
 npm run test:e2e:auction     # fan-listing auctions: prepaid bids, outbid refunds, settlement into escrow, reserve, late bids (needs shortened timing, see docs/tech-stack.md)

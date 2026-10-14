@@ -1,4 +1,4 @@
-import { fail, requireWalletUser } from "@/lib/server/require-user";
+import { chainError, fail, requireWalletUser } from "@/lib/server/require-user";
 import { createBid } from "@/lib/server/auctions";
 import { marketReady } from "@/lib/server/vault-chain";
 import { arcRailBlocked } from "@/lib/server/arc-gate";
@@ -18,7 +18,8 @@ export async function POST(request: Request) {
     const blocked = arcRailBlocked(a.user);
     if (blocked) return blocked;
   }
-  const result = await createBid(a.db, a.user.id, a.wallet, body.auctionId, body.amountUsd, rail);
+  const result = await createBid(a.db, a.user.id, a.wallet, body.auctionId, body.amountUsd, rail).catch((err) => ({ response: chainError(err) }));
+  if ("response" in result) return result.response;
   if ("error" in result) return fail(result.error ?? "auction_ended", 409);
   return Response.json(result);
 }

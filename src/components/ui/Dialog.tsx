@@ -15,15 +15,28 @@ export function CloseButton({ onClick, className = "" }: { onClick: () => void; 
   );
 }
 
-// 彈窗外框：半透明遮罩加置中的面板，右上角 × 關閉，點遮罩或按 Esc 也會關。內容由呼叫方排
-export default function Dialog({ label, onClose, children, className = "max-w-xl" }: { label: string; onClose: () => void; children: React.ReactNode; className?: string }) {
+// 彈窗外框：半透明遮罩加置中的面板，右上角 × 關閉，點遮罩或按 Esc 也會關。內容由呼叫方排。
+// layer 是疊放層級：要蓋在別的彈窗上面時（例如付款途中要輸入收藏錢包的驗證碼）給更高的
+export default function Dialog({
+  label,
+  onClose,
+  children,
+  className = "max-w-xl",
+  layer = "z-[60]",
+}: {
+  label: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  className?: string;
+  layer?: string;
+}) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
   return (
-    <div role="dialog" aria-modal="true" aria-label={label} className="fixed inset-0 z-[60] overflow-y-auto overscroll-contain bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div role="dialog" aria-modal="true" aria-label={label} className={`fixed inset-0 ${layer} overflow-y-auto overscroll-contain bg-black/50 backdrop-blur-sm`} onClick={onClose}>
       <div className="flex min-h-full items-center justify-center p-4">
         <div className={`relative w-full rounded-2xl border border-line bg-surface p-6 shadow-2xl ${className}`} onClick={(e) => e.stopPropagation()}>
           <CloseButton onClick={onClose} className="absolute top-3 right-3" />

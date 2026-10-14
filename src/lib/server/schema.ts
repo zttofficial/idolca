@@ -1,14 +1,20 @@
 import { integer, pgTable, primaryKey, real, text, timestamp } from "drizzle-orm/pg-core";
 import { CARD_SOURCES } from "@/lib/sources";
+import type { Coin } from "@/lib/coins";
 
 // 兩種登入方式：郵箱 + 密碼（不懂加密的粉絲），或錢包簽名（加密用戶）。至少有其中一種
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
   // 一律存小寫，登入時也轉小寫比對
   email: text("email").unique(),
+  // 用戶點了驗證信裡的連結（或用重設密碼信證明持有信箱）的時間；換郵箱時清空
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
   passwordHash: text("password_hash"),
   // 用錢包登入的帳號：Solana 地址（base58）
   walletAddress: text("wallet_address").unique(),
+  // 錢包是哪一種：external 是用戶自己的錢包（Phantom 等，簽名綁定或錢包登入），privy 是在 Idolca 建的收藏錢包（Privy 嵌入式錢包）。
+  // 收藏錢包要簽名時，網站才去登入 Privy
+  walletKind: text("wallet_kind").$type<"external" | "privy">(),
   displayName: text("display_name").notNull(),
   // admin：可以進後台（退款放款、入庫、提貨出貨、標假卡）。用 npm run admin:grant 授予
   role: text("role").$type<"user" | "admin">().notNull().default("user"),
@@ -22,6 +28,18 @@ export const loginNonces = pgTable("login_nonces", {
   nonce: text("nonce").primaryKey(),
   address: text("address").notNull(),
   message: text("message").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
+// 郵件裡的一次性連結：驗證信箱（verify）或重設密碼（reset）。id 是令牌的 SHA-256，令牌本身只出現在信裡；
+// 記下寄出時的信箱，帳號換了信箱舊連結就失效。用過、過期或寄了新的同類連結就作廢
+export const emailTokens = pgTable("email_tokens", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  purpose: text("purpose").$type<"verify" | "reset">().notNull(),
+  email: text("email").notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
@@ -97,7 +115,7 @@ export const collectorItems = pgTable("collector_items", {
   // 和圖鑑卡款對得上時記下，方便收集進度和行情；對不上就留空
   templateId: text("template_id"),
   // NFT 地址和鑄造交易
-  // 收藏 NFT：用戶自己付費上鏈時才有（見 funds.ts 的 buildUserMint），沒上鏈時三項都空。刊登和擔保交易不需要它
+  // 收藏 NFT：用戶把卡做成數位珍藏時才有（見 funds.ts 的 buildUserMint），沒上鏈時三項都空。刊登和擔保交易不需要它
   asset: text("asset"),
   mintTx: text("mint_tx"),
   // NFT 的持有地址：錢包登入的用戶是自己的錢包，郵箱帳號是平台代管錢包
@@ -225,6 +243,8 @@ export const orders = pgTable("orders", {
   // payer 是 Arc 上的付款地址，退款退回這裡
   rail: text("rail").$type<PayRail>().notNull().default("solana"),
   payer: text("payer"),
+  // Solana 通道付的是哪種結算代幣（付款確認時從交易認出），退款、放款用同一種
+  coin: text("coin").$type<Coin>().notNull().default("usdt"),
   payTx: text("pay_tx").unique(),
   payoutTx: text("payout_tx"),
   payoutHeld: integer("payout_held").notNull().default(0),
@@ -280,6 +300,8 @@ export const bids = pgTable("bids", {
   // 付款通道和 Arc 上的付款地址，退款退回原通道
   rail: text("rail").$type<PayRail>().notNull().default("solana"),
   payer: text("payer"),
+  // Solana 通道付的是哪種結算代幣（付款確認時從交易認出），退款、放款用同一種
+  coin: text("coin").$type<Coin>().notNull().default("usdt"),
   payTx: text("pay_tx").unique(),
   refundTx: text("refund_tx"),
   paidAt: timestamp("paid_at", { withTimezone: true }),
@@ -300,9 +322,12 @@ export const packOrders = pgTable("pack_orders", {
   qty: integer("qty").notNull(),
   amountCents: integer("amount_cents").notNull(),
   wallet: text("wallet").notNull(),
-  // 收款通道和 Arc 付款地址，同 orders。payProof 是 Arc 訂單買家的授權簽名，抽卡的隨機數用它（平台事先算不出來）
+  // 收款通道和 Arc 付款地址，同 orders。payProof 是買家產生的簽名，抽卡的隨機數用它（平台事先算不出來）：
+  // Arc 是買家的授權簽名，Solana 是買家錢包在付款交易裡的簽名（交易編號是付手續費的平台的簽名，不能用）
   rail: text("rail").$type<PayRail>().notNull().default("solana"),
   payer: text("payer"),
+  // Solana 通道付的是哪種結算代幣（付款確認時從交易認出），退款、放款用同一種
+  coin: text("coin").$type<Coin>().notNull().default("usdt"),
   payTx: text("pay_tx").unique(),
   payProof: text("pay_proof"),
   pulls: text("pulls"),
@@ -324,6 +349,8 @@ export const redemptions = pgTable("redemptions", {
   feeCents: integer("fee_cents").notNull().default(0),
   // 運費已在申請交易裡對帳成功
   feePaid: integer("fee_paid").notNull().default(0),
+  // 運費用哪種結算代幣付的，取消提貨退運費時用同一種
+  coin: text("coin").$type<Coin>().notNull().default("usdt"),
   shippedAt: timestamp("shipped_at", { withTimezone: true }),
   cancelTx: text("cancel_tx"),
   refundTx: text("refund_tx"),
@@ -418,6 +445,16 @@ export const BOOTSTRAP_SQL = [
   `ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS role text NOT NULL DEFAULT 'user'`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS age_confirmed_at timestamptz`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at timestamptz`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_kind text`,
+  `CREATE TABLE IF NOT EXISTS email_tokens (
+    id text PRIMARY KEY,
+    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    purpose text NOT NULL,
+    email text NOT NULL,
+    expires_at timestamptz NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS email_tokens_user_id_idx ON email_tokens(user_id)`,
   `CREATE TABLE IF NOT EXISTS login_nonces (
     nonce text PRIMARY KEY,
     address text NOT NULL,
@@ -571,6 +608,10 @@ export const BOOTSTRAP_SQL = [
   `ALTER TABLE pack_orders ADD COLUMN IF NOT EXISTS refund_tx text`,
   `ALTER TABLE pack_orders ADD COLUMN IF NOT EXISTS rail text NOT NULL DEFAULT 'solana'`,
   `ALTER TABLE pack_orders ADD COLUMN IF NOT EXISTS payer text`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS coin text NOT NULL DEFAULT 'usdt'`,
+  `ALTER TABLE bids ADD COLUMN IF NOT EXISTS coin text NOT NULL DEFAULT 'usdt'`,
+  `ALTER TABLE pack_orders ADD COLUMN IF NOT EXISTS coin text NOT NULL DEFAULT 'usdt'`,
+  `ALTER TABLE redemptions ADD COLUMN IF NOT EXISTS coin text NOT NULL DEFAULT 'usdt'`,
   `ALTER TABLE pack_orders ADD COLUMN IF NOT EXISTS pay_proof text`,
   `UPDATE pack_orders SET status = 'legacy' WHERE pulls IS NOT NULL AND status = 'pending'`,
   `CREATE TABLE IF NOT EXISTS rate_limits (

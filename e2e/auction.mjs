@@ -16,7 +16,11 @@ for (const who of [S, B1, B2]) await must("POST", "/api/chain/faucet", undefined
 const addItem = async (title) => (await must("POST", "/api/items", { photos: [await photo(120), await photo(60)], title, group: "IVE", member: "Wonyoung", quantity: 1, source: "album" }, S)).item;
 const startAuction = async (itemId, input) => (await must("POST", `/api/items/${itemId}/auction`, { days: 1, ...input }, S)).item.auction;
 const auction = async (id, who) => (await must("GET", `/api/auctions/${id}`, undefined, who)).auction;
-const usdt = async (who) => (await must("GET", "/api/chain/balance", undefined, who)).usdt;
+// 錢包裡兩種結算代幣的總額：出價時錢包裡哪種多就付哪種，退款退回原來的那種，所以核對總額
+const usd = async (who) => {
+  const b = await must("GET", "/api/chain/balance", undefined, who);
+  return Math.round((b.usdt + b.usdc) * 100) / 100;
+};
 // 出價：建單、錢包簽付款交易、回報確認。回傳確認的回應（被拒時是錯誤碼）
 async function bid(auctionId, key, who, amountUsd) {
   const created = await api("POST", "/api/bids", { auctionId, amountUsd }, who);
@@ -39,9 +43,9 @@ let a = await startAuction(itemA.id, { startUsd: 10 });
 check("auction live", a.status === "live" && a.startUsd === 10 && a.minNextUsd === 10, JSON.stringify(a));
 check("fixed listing refused", (await api("PATCH", `/api/items/${itemA.id}`, { priceUsdt: 5 }, S)).json.error === "in_auction");
 check("seller can't bid", (await api("POST", "/api/bids", { auctionId: a.id, amountUsd: 10 }, S)).json.error === "own_auction");
-const b1Start = await usdt(B1);
+const b1Start = await usd(B1);
 check("bidder 1 bids 10", (await bid(a.id, bidder1, B1, 10)).ok);
-check("bid locks the payment", (await usdt(B1)) === b1Start - 10);
+check("bid locks the payment", (await usd(B1)) === b1Start - 10);
 check("below minimum refused", (await api("POST", "/api/bids", { auctionId: a.id, amountUsd: 10.5 }, B2)).json.error === "bid_too_low");
 const outbid = await bid(a.id, bidder2, B2, 11);
 check("bidder 2 bids 11", outbid.ok && outbid.json.auction.highUsd === 11 && outbid.json.auction.minNextUsd === 12, JSON.stringify(outbid.json));
@@ -49,7 +53,7 @@ check("leader can't bid again", (await api("POST", "/api/bids", { auctionId: a.i
 check("cancel refused after bids", (await api("DELETE", `/api/items/${itemA.id}/auction`, undefined, S)).json.error === "has_bids");
 a = await auction(a.id, B1);
 check("history with aliases", a.history.length === 2 && a.history[0].amountUsd === 11 && a.history[1].mine && !a.history[0].mine, JSON.stringify(a.history));
-check("outbid bidder refunded", await until("refund", async () => (await usdt(B1)) === b1Start));
+check("outbid bidder refunded", await until("refund", async () => (await usd(B1)) === b1Start));
 await waitEnd(a);
 check("settled as sold", await until("sold", async () => (await auction(a.id, B2)).status === "sold"));
 a = await auction(a.id, B2);
@@ -63,13 +67,13 @@ check("seller paid after receipt", Boolean(received.payoutTx));
 step("B. 沒達到保底價就流拍，出價全額退回");
 const itemB = await addItem("Auction B");
 let b = await startAuction(itemB.id, { startUsd: 10, reserveUsd: 50 });
-const b1Before = await usdt(B1);
+const b1Before = await usd(B1);
 check("bid under reserve accepted", (await bid(b.id, bidder1, B1, 20)).ok);
 b = await auction(b.id);
 check("reserve not met shown", b.hasReserve && !b.reserveMet && b.highUsd === 20);
 await waitEnd(b);
 check("settled as unsold", await until("unsold", async () => (await auction(b.id)).status === "unsold"));
-check("high bid refunded", await until("refund", async () => (await usdt(B1)) === b1Before));
+check("high bid refunded", await until("refund", async () => (await usd(B1)) === b1Before));
 const backB = (await must("GET", "/api/items", undefined, S)).items.find((i) => i.id === itemB.id);
 check("card back in the binder, unlisted", backB && backB.auction === null && backB.priceUsdt === null);
 
@@ -84,21 +88,21 @@ step("D. 截止後才付款的出價不被接受，全額退回");
 const itemD = await addItem("Auction D");
 const d = await startAuction(itemD.id, { startUsd: 10 });
 const late = await must("POST", "/api/bids", { auctionId: d.id, amountUsd: 10 }, B1);
-const b1BeforeLate = await usdt(B1);
+const b1BeforeLate = await usd(B1);
 await waitEnd(d);
 const lateConfirm = await api("POST", `/api/bids/${late.id}/confirm`, { signature: await signSend(late.tx, bidder1.kp) }, B1);
 check("late bid rejected", lateConfirm.json.error === "auction_ended", JSON.stringify(lateConfirm.json));
-check("late bid refunded", await until("refund", async () => (await usdt(B1)) === b1BeforeLate));
+check("late bid refunded", await until("refund", async () => (await usd(B1)) === b1BeforeLate));
 check("auction unsold", await until("unsold", async () => (await auction(d.id)).status === "unsold"));
 
 step("E. 卡被標成假卡時拍賣作廢，出價退回");
 const itemE = await addItem("Auction E");
 const e = await startAuction(itemE.id, { startUsd: 10 });
-const b2Before = await usdt(B2);
+const b2Before = await usd(B2);
 check("bid placed", (await bid(e.id, bidder2, B2, 10)).ok);
 await must("PATCH", `/api/admin/items/${itemE.id}`, { verification: "fake", note: "e2e" }, AD);
 check("auction cancelled", (await auction(e.id)).status === "cancelled");
-check("bid refunded", await until("refund", async () => (await usdt(B2)) === b2Before));
+check("bid refunded", await until("refund", async () => (await usd(B2)) === b2Before));
 
 step("F. 金庫卡的鏈上拍賣：開拍、出價鎖款、被超過時同一筆交易退回、有人出價後不能取消");
 // 鏈上最短拍賣 1 天，結標和流拍由合約測試（onchain/tests）在本地驗證節點上驗證
@@ -118,12 +122,12 @@ if (!(await must("GET", "/api/chain/state")).auctions) {
   let va = await vaultAuction(card.id);
   check("auction on-chain", va?.seller === seller.address && va.startUsd === 10 && va.feeBps === 400 && va.status === "live", JSON.stringify(va));
   check("seller can't bid", (await api("POST", "/api/chain/vault/tx", { action: "bid", cardId: card.id, amountUsd: 10 }, S)).json.error === "own_auction");
-  const v1 = await usdt(B1);
+  const v1 = await usd(B1);
   check("bidder 1 bids 10", (await vaultTx(B1, bidder1, { action: "bid", cardId: card.id, amountUsd: 10 })).ok);
-  check("bid locked on-chain", (await usdt(B1)) === v1 - 10);
+  check("bid locked on-chain", (await usd(B1)) === v1 - 10);
   check("below minimum refused", (await api("POST", "/api/chain/vault/tx", { action: "bid", cardId: card.id, amountUsd: 10.5 }, B2)).json.error === "bid_too_low");
   check("bidder 2 bids 11", (await vaultTx(B2, bidder2, { action: "bid", cardId: card.id, amountUsd: 11 })).ok);
-  check("bidder 1 refunded in the same transaction", (await usdt(B1)) === v1);
+  check("bidder 1 refunded in the same transaction", (await usd(B1)) === v1);
   va = await vaultAuction(card.id);
   check("leader and next minimum", va?.highBidder === bidder2.address && va.highUsd === 11 && va.minNextUsd === 12 && va.bidCount === 2, JSON.stringify(va));
   check("cancel refused after bids", (await api("POST", "/api/chain/vault/tx", { action: "cancelAuction", cardId: card.id }, S)).json.error === "has_bids");

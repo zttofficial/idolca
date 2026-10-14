@@ -6,6 +6,8 @@ import AccountModal from "./AccountModal";
 import { attachAccount, detachAccount } from "@/lib/binder";
 import { AddCardHost } from "@/components/binder/AddCard";
 import { clearItems, refreshItems } from "@/lib/items";
+import { setPrivyAccount } from "@/lib/privy/bridge";
+import PrivyMount from "./PrivyMount";
 
 type Me = { configured: boolean; user: AuthUser | null };
 
@@ -38,6 +40,12 @@ export default function AccountProvider({ children }: { children: React.ReactNod
     };
   }, []);
 
+  // 簽名時要知道帳號的錢包是不是收藏錢包（lib/privy/bridge.ts）
+  useEffect(() => {
+    const u = me?.user;
+    setPrivyAccount({ email: u?.email ?? null, walletAddress: u?.walletAddress ?? null, walletKind: u?.walletKind ?? null });
+  }, [me]);
+
   const value = useMemo<AuthState>(
     () => ({
       ready: me !== undefined,
@@ -59,6 +67,7 @@ export default function AccountProvider({ children }: { children: React.ReactNod
     <AuthContext.Provider value={value}>
       {children}
       <AddCardHost />
+      <PrivyMount />
       {open && <AccountModal configured={value.configured} onClose={() => setOpen(false)} onSignedIn={signedIn} />}
     </AuthContext.Provider>
   );

@@ -8,6 +8,7 @@ import { AUCTION_DAYS, AUCTION_FEE_BPS, AUCTION_MIN_START, type AuctionView } fr
 import InfoTip from "@/components/ui/InfoTip";
 import { TimeLeft } from "@/components/auction/AuctionPanel";
 import { track } from "@/lib/analytics";
+import VerifyEmailNotice, { useNeedsEmailVerify } from "@/components/auth/VerifyEmailNotice";
 
 export type AuctionInput = { startUsd: number; reserveUsd: number | null; days: number };
 
@@ -42,6 +43,8 @@ export default function ListingControl({
 }) {
   const t = useTranslations("Binder");
   const tAuction = useTranslations("Auction");
+  // 收藏卡要先驗證信箱才能上架；金庫卡要錢包，郵箱帳號綁錢包前已經驗證過
+  const needsVerify = useNeedsEmailVerify() && lane === "free";
   const listed = price !== null;
   const [editing, setEditing] = useState(false);
   const [mode, setMode] = useState<"fixed" | "auction">("fixed");
@@ -70,9 +73,12 @@ export default function ListingControl({
       setBusy(false);
     }
   };
-  const errorText = error && (
-    <p className="mt-2 text-[11px] text-down">{t.has(`error_${error}`) ? t(`error_${error}`) : tAuction.has(`error_${error}`) ? tAuction(`error_${error}`) : t("listingError")}</p>
-  );
+  const errorText =
+    error === "email_unverified" ? (
+      <VerifyEmailNotice className="mt-2" />
+    ) : (
+      error && <p className="mt-2 text-[11px] text-down">{t.has(`error_${error}`) ? t(`error_${error}`) : tAuction.has(`error_${error}`) ? tAuction(`error_${error}`) : t("listingError")}</p>
+    );
 
   if (auction) {
     return (
@@ -127,6 +133,16 @@ export default function ListingControl({
       <button onClick={() => setEditing(true)} className="btn-primary rounded-full py-2.5 text-sm font-semibold">
         {t("listForSale")}
       </button>
+    );
+  }
+  if (needsVerify && !listed) {
+    return (
+      <div className="rounded-xl border border-line p-3">
+        <VerifyEmailNotice />
+        <button type="button" onClick={() => setEditing(false)} className="btn-secondary mt-2 rounded-full px-4 py-1.5 text-xs font-semibold">
+          {t("cancel")}
+        </button>
+      </div>
     );
   }
   const field = "rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm tabular-nums outline-none focus:border-ink";

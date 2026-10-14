@@ -18,6 +18,11 @@
   const keyPromise = crypto.subtle.importKey("pkcs8", pkcs8, { name: "Ed25519" }, false, ["sign"]);
   const sign = async (bytes) => new Uint8Array(await crypto.subtle.sign({ name: "Ed25519" }, await keyPromise, bytes));
 
+  const sigStart = (tx) => {
+    let i = 0;
+    while (tx[i++] & 0x80);
+    return i;
+  };
   // 舊版交易格式：[簽名數 (compact-u16)][64 位元組簽名 × n][訊息]。訊息的帳戶表裡找到自己的位置，填進對應的簽名格
   const signTx = async (tx) => {
     let count = 0, shift = 0, i = 0;
@@ -54,13 +59,14 @@
         version: "1.0.0",
         supportedTransactionVersions: ["legacy"],
         signAndSendTransaction: async ({ transaction }) => {
-          const { out, sig } = await signTx(transaction);
+          const { out } = await signTx(transaction);
           let b = "";
           out.forEach((x) => (b += String.fromCharCode(x)));
           const res = await (await fetch(RPC, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "sendTransaction", params: [btoa(b), { encoding: "base64" }] }) })).json();
           if (res.error) throw new Error(res.error.message);
           window.__lastTx = res.result;
-          return [{ signature: sig }];
+          // 回傳交易編號（第一個簽名）；手續費由平台付時，第一個簽名是平台的，不是錢包自己的
+          return [{ signature: out.slice(sigStart(out), sigStart(out) + 64) }];
         },
       },
     },

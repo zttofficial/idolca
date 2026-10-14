@@ -7,9 +7,13 @@ export type AuthUser = {
   id: string;
   // 用錢包登入的帳號沒有郵箱
   email: string | null;
+  // 郵箱帳號點過驗證信才是 true；沒驗證不能賣卡和綁錢包
+  emailVerified: boolean;
   displayName: string;
-  // 用錢包登入時是那個錢包的地址；郵箱帳號為 null，上鏈的卡由平台代管
+  // 用錢包登入時是那個錢包的地址；郵箱帳號綁定錢包前為 null，綁了才能買賣
   walletAddress: string | null;
+  // external：用戶自己的錢包；privy：在 Idolca 建的收藏錢包，簽名前要先登入 Privy
+  walletKind: "external" | "privy" | null;
   // 管理員才看得到後台入口；後台接口在伺服器端另外檢查
   isAdmin: boolean;
   // 已確認滿 18 歲（開卡包要）

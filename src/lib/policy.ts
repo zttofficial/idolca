@@ -13,3 +13,5 @@ export const AUCTION_FEE_BPS = 400;
 export const AUCTION_MIN_START = 10;
 export const AUCTION_DAYS = [1, 3, 5, 7] as const;
 export const AUCTION_EXTEND_MINUTES = 5;
+// 用戶自己把收藏卡做成數位珍藏時收的鑄造費（USD，用 USDT 或 USDC 付）：平台代付 NFT 帳戶的押金和手續費（約 0.003 SOL），收這筆抵成本
+export const MINT_FEE_USD = 0.5;

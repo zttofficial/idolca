@@ -53,7 +53,7 @@ const attributeList = (a: CollectorAttributes, verification: "unverified" | "fak
 
 // 收藏 NFT 的內容：名稱、元數據網址（指向 /api/meta/item/{id}，用來確認 NFT 屬於哪張卡）、屬性。
 // 每個 NFT 自帶 PermanentFreezeDelegate（平台可凍結假卡）；集合上的 PermanentTransferDelegate 讓平台在擔保交易成交時轉移。
-// 收藏 NFT 由用戶自己付費鑄造（見 funds.ts 的 buildUserMint），平台不墊付
+// 收藏 NFT 由用戶付鑄造費、平台代付押金和手續費鑄造（見 funds.ts 的 buildUserMint）
 export const collectorUri = (itemId: string) => `${SITE_URL}/api/meta/item/${itemId}`;
 export const collectorCreateArgs = (itemId: string, attrs: CollectorAttributes) => ({
   name: attrs.title.slice(0, 32),

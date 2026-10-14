@@ -11,11 +11,11 @@ import type { ArcPaymentRequest } from "./arc";
 import type { AuctionView } from "./auction";
 
 // 鏈上拍賣：公開的拍賣資訊，加上賣家和目前最高出價者的錢包
-export type VaultAuction = AuctionView & { seller: string; highBidder: string | null };
+export type VaultAuction = AuctionView & { seller: string; highBidder: string | null; highBidMint: string | null; rentPayer: string };
 
 export type VaultCardState = {
   owner: string;
-  listing: { seller: string; priceUsdt: number } | null;
+  listing: { seller: string; priceUsdt: number; rentPayer: string } | null;
   auction: VaultAuction | null;
   redeeming: boolean;
   burned: boolean;
@@ -167,11 +167,11 @@ export async function payOnArc<T extends { payTx: string }>(createUrl: string, c
 export const postAction = postJson;
 
 export function useBalance(wallet: string | null | undefined) {
-  const [balance, setBalance] = useState<{ sol: number; usdt: number } | null>(null);
+  const [balance, setBalance] = useState<{ sol: number; usdt: number; usdc: number } | null>(null);
   const refresh = useCallback(async () => {
     if (!wallet) return;
     const res = await fetch("/api/chain/balance");
-    if (res.ok) setBalance((await res.json()) as { sol: number; usdt: number });
+    if (res.ok) setBalance((await res.json()) as { sol: number; usdt: number; usdc: number });
   }, [wallet]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 錢包變化時重新讀餘額

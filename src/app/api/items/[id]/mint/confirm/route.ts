@@ -5,7 +5,7 @@ import { checkUserMint } from "@/lib/server/funds";
 import { confirmSignature } from "@/lib/server/vault-chain";
 import { fail, requireWalletUser } from "@/lib/server/require-user";
 
-// 自己付費上鏈，第二步：鑄造交易送出後回報簽名和 NFT 地址，確認 NFT 在平台集合裡、持有人是這個錢包、指向這張卡，再記下來
+// 做成數位珍藏，第二步：鑄造交易送出後回報簽名和 NFT 地址，確認 NFT 在平台集合裡、持有人是這個錢包、指向這張卡，再記下來
 export const maxDuration = 60;
 
 export async function POST(request: Request, ctx: RouteContext<"/api/items/[id]/mint/confirm">) {

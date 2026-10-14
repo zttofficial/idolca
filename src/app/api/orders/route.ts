@@ -1,4 +1,4 @@
-import { fail, requireUser, requireWalletUser } from "@/lib/server/require-user";
+import { chainError, fail, requireUser, requireWalletUser } from "@/lib/server/require-user";
 import { createOrder, myOrders, sweepOrders } from "@/lib/server/orders";
 import { marketReady } from "@/lib/server/vault-chain";
 import { arcRailBlocked } from "@/lib/server/arc-gate";
@@ -23,7 +23,8 @@ export async function POST(request: Request) {
     const blocked = arcRailBlocked(a.user);
     if (blocked) return blocked;
   }
-  const result = await createOrder(a.db, a.user.id, a.wallet, body.itemId, rail);
+  const result = await createOrder(a.db, a.user.id, a.wallet, body.itemId, rail).catch((err) => ({ response: chainError(err) }));
+  if ("response" in result) return result.response;
   if ("error" in result) return fail(result.error ?? "not_listed", 409);
   return Response.json(result);
 }

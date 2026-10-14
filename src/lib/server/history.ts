@@ -3,6 +3,7 @@ import * as anchor from "@anchor-lang/core";
 import { PublicKey } from "@solana/web3.js";
 import idl from "@/lib/chain/idl/idolca_market.json";
 import type { IdolcaMarket } from "@/lib/chain/idl/idolca_market";
+import { CHAIN } from "@/lib/chain";
 import { USDT_DECIMALS, connection } from "./vault-chain";
 
 // 一張金庫卡在鏈上的完整紀錄，直接讀交易日誌分類：
@@ -21,12 +22,18 @@ export type ChainEvent = {
 const coder = new anchor.BorshCoder(idl as IdolcaMarket);
 const has = (logs: string[], name: string) => logs.some((l) => l === `Program log: Instruction: ${name}`);
 
+// 程序升級前的 Listed 事件多一個 payment_mint 欄位（長 112 位元組），價格在它後面；按新格式解析會讀錯，照舊格式讀
+const LEGACY_LISTED_LEN = 112;
 function marketEvent(logs: string[]) {
   for (const l of logs) {
     if (!l.startsWith("Program data: ")) continue;
+    const raw = l.slice("Program data: ".length);
     try {
-      const e = coder.events.decode(l.slice("Program data: ".length));
-      if (e) return e as { name: string; data: Record<string, unknown> };
+      const e = coder.events.decode(raw) as { name: string; data: Record<string, unknown> } | null;
+      if (!e) continue;
+      const bytes = Buffer.from(raw, "base64");
+      if (e.name === "Listed" && bytes.length === LEGACY_LISTED_LEN) e.data.price = new anchor.BN(bytes.subarray(104, 112), "le");
+      return e;
     } catch {}
   }
   return null;
@@ -84,7 +91,10 @@ async function readHistory(asset: string) {
   return sigs.flatMap((s) => {
     const tx = bySig.get(s.signature);
     if (!tx) return [];
-    const signer = tx.transaction.message.getAccountKeys().get(0)?.toBase58() ?? "";
+    // 動手的人：第一個不是平台的簽名者（手續費由平台付，平台常是第一個簽名者）
+    const keys = tx.transaction.message.getAccountKeys();
+    const signers = Array.from({ length: tx.transaction.message.header.numRequiredSignatures }, (_, i) => keys.get(i)?.toBase58() ?? "");
+    const signer = signers.find((k) => k !== CHAIN.platform) ?? signers[0] ?? "";
     const date = new Date((s.blockTime ?? 0) * 1000).toISOString();
     const e = classify(tx.meta?.logMessages ?? [], s.signature, date, signer);
     return e ? [e] : [];

@@ -5,6 +5,10 @@ import { createHash } from "node:crypto";
 import { PublicKey } from "@solana/web3.js";
 import { adminKey, api, check, conn, finish, login, mintSelf, must, newKey, photo, signSend, step } from "./lib.mjs";
 import { verifyDraw } from "../src/lib/pack-draw.ts";
+import { MINT_FEE_USD } from "../src/lib/policy.ts";
+import chain from "../src/lib/chain/devnet.json" with { type: "json" };
+
+const PLATFORM = chain.platform;
 
 const admin = adminKey();
 const AD = await login(admin);
@@ -116,7 +120,7 @@ check("can request redemption again after a cancel", (await must("GET", "/api/ch
 check("second cancel", (await api("POST", `/api/admin/redemptions/${keep}/cancel`, undefined, AD)).ok);
 
 step("收藏卡寄進金庫");
-// 這張卡持有人自己付費上鏈過，入庫時要銷毀原本的收藏 NFT
+// 這張卡持有人做成過數位珍藏，入庫時要銷毀原本的收藏 NFT
 const added = (await must("POST", "/api/items", { photos: [await photo(50), await photo(230)], group: "ITZY", member: "Yeji", album: "BORN TO BE", version: "Lucky Draw Round 1", source: "luckydraw", quantity: 1, priceUsdt: 9 }, B)).item;
 const minted = await mintSelf(added.id, buyer, B);
 const req2 = await api("POST", `/api/items/${minted.id}/vault`, undefined, B);
@@ -139,7 +143,7 @@ const returned = (await must("POST", "/api/items", { photos: [await photo(10), a
 await must("POST", `/api/items/${returned.id}/vault`, undefined, B);
 check("admin return clears request", (await api("DELETE", `/api/admin/items/${returned.id}/vault`, undefined, AD)).ok && !(await must("GET", "/api/items", undefined, B)).items.find((i) => i.id === returned.id).vaultRequestedAt);
 
-step("上鏈是可選的，由用戶付費");
+step("上鏈是可選的：用戶付鑄造費，網路費和押金由平台付");
 check("added card is not on-chain", returned.mintTx === null && returned.asset === null);
 const listed = (await must("PATCH", `/api/items/${returned.id}`, { priceUsdt: 4 }, B)).item;
 check("listing doesn't mint", listed.priceUsdt === 4 && listed.mintTx === null);
@@ -147,7 +151,13 @@ check("other users can't mint it", (await api("POST", `/api/items/${returned.id}
 const self = await mintSelf(returned.id, buyer, B);
 check("minted to the owner's wallet", Boolean(self.asset) && self.ownerAddress === buyer.address, self.asset ?? "");
 const mintTx = await conn.getTransaction(self.mintTx, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
-check("the owner paid the fee", mintTx?.transaction.message.staticAccountKeys[0].toBase58() === buyer.address);
+check("the platform paid the network fee", mintTx?.transaction.message.staticAccountKeys[0].toBase58() === PLATFORM);
+// 用戶的某種結算代幣少了鑄造費，平台的同一種多了鑄造費
+const delta = (owner) => {
+  const sum = (list) => (list ?? []).filter((b) => b.owner === owner).reduce((v, b) => v + Number(b.uiTokenAmount.amount), 0);
+  return (sum(mintTx?.meta?.postTokenBalances) - sum(mintTx?.meta?.preTokenBalances)) / 1e6;
+};
+check("the owner paid the mint fee in stablecoins", delta(buyer.address) === -MINT_FEE_USD && delta(PLATFORM) === MINT_FEE_USD, `${delta(buyer.address)}`);
 const selfAccount = await conn.getAccountInfo(new PublicKey(self.asset));
 check("collectible exists on-chain", Boolean(selfAccount && selfAccount.data[0] === 1));
 check("can't mint twice", (await api("POST", `/api/items/${returned.id}/mint`, undefined, B)).json.error === "already_minted");

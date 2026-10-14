@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { MINT_FEE_USD } from "@/lib/policy";
+import { GetWalletPrompt } from "@/components/auth/WalletSetup";
 import CardArt from "@/components/market/CardArt";
 import { AddCardButton, openAddCard } from "./AddCard";
 import VerificationBadge from "./VerificationBadge";
@@ -765,14 +767,14 @@ function TakeOutButton({ onTakeOut, label = "takeOut" }: { onTakeOut: () => void
   );
 }
 
-// 自己付費做成數位珍藏（可選）：刊登和擔保交易都不需要；想要的話用自己的錢包付手續費和押金（約 0.003 SOL）。
+// 做成數位珍藏（可選）：刊登和擔保交易都不需要；想要的話付鑄造費（USDT 或 USDC），押金和網路手續費由平台付。
 // 旁邊的問號說明數位珍藏有什麼用，吸引用戶做
 function MintSelf({ item }: { item: CollectorItem }) {
   const t = useTranslations("Mint");
   const wallet = useAuth().user?.walletAddress;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
-  if (!wallet) return <p className="mt-3 text-[11px] leading-relaxed text-ink-3">{t("mintNeedsWallet")}</p>;
+  if (!wallet) return <GetWalletPrompt text={t("mintNeedsWallet")} className="mt-3" />;
   return (
     <div className="mt-3">
       <div className="flex items-center gap-2">
@@ -793,9 +795,9 @@ function MintSelf({ item }: { item: CollectorItem }) {
         >
           {busy ? t("mintSelfBusy") : t("mintSelf")}
         </button>
-        <InfoTip text={`${t("mintWhat")} ${t("mintSelfNote")}`} label={t("mintWhatLabel")} />
+        <InfoTip text={`${t("mintWhat")} ${t("mintSelfNote", { fee: formatPrice(MINT_FEE_USD) })}`} label={t("mintWhatLabel")} />
       </div>
-      {error && <p className="mt-1 text-[11px] text-down">{t.has(`error_${error}`) ? t(`error_${error}`) : t("mintSelfError")}</p>}
+      {error && <p className="mt-1 text-[11px] text-down">{t.has(`error_${error}`) ? t(`error_${error}`) : t("mintSelfError", { fee: formatPrice(MINT_FEE_USD) })}</p>}
     </div>
   );
 }

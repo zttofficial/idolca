@@ -5,18 +5,19 @@ import devnet from "./chain/devnet.json";
 import mainnet from "./chain/mainnet-beta.json";
 
 export type ChainConfig = {
-  // 平台錢包：集合的更新權限持有人，也是郵箱帳號上鏈卡的代管錢包
+  // 平台錢包：集合的更新權限持有人，收付款、代付用戶交易的手續費和帳戶租金
   platform: string;
   // 金庫卡集合：入庫鑑定通過的卡
   vaultCollection: string;
   // 收藏卡集合：用戶自由上鏈的卡
   collectorCollection: string;
-  // 掛單託管程序（onchain/scripts/setup-market.mts 寫入）：程序和設定帳戶、抽成收款錢包、結算用的 USDT
+  // 掛單託管程序（onchain/scripts/setup-market.mts 寫入）：程序和設定帳戶、抽成收款錢包、結算用的 USDT 和 USDC
   market?: {
     programId: string;
     config: string;
     treasury: string;
     usdtMint: string;
+    usdcMint?: string;
   };
 };
 

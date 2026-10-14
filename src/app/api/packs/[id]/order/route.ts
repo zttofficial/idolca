@@ -1,4 +1,4 @@
-import { fail, requireWalletUser } from "@/lib/server/require-user";
+import { chainError, fail, requireWalletUser } from "@/lib/server/require-user";
 import { createPackOrder } from "@/lib/server/packs";
 import { marketReady } from "@/lib/server/vault-chain";
 import { packsBlockedIn } from "@/lib/server/region";
@@ -17,7 +17,8 @@ export async function POST(request: Request, ctx: RouteContext<"/api/packs/[id]/
     const blocked = arcRailBlocked(a.user);
     if (blocked) return blocked;
   }
-  const result = await createPackOrder(a.db, a.user.id, a.wallet, (await ctx.params).id, Number(body.qty), rail);
+  const result = await createPackOrder(a.db, a.user.id, a.wallet, (await ctx.params).id, Number(body.qty), rail).catch((err) => ({ response: chainError(err) }));
+  if ("response" in result) return result.response;
   if ("error" in result) return fail(result.error ?? "invalid_request", 409);
   return Response.json(result);
 }

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { GetWalletPrompt } from "@/components/auth/WalletSetup";
 import { useAuth } from "@/components/auth/AuthContext";
 import { refreshChainState, vaultAction, type VaultAuction as VaultAuctionState } from "@/lib/chain-client";
 import AuctionPanel from "./AuctionPanel";
@@ -40,7 +41,7 @@ export default function VaultAuction({ cardId, auction }: { cardId: string; auct
             {t("loginToBid")}
           </button>
         ) : (
-          <p className="rounded-xl bg-surface-2 px-4 py-3 text-center text-sm text-ink-2">{tDetail("linkWalletToBuy")}</p>
+          <GetWalletPrompt text={tDetail("linkWalletToBuy")} />
         )
       }
     />

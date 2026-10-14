@@ -19,24 +19,6 @@ export const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || DEFAULT_RPC[CLU
 // Wallet Standard 的鏈標識，錢包簽名和發送交易時用
 export const WALLET_CHAIN = CLUSTER === "mainnet-beta" ? "solana:mainnet" : "solana:devnet";
 
-// 結算代幣。主網用 Tether 和 Circle 的官方 mint；devnet 沒有官方 USDT，
-// 預設用 Circle 的 devnet USDC 當測試幣，也可以用 NEXT_PUBLIC_USDT_MINT 指定自己鑄的測試幣
-const STABLES: Record<Cluster, { usdt: string; usdc: string }> = {
-  "mainnet-beta": {
-    usdt: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
-    usdc: "EPjFWJd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-  },
-  devnet: {
-    usdt: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
-    usdc: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
-  },
-};
-
-// 結算用託管程序登記的代幣：devnet 是平台自己鑄的測試 USDT，主網是 Tether 的官方 USDT
-export const USDT_MINT = process.env.NEXT_PUBLIC_USDT_MINT || CHAIN.market?.usdtMint || STABLES[CLUSTER].usdt;
-export const USDC_MINT = STABLES[CLUSTER].usdc;
-export const STABLE_DECIMALS = 6;
-
 // 金庫卡 NFT 所屬的 Metaplex Core 集合；預設用 scripts/setup-chain.ts 建好的那個
 export const CARD_COLLECTION = process.env.NEXT_PUBLIC_CARD_COLLECTION || CHAIN.vaultCollection;
 

@@ -10,7 +10,8 @@ import { buildPayment, payout, transferCollectorNft, verifyPayment } from "./fun
 import { itemTitle } from "@/lib/item-title";
 
 // 自由刊登的擔保交易。貨款先進平台錢包，買家確認收貨後才放給賣家，NFT 同時由平台轉給買家。
-// 買家可以在 Solana 或 Arc 上付款（見 packs.ts），退款退回原來的通道；放款給賣家目前一律在 Solana 上。
+// 買家可以在 Solana 或 Arc 上付款（見 packs.ts），退款退回原來的通道；放款給賣家目前一律在 Solana 上，
+// 用買家付的那種結算代幣（Arc 付的 USDC 也在 Solana 上用 USDC 放款）。
 // 平台抽成和金庫卡一樣是 2.5%
 export { FEE_BPS };
 const memoOf = (orderId: string) => `idolca:order:${orderId}`;
@@ -24,10 +25,11 @@ export async function createOrder(db: Db, buyerId: string, buyerWallet: string, 
   if (item.userId === buyerId) return { error: "own_listing" as const };
   const id = randomUUID();
   const feeCents = Math.round((item.priceCents * FEE_BPS) / 10_000);
+  // 先組好付款交易再寫訂單：餘額不夠時丟錯，不留下付不了款的訂單
+  const tx = rail === "solana" ? await buildPayment(new PublicKey(buyerWallet), item.priceCents / 100, memoOf(id)) : null;
   await db.insert(orders).values({ id, itemId, buyerId, sellerId: item.userId, priceCents: item.priceCents, feeCents, buyerWallet, rail });
   if (rail === "arc") return { id, arc: arcPaymentRequest(memoOf(id), item.priceCents) };
-  const tx = await buildPayment(new PublicKey(buyerWallet), item.priceCents / 100, memoOf(id));
-  return { id, tx };
+  return { id, tx: tx! };
 }
 
 // 期限：付款後 SHIP_DAYS 天內賣家要標記寄出，否則買家可以取消並退款；
@@ -43,7 +45,9 @@ const shipDeadline = (o: OrderRow) => (o.paidAt ? new Date(o.paidAt.getTime() + 
 const releaseAt = (o: OrderRow) => (o.shippedAt ? new Date(o.shippedAt.getTime() + CONFIRM_DAYS * DAY) : null);
 
 // 退款給買家：退回原來付款的那條通道
-const refundBuyer = (order: OrderRow) => (order.rail === "arc" ? arcPayout(order.payer!, order.priceCents) : payout(new PublicKey(order.buyerWallet), order.priceCents / 100));
+const refundBuyer = (order: OrderRow) => (order.rail === "arc" ? arcPayout(order.payer!, order.priceCents) : payout(new PublicKey(order.buyerWallet), order.priceCents / 100, order.coin));
+// 放款給賣家用的幣：Solana 付的用原來那種，Arc 付的用 USDC
+const payoutCoin = (order: OrderRow) => (order.rail === "arc" ? "usdc" : order.coin);
 
 // 付款確認：對帳成功就下架商品、訂單變成已付款。商品已被別人先買走時退款並取消。
 // Solana 付款回報付款交易簽名；Arc 付款回報付款地址、授權有效期和授權簽名，伺服器代為送上鏈
@@ -52,18 +56,20 @@ export async function confirmOrderPayment(db: Db, buyerId: string, orderId: stri
   if (!found || found.status !== "pending") return { error: "not_pending" as const };
   let signature = payment.signature;
   let payer: string | null = null;
+  let coin = found.coin;
   if (found.rail === "arc") {
     const settled = await settleArcPayment(memoOf(orderId), found.priceCents, payment);
     signature = settled.hash;
     payer = settled.from;
   } else {
-    const ok = await verifyPayment(signature, new PublicKey(found.buyerWallet), found.priceCents / 100, memoOf(orderId));
-    if (!ok) return { error: "payment_not_found" as const };
+    const paid = await verifyPayment(signature, new PublicKey(found.buyerWallet), found.priceCents / 100, memoOf(orderId));
+    if (!paid) return { error: "payment_not_found" as const };
+    coin = paid;
   }
   // 先把付款記到訂單上，搶到的那一次才往下處理：同一筆付款重複回報時不會既成交又退款
   const [order] = await db
     .update(orders)
-    .set({ payTx: signature, payer })
+    .set({ payTx: signature, payer, coin })
     .where(and(eq(orders.id, orderId), eq(orders.status, "pending"), isNull(orders.payTx)))
     .returning();
   if (!order) return { error: "not_pending" as const };
@@ -137,7 +143,7 @@ export async function releaseOrder(db: Db, orderId: string, from: OrderStatus[] 
     const [item] = await db.select().from(collectorItems).where(eq(collectorItems.id, order.itemId));
     const [seller] = await db.select({ wallet: users.walletAddress }).from(users).where(eq(users.id, order.sellerId));
     const transferTx = item?.mintTx && item.asset ? await transferCollectorNft(item.asset, order.buyerWallet) : null;
-    const payoutTx = seller?.wallet ? await payout(new PublicKey(seller.wallet), (order.priceCents - order.feeCents) / 100) : null;
+    const payoutTx = seller?.wallet ? await payout(new PublicKey(seller.wallet), (order.priceCents - order.feeCents) / 100, payoutCoin(order)) : null;
     await db
       .update(orders)
       .set({ status: "completed", transferTx, payoutTx, payoutHeld: payoutTx ? 0 : 1, updatedAt: new Date() })
@@ -199,7 +205,7 @@ export async function sweepOrders(db: Db) {
 export async function releaseHeldPayouts(db: Db, sellerId: string, wallet: string) {
   const held = await db.select().from(orders).where(and(eq(orders.sellerId, sellerId), eq(orders.payoutHeld, 1)));
   for (const o of held) {
-    const tx = await payout(new PublicKey(wallet), (o.priceCents - o.feeCents) / 100);
+    const tx = await payout(new PublicKey(wallet), (o.priceCents - o.feeCents) / 100, payoutCoin(o));
     await db.update(orders).set({ payoutTx: tx, payoutHeld: 0, updatedAt: new Date() }).where(eq(orders.id, o.id));
   }
 }

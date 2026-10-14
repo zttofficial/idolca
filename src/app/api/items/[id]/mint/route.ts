@@ -4,9 +4,9 @@ import { collectorItems } from "@/lib/server/schema";
 import { chainAttributes } from "@/lib/server/items";
 import { buildUserMint } from "@/lib/server/funds";
 import { platformUmi } from "@/lib/server/chain";
-import { fail, requireWalletUser } from "@/lib/server/require-user";
+import { chainError, fail, requireWalletUser } from "@/lib/server/require-user";
 
-// 自己付費把收藏卡上鏈，第一步：組好鑄造交易（手續費和押金由用戶錢包付），回傳交易和新 NFT 的地址。
+// 把收藏卡上鏈，第一步：組好鑄造交易（押金和手續費由平台付，用戶付鑄造費），回傳交易和新 NFT 的地址。
 // 只有綁了錢包的帳號、還沒上鏈的卡；假卡和寄進金庫的卡不能上鏈
 export async function POST(_request: Request, ctx: RouteContext<"/api/items/[id]/mint">) {
   const a = await requireWalletUser();
@@ -16,5 +16,9 @@ export async function POST(_request: Request, ctx: RouteContext<"/api/items/[id]
   if (!item) return fail("not_found", 404);
   if (item.mintTx) return fail("already_minted", 409);
   if (item.verification === "fake" || item.vaultRequestedAt || item.vaultCardId) return fail("not_mintable", 409);
-  return Response.json(await buildUserMint(item.id, chainAttributes(item), new PublicKey(a.wallet)));
+  try {
+    return Response.json(await buildUserMint(item.id, chainAttributes(item), new PublicKey(a.wallet)));
+  } catch (err) {
+    return chainError(err);
+  }
 }

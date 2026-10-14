@@ -4,7 +4,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { PublicKey } from "@solana/web3.js";
 import type { Db } from "./db";
 import { packOrders, packPulls, vaultCards } from "./schema";
-import { buildBuybackTx, buildPayment, payout, transferVaultNft, verifyPayment } from "./funds";
+import { buildBuybackTx, buildPayment, payout, transferVaultNft, verifyPayment, walletSignature } from "./funds";
 import { confirmSignature, invalidateVaultState, vaultState, type VaultCardState } from "./vault-chain";
 import { getPackRow } from "./pack-pool";
 import { invalidateVaultCards, toCard } from "./vault-cards";
@@ -13,6 +13,7 @@ import { BUYBACK_RATE, MAX_QTY, overRtp, pickIndex, poolOrder } from "@/lib/pack
 import { drawRandom } from "@/lib/pack-draw";
 import { arcPaymentRequest, arcPayout, settleArcPayment } from "./arc-pay";
 import type { PayRail } from "./schema";
+import type { Coin } from "@/lib/coins";
 
 // 開卡包：付款進平台錢包 → 對帳 → 按承諾的種子抽卡 → 抽到的金庫卡 NFT 從平台錢包轉給買家。
 // 付款有兩條通道：Solana（買家錢包轉帳加備註）或 Arc（買家簽 USDC 授權轉帳，平台代送）；卡一律在 Solana 上交付。
@@ -48,9 +49,11 @@ export async function createPackOrder(db: Db, userId: string, wallet: string, pa
   if (overRtp(expected, pack.priceCents / 100)) return { error: "paused" as const };
   const id = randomUUID();
   const amountCents = pack.priceCents * qty;
+  // 先組好付款交易再寫訂單：餘額不夠時丟錯，不留下付不了款的訂單
+  const tx = rail === "solana" ? await buildPayment(new PublicKey(wallet), amountCents / 100, memoOf(id)) : null;
   await db.insert(packOrders).values({ id, userId, packId, qty, amountCents, wallet, rail });
   if (rail === "arc") return { id, amountUsdt: amountCents / 100, arc: arcPaymentRequest(memoOf(id), amountCents) };
-  return { id, amountUsdt: amountCents / 100, tx: await buildPayment(new PublicKey(wallet), amountCents / 100, memoOf(id)) };
+  return { id, amountUsdt: amountCents / 100, tx: tx! };
 }
 
 async function pullsOf(db: Db, orderId: string) {
@@ -67,21 +70,24 @@ async function pullsOf(db: Db, orderId: string) {
 export type PackPayment = { signature: string; from?: unknown; validBefore?: unknown };
 
 // 付款確認後抽卡並轉移。訂單先從 pending 鎖成 drawing，同一筆只會抽一次。
-// 抽卡的隨機數來自買家產生、平台事先算不出來的簽名：Solana 是付款交易簽名，Arc 是買家的授權簽名
+// 抽卡的隨機數來自買家產生、平台事先算不出來的簽名：Solana 是買家錢包在付款交易裡的簽名，Arc 是買家的授權簽名
 export async function confirmPackOrder(db: Db, userId: string, orderId: string, payment: PackPayment) {
   const [order] = await db.select().from(packOrders).where(and(eq(packOrders.id, orderId), eq(packOrders.userId, userId)));
   if (!order) return { error: "not_found" as const };
   if (order.status === "drawn") return { pulls: await pullsOf(db, orderId), refundTx: order.refundTx, payTx: order.payTx };
   if (order.status !== "pending") return { error: "in_progress" as const };
   const signature = payment.signature;
-  let paid: { payTx: string; payer: string | null; payProof: string | null };
+  let paid: { payTx: string; payer: string | null; payProof: string | null; coin?: Coin };
   if (order.rail === "arc") {
     const { hash, from } = await settleArcPayment(memoOf(orderId), order.amountCents, payment);
     paid = { payTx: hash, payer: from, payProof: signature };
   } else {
-    const ok = await verifyPayment(signature, new PublicKey(order.wallet), order.amountCents / 100, memoOf(orderId));
-    if (!ok) return { error: "payment_not_found" as const };
-    paid = { payTx: signature, payer: null, payProof: null };
+    const coin = await verifyPayment(signature, new PublicKey(order.wallet), order.amountCents / 100, memoOf(orderId));
+    if (!coin) return { error: "payment_not_found" as const };
+    // 隨機數用買家錢包在付款交易裡的簽名：交易編號是付手續費的平台的簽名，平台事先算得出來
+    const proof = await walletSignature(signature, new PublicKey(order.wallet));
+    if (!proof) return { error: "payment_not_found" as const };
+    paid = { payTx: signature, payer: null, payProof: proof, coin };
   }
   const [locked] = await db
     .update(packOrders)
@@ -95,7 +101,7 @@ export async function confirmPackOrder(db: Db, userId: string, orderId: string, 
   for (let idx = 0, attempts = 0; idx < order.qty && attempts < order.qty * 3; attempts++) {
     const pool = poolOrder((await available(db, pack.id)).map((r) => ({ row: r, card: { serial: r.serial } })));
     if (!pool.length) break;
-    const r = drawRandom(pack.seed, signature, idx);
+    const r = drawRandom(pack.seed, locked.payProof!, idx);
     const pick = pickIndex(r, pool.length);
     const card = pool[pick].row;
     // 搶到這張才算抽中；被同時進行的另一筆訂單搶走就用同一個隨機數在新的卡池重抽
@@ -121,7 +127,7 @@ export async function confirmPackOrder(db: Db, userId: string, orderId: string, 
   let refundTx: string | null = null;
   if (delivered < order.qty) {
     const cents = (order.qty - delivered) * pack.priceCents;
-    refundTx = order.rail === "arc" ? await arcPayout(locked.payer!, cents) : await payout(new PublicKey(order.wallet), cents / 100);
+    refundTx = order.rail === "arc" ? await arcPayout(locked.payer!, cents) : await payout(new PublicKey(order.wallet), cents / 100, locked.coin);
   }
   await db.update(packOrders).set({ status: "drawn", refundTx }).where(eq(packOrders.id, orderId));
   invalidateVaultState();
@@ -132,7 +138,7 @@ export async function confirmPackOrder(db: Db, userId: string, orderId: string, 
 // 這張卡是我開卡包抽到、還沒賣回的嗎
 async function myPull(db: Db, userId: string, cardId: string) {
   const [row] = await db
-    .select({ pull: packPulls, card: vaultCards })
+    .select({ pull: packPulls, card: vaultCards, order: packOrders })
     .from(packPulls)
     .innerJoin(packOrders, eq(packOrders.id, packPulls.orderId))
     .innerJoin(vaultCards, eq(vaultCards.id, packPulls.cardId))
@@ -142,14 +148,15 @@ async function myPull(db: Db, userId: string, cardId: string) {
   return row ?? null;
 }
 
-// 即時回購：持有人把抽到的卡賣回平台，按卡值的 BUYBACK_RATE 付款。
-// 一筆交易裡同時做兩件事：持有人簽名把 NFT 轉給平台、平台把 USDT 轉給持有人，任何一步失敗整筆作廢
+// 即時回購：持有人把抽到的卡賣回平台，按卡值的 BUYBACK_RATE 付款，用開卡包時付的那種幣（Arc 付的用 USDC）。
+// 一筆交易裡同時做兩件事：持有人簽名把 NFT 轉給平台、平台把貨款轉給持有人，任何一步失敗整筆作廢
 export async function buildBuyback(db: Db, userId: string, wallet: string, cardId: string) {
   const row = await myPull(db, userId, cardId);
   if (!row) return { error: "not_found" as const };
   if ((await vaultState())[cardId]?.owner !== wallet) return { error: "not_owner" as const };
   const amount = Math.round((row.card.packValueCents ?? 0) * BUYBACK_RATE) / 100;
-  return { amountUsdt: amount, tx: await buildBuybackTx(new PublicKey(wallet), row.card.asset, amount) };
+  const coin = row.order.rail === "arc" ? "usdc" : row.order.coin;
+  return { amountUsdt: amount, tx: await buildBuybackTx(new PublicKey(wallet), row.card.asset, amount, coin) };
 }
 
 // 回購交易確認後，卡回到平台錢包，也回到卡池

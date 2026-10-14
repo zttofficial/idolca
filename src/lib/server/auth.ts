@@ -52,10 +52,19 @@ export async function endSession(db: Db) {
   jar.delete(COOKIE);
 }
 
-export type PublicUser = { id: string; email: string | null; displayName: string; walletAddress: string | null; isAdmin: boolean; ageConfirmed: boolean };
+export type PublicUser = {
+  id: string;
+  email: string | null;
+  emailVerified: boolean;
+  displayName: string;
+  walletAddress: string | null;
+  walletKind: "external" | "privy" | null;
+  isAdmin: boolean;
+  ageConfirmed: boolean;
+};
 
 // 管理員：資料庫裡 role 是 admin 的帳號，或錢包在 ADMIN_WALLETS（逗號分隔）裡的帳號。
-// 環境變數只認錢包，因為錢包登入要簽名證明持有；郵箱沒有驗證，不能靠郵箱授權
+// 環境變數只認錢包：錢包登入要簽名證明持有，比郵箱更難冒用
 const adminWallets = () => new Set((process.env.ADMIN_WALLETS ?? "").split(",").map((s) => s.trim()).filter(Boolean));
 export const isAdmin = (u: { role: string; walletAddress: string | null }) => u.role === "admin" || (u.walletAddress !== null && adminWallets().has(u.walletAddress));
 
@@ -63,11 +72,19 @@ export const isAdmin = (u: { role: string; walletAddress: string | null }) => u.
 export const publicUser = (u: typeof users.$inferSelect): PublicUser => ({
   id: u.id,
   email: u.email,
+  emailVerified: u.emailVerifiedAt !== null,
   displayName: u.displayName,
   walletAddress: u.walletAddress,
+  // 錢包登入的帳號沒記種類，一律是自己的錢包
+  walletKind: u.walletAddress ? (u.walletKind ?? "external") : null,
   isAdmin: isAdmin(u),
   ageConfirmed: u.ageConfirmedAt !== null,
 });
+
+// 改密碼或重設密碼後讓所有裝置重新登入
+export async function endAllSessions(db: Db, userId: string) {
+  await db.delete(sessions).where(eq(sessions.userId, userId));
+}
 
 export async function currentUser(db: Db): Promise<PublicUser | null> {
   const token = (await cookies()).get(COOKIE)?.value;

@@ -1,5 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
-import { fail, requireWalletUser } from "@/lib/server/require-user";
+import { allow, tooMany } from "@/lib/server/rate-limit";
+import { chainError, fail, requireWalletUser } from "@/lib/server/require-user";
 import { buildBid, buildBuy, buildCancel, buildCancelAuction, buildCreateAuction, buildList, buildRedeemRequest, marketReady, vaultAuctionsReady, vaultState } from "@/lib/server/vault-chain";
 import { REDEEM_FEE_USDT, parseAddress } from "@/lib/shipping";
 import { AUCTION_DAYS, AUCTION_MIN_START } from "@/lib/auction";
@@ -10,6 +11,8 @@ export async function POST(request: Request) {
   const a = await requireWalletUser();
   if ("error" in a) return a.error;
   if (!marketReady()) return fail("not_configured", 503);
+  // 手續費和帳戶租金由平台付，限制每個帳號組交易的次數，免得被反覆掛單、取消耗光平台的 SOL
+  if (!(await allow(a.db, `vault-tx:${a.user.id}`, 60, 3600))) return tooMany();
   const body = (await request.json().catch(() => ({}))) as {
     action?: string;
     cardId?: string;
@@ -65,8 +68,8 @@ export async function POST(request: Request) {
         return fail("invalid_action");
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : "chain_failed";
-    console.error("build tx failed", err);
-    return fail(["not_listed", "own_listing", "not_on_chain", "auction_ended", "own_auction", "already_leading", "bid_too_low"].includes(message) ? message : "chain_failed");
+    const message = err instanceof Error ? err.message : "";
+    if (["not_listed", "own_listing", "not_on_chain", "auction_ended", "own_auction", "already_leading", "bid_too_low"].includes(message)) return fail(message);
+    return chainError(err);
   }
 }

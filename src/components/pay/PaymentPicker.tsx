@@ -9,7 +9,7 @@ import { CloseButton } from "@/components/ui/Dialog";
 import { track, type AnalyticsEvent } from "@/lib/analytics";
 
 // 結帳的付款方式面板：所有購買按鈕都先打開這裡，再選用哪種方式付。
-// solana：Solana 錢包付 USDT（錢包裡要有一點 SOL 付手續費）；arc：在 EVM 錢包簽一個 USDC 授權，不用 gas 幣、不付手續費；
+// solana：Solana 錢包付 USDT 或 USDC（手續費由平台付，錢包不用有 SOL）；arc：在 EVM 錢包簽一個 USDC 授權，不用 gas 幣、不付手續費；
 // card：信用卡，還沒開通，先佔位。某種方式不適用時傳 null（Arc 通道沒開通時整列不顯示）。
 // 標誌在 public/pay/：Solana、Arc 是兩家品牌包裡的原檔（Arc 用官方的網路圖示），不改動；卡組織是各自的受理標誌
 export type PayRun = { solana: (() => Promise<void>) | null; arc: ((wallet: EvmWallet) => Promise<void>) | null };
@@ -46,6 +46,7 @@ export default function PaymentPicker({
       track(event.name, { ...event.props, rail: method, amount_usd: amountUsd });
       onClose();
     } catch (e) {
+      console.error("payment failed", e);
       setError(e instanceof Error ? e.message : "generic");
       setStep("methods");
     } finally {

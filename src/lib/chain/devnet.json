@@ -6,6 +6,7 @@
     "programId": "4vQ6uRMFPRfU79JuwwriDVRoFsEZBCSW2FnsefwmtetD",
     "config": "FLzcvCZcGr8rMNij2d7geBhYpttaXRxgoDyxQip2PkqB",
     "treasury": "6CvNNxtfbZvf2N7EWi14PHpg8vwhrq1GZGhVAiBzLixL",
-    "usdtMint": "E8cviabpxswY9ouL7CPNJhTs5wqChuF3XDUobYuoKqEK"
+    "usdtMint": "E8cviabpxswY9ouL7CPNJhTs5wqChuF3XDUobYuoKqEK",
+    "usdcMint": "6ikAnRCRBbE9dApHyZVKp6s6CgUpiXovS557uwKxvEPe"
   }
 }

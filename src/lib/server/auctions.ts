@@ -125,9 +125,11 @@ export async function createBid(db: Db, bidderId: string, wallet: string, auctio
     if (high?.bidderId === bidderId) return { error: "already_leading" as const };
   }
   const id = randomUUID();
+  // 先組好付款交易再寫出價：餘額不夠時丟錯，不留下付不了款的出價
+  const tx = rail === "solana" ? await buildPayment(new PublicKey(wallet), amount / 100, memoOf(id)) : null;
   await db.insert(bids).values({ id, auctionId, bidderId, bidderWallet: wallet, amountCents: amount, rail });
   if (rail === "arc") return { id, arc: arcPaymentRequest(memoOf(id), amount, BID_WINDOW_MS / 1000) };
-  return { id, tx: await buildPayment(new PublicKey(wallet), amount / 100, memoOf(id)) };
+  return { id, tx: tx! };
 }
 
 // 付款確認：對帳成功後嘗試成為最高出價。沒被接受（截止了、別人先出了更高的）就記成 outbid，由 refundBids 退款
@@ -136,17 +138,20 @@ export async function confirmBid(db: Db, bidderId: string, bidId: string, paymen
   if (!found || found.status !== "pending") return { error: "not_pending" as const };
   let signature = payment.signature;
   let payer: string | null = null;
+  let coin = found.coin;
   if (found.rail === "arc") {
     const settled = await settleArcPayment(memoOf(bidId), found.amountCents, payment);
     signature = settled.hash;
     payer = settled.from;
-  } else if (!(await verifyPayment(signature, new PublicKey(found.bidderWallet), found.amountCents / 100, memoOf(bidId)))) {
-    return { error: "payment_not_found" as const };
+  } else {
+    const paid = await verifyPayment(signature, new PublicKey(found.bidderWallet), found.amountCents / 100, memoOf(bidId));
+    if (!paid) return { error: "payment_not_found" as const };
+    coin = paid;
   }
   // 先把付款記到出價上，搶到的那一次才往下處理：同一筆付款重複回報時不會既被接受又被退款
   const [bid] = await db
     .update(bids)
-    .set({ payTx: signature, payer, paidAt: new Date() })
+    .set({ payTx: signature, payer, coin, paidAt: new Date() })
     .where(and(eq(bids.id, bidId), eq(bids.status, "pending"), isNull(bids.payTx)))
     .returning();
   if (!bid) return { error: "not_pending" as const };
@@ -257,7 +262,7 @@ export async function refundBids(db: Db) {
     const [locked] = await db.update(bids).set({ status: "refunding" }).where(and(eq(bids.id, b.id), eq(bids.status, "outbid"))).returning();
     if (!locked) continue;
     try {
-      const refundTx = b.rail === "arc" ? await arcPayout(b.payer!, b.amountCents) : await payout(new PublicKey(b.bidderWallet), b.amountCents / 100);
+      const refundTx = b.rail === "arc" ? await arcPayout(b.payer!, b.amountCents) : await payout(new PublicKey(b.bidderWallet), b.amountCents / 100, b.coin);
       await db.update(bids).set({ status: "refunded", refundTx }).where(eq(bids.id, b.id));
       refunded++;
     } catch (err) {

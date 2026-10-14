@@ -50,7 +50,7 @@ export default async function PrivacyPage() {
         {
           title: "Who processes it",
           body: [
-            "Vercel hosts the site and Neon hosts the database; PostHog, in its EU region, processes usage data. All three process data on our behalf under their data processing terms. Shipping carriers receive the recipient name, phone and address for the shipment. We do not share personal data with anyone else unless the law requires it.",
+            "Vercel hosts the site, Neon hosts the database and Resend delivers account emails such as email verification and password reset; PostHog, in its EU region, processes usage data. All four process data on our behalf under their data processing terms. Shipping carriers receive the recipient name, phone and address for the shipment. We do not share personal data with anyone else unless the law requires it.",
           ],
         },
         {

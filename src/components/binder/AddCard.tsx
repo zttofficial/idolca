@@ -5,6 +5,7 @@ import { CURRENCY } from "@/lib/fx";
 import { useTranslations } from "next-intl";
 import { cropToCard } from "@/lib/crop-card";
 import { useAuth } from "@/components/auth/AuthContext";
+import VerifyEmailNotice, { useNeedsEmailVerify } from "@/components/auth/VerifyEmailNotice";
 import { Link } from "@/i18n/navigation";
 import { GROUPS, TEMPLATES } from "@/lib/catalog";
 import { findDirectoryGroup, groupOptions, parseCardFilename } from "@/lib/kpop-groups";
@@ -60,6 +61,7 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
   const t = useTranslations("Mint");
   const tSource = useTranslations("Source");
   const { user, login } = useAuth();
+  const needsVerify = useNeedsEmailVerify();
   const [front, setFront] = useState<string>();
   const [back, setBack] = useState<string>();
   const [extras, setExtras] = useState<string[]>([]);
@@ -90,7 +92,7 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
   const albumOptions = unique((g ? TEMPLATES.filter((x) => x.groupId === g.id) : group.trim() ? [] : TEMPLATES).map((x) => x.album));
   const versionOptions = unique(TEMPLATES.map((x) => x.version));
   const priceValue = Number(price);
-  const priceOk = !sell || (price !== "" && priceValue > 0 && priceValue <= 100_000);
+  const priceOk = !sell || (!needsVerify && price !== "" && priceValue > 0 && priceValue <= 100_000);
   const ready = Boolean(front && back && group.trim() && member.trim() && priceOk);
 
   // 選照片時按檔名預填空著的欄位；已填的團體和認出的不同，就不填成員
@@ -202,7 +204,14 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
                 </label>
                 <label className="text-xs font-medium text-ink-2">
                   {t("releaseName")}
-                  <Combobox value={album} onChange={setAlbum} options={albumOptions} maxLength={80} placeholder={t(`releasePlaceholder_${source === "album" || source === "pob" || source === "luckydraw" || source === "fansign" ? "album" : "event"}`)} className={field} />
+                  <Combobox
+                    value={album}
+                    onChange={setAlbum}
+                    options={albumOptions}
+                    maxLength={80}
+                    placeholder={t(`releasePlaceholder_${source === "album" || source === "pob" || source === "luckydraw" || source === "fansign" ? "album" : "event"}`)}
+                    className={field}
+                  />
                 </label>
                 <label className="text-xs font-medium text-ink-2">
                   {t("detail")}
@@ -227,7 +236,8 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
                   {t("sellNow")}
                   <InfoTip text={t("freeMintNote")} label={t("sellNow")} align="start" />
                 </label>
-                {sell && (
+                {sell && needsVerify && <VerifyEmailNotice className="mt-2" />}
+                {sell && !needsVerify && (
                   <label className="mt-2 flex items-center gap-2 text-xs text-ink-2">
                     {t("price")}
                     <input
@@ -241,7 +251,6 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
                   </label>
                 )}
               </div>
-
 
               {error && <p className="mt-3 text-xs text-down">{t("error")}</p>}
               {user ? (
@@ -313,9 +322,7 @@ function PhotoSlot({
           </span>
         )}
         {value && !disabled && (
-          <span className="absolute inset-x-0 bottom-0 bg-ink/60 py-1 text-center text-[11px] font-semibold text-white opacity-0 transition group-hover:opacity-100">
-            {retake}
-          </span>
+          <span className="absolute inset-x-0 bottom-0 bg-ink/60 py-1 text-center text-[11px] font-semibold text-white opacity-0 transition group-hover:opacity-100">{retake}</span>
         )}
       </button>
     </div>

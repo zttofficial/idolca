@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { GetWalletPrompt } from "@/components/auth/WalletSetup";
 import { useAuth } from "@/components/auth/AuthContext";
 import { useMyItems } from "@/lib/items";
 import { Link } from "@/i18n/navigation";
@@ -69,7 +70,7 @@ export default function EscrowBuy({ itemId, priceUsdt }: { itemId: string; price
           </span>
         </span>
       ) : !wallet ? (
-        <p className="mt-4 rounded-xl bg-surface-2 px-4 py-3 text-center text-sm text-ink-2">{t("linkWalletToBuy")}</p>
+        <GetWalletPrompt text={t("linkWalletToBuy")} className="mt-4" />
       ) : (
         <button className={button} disabled={picking} onClick={() => setPicking(true)}>
           {t("buyEscrow", { price: formatPrice(priceUsdt) })}

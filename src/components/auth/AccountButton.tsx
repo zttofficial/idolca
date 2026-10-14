@@ -11,11 +11,12 @@ import { useBalance } from "@/lib/chain-client";
 import CopyButton from "@/components/ui/CopyButton";
 import { ARC, arcExplorerUrl } from "@/lib/arc";
 import { evmAddress, useEvmWallets } from "@/lib/evm/arc-wallet";
-import { WalletError, linkWallet, useWallets } from "@/lib/solana/wallets";
-import { track } from "@/lib/analytics";
 import InfoTip from "@/components/ui/InfoTip";
+import { WalletSetupPanel } from "./WalletSetup";
+import { CLUSTER } from "@/lib/solana/config";
+import { requestPrivy } from "@/lib/privy/bridge";
 
-// 導航列的帳號入口。選單：頭像和暱稱（可以改）、收藏冊和交易的入口、Solana 錢包（地址、餘額；郵箱帳號在這裡綁定錢包）、登出
+// 導航列的帳號入口。選單：頭像和暱稱（可以改）、收藏冊和交易的入口、Solana 錢包（地址、餘額；郵箱帳號在這裡驗證信箱、綁定錢包）、改密碼、登出
 export default function AccountButton() {
   const t = useTranslations("Auth");
   const { ready, user, login, logout } = useAuth();
@@ -87,10 +88,16 @@ export default function AccountButton() {
             )}
           </nav>
 
-          <div className="mt-2 border-t border-line pt-2">{user.walletAddress ? <WalletBox address={user.walletAddress} /> : <LinkWalletBox />}</div>
+          <div className="mt-2 border-t border-line pt-2">{user.walletAddress ? <WalletBox address={user.walletAddress} collection={user.walletKind === "privy"} /> : <LinkWalletBox />}</div>
           {ARC && (
             <div className="mt-2 border-t border-line pt-2">
               <ArcBalance />
+            </div>
+          )}
+
+          {user.email && (
+            <div className="mt-2 border-t border-line pt-2">
+              <PasswordBox />
             </div>
           )}
 
@@ -168,14 +175,16 @@ function ProfileHeader() {
   );
 }
 
-// Solana 錢包：收卡、付款用的錢包。點地址在區塊瀏覽器打開，右邊可以複製，下面是餘額
-function WalletBox({ address }: { address: string }) {
+// Solana 錢包：收卡、付款用的錢包（收藏錢包或用戶自己的錢包）。點地址在區塊瀏覽器打開，右邊可以複製，
+// 下面是兩種結算代幣的餘額（手續費由平台付，不顯示 SOL）；收藏錢包另有加值按鈕
+function WalletBox({ address, collection }: { address: string; collection: boolean }) {
   const t = useTranslations("Auth");
-  const { balance } = useBalance(address);
+  const { balance, refresh } = useBalance(address);
+  const [funding, setFunding] = useState(false);
   return (
     <div className="px-3 py-1">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold">{t("walletTitle")}</p>
+        <p className="text-xs font-semibold">{t(collection ? "walletTitle" : "walletTitleOwn")}</p>
         <CopyButton text={address} label={t("copy")} copiedLabel={t("copied")} className="text-[11px] font-semibold text-ink-3" />
       </div>
       <a href={solscanUrl("account", address)} target="_blank" rel="noreferrer" className="mt-0.5 block font-mono text-xs text-ink-2 hover:text-ink hover:underline">
@@ -187,65 +196,117 @@ function WalletBox({ address }: { address: string }) {
           <dd className="font-semibold tabular-nums">{balance ? formatStable(balance.usdt, "USDT") : "…"}</dd>
         </div>
         <div className="rounded-lg bg-surface-2 px-2.5 py-1.5">
-          <dt className="text-ink-3">SOL</dt>
-          <dd className="font-semibold tabular-nums">{balance ? balance.sol.toFixed(3) : "…"}</dd>
+          <dt className="text-ink-3">USDC</dt>
+          <dd className="font-semibold tabular-nums">{balance ? formatStable(balance.usdc, "USDC") : "…"}</dd>
         </div>
       </dl>
+      {/* 收藏錢包可以刷卡加值（買 USDC）；入金服務不支援測試網，只在主網顯示 */}
+      {collection && CLUSTER === "mainnet-beta" && (
+        <button
+          disabled={funding}
+          onClick={async () => {
+            setFunding(true);
+            try {
+              await (await requestPrivy()).deposit(address);
+              await refresh();
+            } catch {
+            } finally {
+              setFunding(false);
+            }
+          }}
+          className="btn-primary mt-2 w-full rounded-full py-1.5 text-xs font-semibold disabled:opacity-50"
+        >
+          {funding ? "…" : t("addFunds")}
+        </button>
+      )}
     </div>
   );
 }
 
-// 郵箱帳號：綁定瀏覽器錢包後才能買賣
+// 還沒有錢包：建立收藏錢包或綁定自己的錢包，之後才能買賣
 function LinkWalletBox() {
   const t = useTranslations("Auth");
-  const { updateUser } = useAuth();
-  const wallets = useWallets();
-  const [pending, setPending] = useState<string>();
-  const [error, setError] = useState<string>();
-
   return (
     <div className="px-3 py-1">
-      <p className="flex items-center gap-1.5 text-xs font-semibold">
+      <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold">
         {t("linkTitle")}
         <InfoTip text={t("linkBody")} label={t("linkTitle")} align="start" />
       </p>
-      {wallets.length ? (
-        <div className="mt-2 grid gap-1.5">
-          {wallets.map((w) => (
-            <button
-              key={w.name}
-              disabled={pending !== undefined}
-              onClick={async () => {
-                setPending(w.name);
-                setError(undefined);
-                try {
-                  updateUser(await linkWallet(w));
-                  track("wallet_linked");
-                } catch (e) {
-                  setError(e instanceof WalletError && ["rejected", "wallet_taken"].includes(e.message) ? e.message : "wallet");
-                } finally {
-                  setPending(undefined);
-                }
-              }}
-              className="flex items-center gap-2 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium hover:bg-surface-3 disabled:opacity-50"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element -- 錢包自帶的 data URL 圖示 */}
-              <img src={w.icon} alt="" className="h-4 w-4 rounded" />
-              {w.name}
-              {pending === w.name && <span className="ml-auto text-ink-3">{t("walletSigning")}</span>}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <p className="mt-2 text-[11px] text-ink-2">
-          {t("noWallet")}{" "}
-          <a href="https://solana.com/solana-wallets" target="_blank" rel="noreferrer" className="font-semibold text-accent-ink hover:underline">
-            {t("getWallet")}
-          </a>
-        </p>
-      )}
-      {error && <p className="mt-1.5 text-[11px] text-down">{t(`error_${error}`)}</p>}
+      <WalletSetupPanel />
     </div>
+  );
+}
+
+// 改密碼：輸入目前的密碼和新密碼。改好後其他裝置會被登出
+function PasswordBox() {
+  const t = useTranslations("Auth");
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<"saved" | "wrong_password" | "weak_password" | "rate_limited" | "network">();
+  const field = "w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs outline-none focus:border-ink";
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} className="w-full rounded-xl px-3 py-2 text-left text-xs font-semibold text-ink-2 hover:bg-surface-2 hover:text-ink">
+        {result === "saved" ? t("passwordSaved") : t("changePassword")}
+      </button>
+    );
+  }
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setResult(undefined);
+    try {
+      const res = await fetch("/api/account/password", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ current, password: next }) });
+      const data = (await res.json()) as { ok?: boolean; error?: "wrong_password" | "weak_password" | "rate_limited" };
+      if (data.ok) {
+        setResult("saved");
+        setOpen(false);
+        setCurrent("");
+        setNext("");
+      } else setResult(data.error ?? "network");
+    } catch {
+      setResult("network");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form onSubmit={save} className="space-y-1.5 px-3 py-1">
+      <p className="text-xs font-semibold">{t("changePassword")}</p>
+      <input
+        type="password"
+        required
+        autoComplete="current-password"
+        placeholder={t("currentPassword")}
+        aria-label={t("currentPassword")}
+        value={current}
+        onChange={(e) => setCurrent(e.target.value)}
+        className={field}
+      />
+      <input
+        type="password"
+        required
+        minLength={8}
+        autoComplete="new-password"
+        placeholder={t("newPassword")}
+        aria-label={t("newPassword")}
+        value={next}
+        onChange={(e) => setNext(e.target.value)}
+        className={field}
+      />
+      {result && result !== "saved" && <p className="text-[11px] text-down">{t(`error_${result}`)}</p>}
+      <div className="flex gap-1.5 pt-0.5">
+        <button disabled={busy} className="btn-primary rounded-lg px-3 py-1 text-xs font-semibold disabled:opacity-50">
+          {busy ? "…" : t("saveName")}
+        </button>
+        <button type="button" onClick={() => setOpen(false)} className="rounded-lg px-3 py-1 text-xs font-semibold text-ink-3 hover:text-ink">
+          {t("cancel")}
+        </button>
+      </div>
+    </form>
   );
 }
 

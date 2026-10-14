@@ -1,6 +1,6 @@
 # 實施現況
 
-截至 2026-10-12。功能規則和選型理由見 [tech-stack.md](tech-stack.md)，這裡記已經做出來的東西在哪、環境怎麼配、開發要守的約定和還沒做的事。
+截至 2026-10-14。功能規則和選型理由見 [tech-stack.md](tech-stack.md)，這裡記已經做出來的東西在哪、環境怎麼配、開發要守的約定和還沒做的事。
 
 ## 總覽
 
@@ -12,7 +12,9 @@
 
 | 功能 | 頁面 | 主要代碼 |
 |---|---|---|
-| 帳號：郵箱密碼或錢包簽名登入、綁定錢包、管理員 | 帳號選單 | `src/lib/server/auth.ts`、`wallet-auth.ts`、`admin.ts`，`src/components/auth/`，`scripts/grant-admin.ts` |
+| 帳號：郵箱密碼或錢包簽名登入、驗證信箱、忘記和修改密碼、設定錢包（收藏錢包或綁定自己的）、管理員 | 帳號選單、`/verify-email`、`/reset-password` | `src/lib/server/auth.ts`、`email-auth.ts`、`mail.ts`、`wallet-auth.ts`、`admin.ts`，`src/components/auth/`，`scripts/grant-admin.ts` |
+| 收藏錢包（Privy 嵌入式錢包，用到時才載入）、刷卡加值 | 帳號選單、付款時的「設定錢包」 | `src/lib/privy/bridge.ts`，`src/components/auth/PrivyMount.tsx`、`PrivyHost.tsx`、`WalletSetup.tsx` |
+| 結算代幣（USDT、USDC）、平台代付手續費和帳戶租金 | 所有付款 | `src/lib/coins.ts`，`src/lib/server/vault-chain.ts` 的 `forUser`、`pickCoin`，`funds.ts` |
 | 市場（金庫卡、自由刊登兩條線） | `/market` | `src/components/market/MarketBrowser.tsx`、`src/lib/market.ts`、`src/lib/server/market-data.ts` |
 | 金庫卡買賣、掛單（Anchor 託管程序） | `/card/[id]` | `src/lib/server/vault-chain.ts`、`src/components/card/`、`onchain/` |
 | 鏈上紀錄 | `/card/[id]` | `src/lib/server/history.ts` |
@@ -31,7 +33,7 @@
 | 專輯銷量榜 | `/charts` | `src/lib/server/circle-chart.ts` |
 | 後台（入庫、卡包、擔保訂單、提貨、假卡） | `/admin` | `src/components/admin/`、`src/app/api/admin/` |
 | 照片處理和浮水印 | — | `src/lib/server/media.ts`、`src/lib/crop-card.ts` |
-| 每日排程（逾時訂單、結標拍賣和退款、清地址、清過期會話） | — | `src/app/api/cron/daily`、`vercel.json` |
+| 每日排程（逾時訂單、結標拍賣和退款、清地址、清過期會話和郵件連結） | — | `src/app/api/cron/daily`、`vercel.json` |
 | SEO（標題、hreflang、站點地圖、分享圖、JSON-LD） | 全站 | `src/lib/seo.ts`、`src/app/sitemap.ts`、`robots.ts`、`opengraph-image.tsx` |
 | 下拉選單元件 | 全站 | `src/components/ui/Combobox.tsx`（可自由輸入的建議清單）、`Select.tsx`（選單，可帶搜尋） |
 | 多語言（8 種） | 全站 | `messages/*.json` |
@@ -44,12 +46,12 @@
 
 | 表 | 存什麼 |
 |---|---|
-| `users`、`sessions`、`login_nonces` | 帳號（郵箱或錢包、角色、年齡確認）、會話、錢包登入挑戰碼 |
+| `users`、`sessions`、`login_nonces`、`email_tokens` | 帳號（郵箱或錢包、錢包種類、信箱是否驗證、角色、年齡確認）、會話、錢包登入挑戰碼、郵件裡的驗證和重設密碼連結 |
 | `binder_entries`、`binder_wants`、`binder_layouts` | 收藏冊的標記、想要清單、擺法 |
 | `collector_items` | 自由上鏈的卡：資料、刊登價格、鑑定狀態、NFT 地址、寄進金庫申請 |
 | `vault_cards` | 金庫卡實物資料；持有人和掛單以鏈上為準 |
 | `packs`、`pack_pulls`、`pack_orders` | 卡包、每一抽的紀錄、開包訂單 |
-| `orders` | 自由刊登的擔保訂單（拍賣得標的記著 `auction_id`） |
+| `orders` | 自由刊登的擔保訂單（拍賣得標的記著 `auction_id`）；`orders`、`bids`、`pack_orders`、`redemptions` 都記著付款用的幣種（`coin`） |
 | `auctions`、`bids` | 自由刊登的拍賣和每一口出價（付款、退款、是否被接受）；金庫卡的拍賣在鏈上 |
 | `redemptions` | 提貨申請和收件地址 |
 | `media` | 照片（原圖和浮水印展示圖） |
@@ -62,9 +64,11 @@
 | 網站 | Vercel 專案 `ai-artist-projects/idolca`，推送 main 自動部署 | `npm run dev` | `PGLITE_DIR=.data/pglite-e2e npm run dev` |
 | 資料庫 | Neon（Vercel 整合，變數前綴 `idolca_api_`） | PGlite，`.data/pglite` | PGlite，`.data/pglite-e2e` |
 | 平台金鑰 | `PLATFORM_SECRET_KEY`（敏感變數） | `.data/platform-devnet.json` | 同左 |
+| 寄信 | Resend，`idolca.trade` 已驗證；`RESEND_API_KEY` 是只能寄信的金鑰，寄件人用預設的 `noreply@idolca.trade` | 不設金鑰，信寫進 `.data/outbox.jsonl` 並印在終端 | 同左，`test:e2e:email` 從這裡讀連結 |
+| 收藏錢包 | Privy 應用 `cmv7f33v0005i0gl28se4t7nm`，`NEXT_PUBLIC_PRIVY_APP_ID`（還沒設到 Vercel，見已知問題） | `.env.local` 同一個 App ID（Privy 的 Allowed origins 加了 `http://localhost:3000`） | 同左，`test:e2e:privy` 用 Privy 的測試帳號 |
 | 管理員 | `ADMIN_WALLETS` 目前是測試錢包 `5ftP1ayDW7EpPmTXBjdC1dvuoRbdqfEKDX4tRWnFCBZu` | `.env.local` 的 `ADMIN_WALLETS`，金鑰 `.data/admin-test-devnet.json` | 同左 |
 
-- 線上已設的變數：資料庫、`PLATFORM_SECRET_KEY`、`ADMIN_WALLETS`、`CRON_SECRET`（Production 和 Preview）；Arc 主網的 `NEXT_PUBLIC_ARC_NETWORK`、`ARC_PLATFORM_KEY`、`ARC_PAY_ADMIN_ONLY`，以及只有 Production 的 `NEXT_PUBLIC_SITE_URL`（`https://idolca.trade`）和 PostHog 的 `NEXT_PUBLIC_POSTHOG_KEY`。全部變數見 `.env.example`。
+- 線上已設的變數：資料庫、`PLATFORM_SECRET_KEY`、`ADMIN_WALLETS`、`CRON_SECRET`（Production 和 Preview）；Arc 主網的 `NEXT_PUBLIC_ARC_NETWORK`、`ARC_PLATFORM_KEY`、`ARC_PAY_ADMIN_ONLY`，以及只有 Production 的 Resend `RESEND_API_KEY`、`NEXT_PUBLIC_SITE_URL`（`https://idolca.trade`）和 PostHog 的 `NEXT_PUBLIC_POSTHOG_KEY`。全部變數見 `.env.example`。
 - Vercel CLI 在 `C:/Software/VercelCLI/node_modules/.bin/vercel`，已登入並連結專案。每次部署的專屬網址有 Vercel 登入保護，對外只用 idolca.trade。
 - 網域 `idolca.trade` 接在 Vercel 專案上，`www.idolca.trade` 308 轉到主網域。`idolca.vercel.app` 上的頁面由 `src/proxy.ts` 308 轉到主網域，接口不轉：早期鑄造的 NFT 元數據網址（`/api/meta/...`）寫在鏈上，指向它。預覽部署回應 `X-Robots-Tag: noindex`。
 - 改 `next.config.ts` 或執行環境相關的設定，本機跑過不算數：Vercel 和本機的 Node 載入行為不同，要在部署後馬上檢查鏈上接口。出事先 `vercel rollback`；回滾後新的部署不會自動上線，修好後要 `vercel promote`。
@@ -86,6 +90,11 @@
 
 ## 已知問題
 
+- **線上還沒設收藏錢包的 App ID**：部署時把 `NEXT_PUBLIC_PRIVY_APP_ID` 設到 Vercel 的 Production。
+- **刷卡加值只做了程式**：主網上線前要在 Privy 的 Funding 頁開 card onramps；目標市場的韓元、台幣、日圓等要完成 Meld 的 KYB。入金服務不支援測試網，devnet 上測不了。
+- **Privy 的 custom auth 要付費**：所以收藏錢包用驗證碼登入 Privy，換裝置或登入過期時多輸入一次驗證碼。開付費方案後可以改成我們發 JWT，免輸入。
+
+
 - **測試環境和線上共用 devnet 鏈上資產**：本機、端到端測試和線上用同一個平台錢包、同兩個集合和同一個託管程序。
   - 本機和測試鑄的卡也在線上的集合裡，元數據網址指向線上，線上資料庫查不到，錢包裡顯示成沒名字、沒圖片。這些卡都在平台錢包和測試錢包裡，沒有進真實用戶的錢包。
   - 一邊賣掉的卡，另一邊的資料庫不知道；卡包的剩餘張數按鏈上狀態核過，所以只會顯示成已抽走，不會賣出去。
@@ -98,6 +107,7 @@
 
 ## 還沒做
 
-- 法幣入金（MoonPay 這類）、提現和 KYC、Google 和 Apple 登入、郵箱驗證。
+- 提現和 KYC、Google 和 Apple 登入、換綁信箱、收藏錢包匯出私鑰（Privy 有 `useExportWallet`，還沒接）。
+- 交易通知信（成交、出價被超過、寄出、待確認收貨）：寄信模組已有，還沒接上訂單和拍賣。
 - 專輯代購代拆。
 - 主網部署，清單見 tech-stack.md「上線主網」。資金、定價、庫存和法務的待辦見 [business.md](business.md)。
