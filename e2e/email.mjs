@@ -104,7 +104,8 @@ await click("Log out");
 await sleep(1000);
 
 await openLogin();
-await clickInDialog("Log in");
+// 這台裝置登入過，彈窗直接是登入頁（沒有暱稱欄），帳號欄標成 username 給密碼管理器
+check("opens on log-in after signing in here", await waitFor("!document.querySelector('#acc-name') && document.querySelector('#acc-email').autocomplete === 'username'", 5000));
 check("forgot link on log-in", await waitFor(has("Forgot password?"), 5000));
 await clickInDialog("Forgot password?");
 await fill("#acc-email", uiEmail);

@@ -12,6 +12,22 @@ import { CloseButton } from "@/components/ui/Dialog";
 import InfoTip from "@/components/ui/InfoTip";
 
 type Mode = "signup" | "login" | "forgot";
+// 這台裝置上次用哪種方式登入。登入過的人打開彈窗直接是登入頁：預設的註冊表單多一個暱稱欄，密碼管理器會把帳號填進去
+const LAST_LOGIN_KEY = "idolca:last-login";
+const lastLogin = (): "email" | "wallet" | null => {
+  try {
+    const v = localStorage.getItem(LAST_LOGIN_KEY);
+    return v === "email" || v === "wallet" ? v : null;
+  } catch {
+    return null;
+  }
+};
+const rememberLogin = (method: "email" | "wallet") => {
+  try {
+    localStorage.setItem(LAST_LOGIN_KEY, method);
+  } catch {}
+};
+
 type ErrorCode = "invalid_email" | "weak_password" | "email_taken" | "invalid_credentials" | "not_configured" | "rate_limited" | "network";
 
 // 兩種登入方式並列：郵箱 + 密碼給不懂加密的粉絲，錢包簽名給已有 Solana 錢包的人。帳號都存在我們自己的資料庫。
@@ -19,9 +35,10 @@ type ErrorCode = "invalid_email" | "weak_password" | "email_taken" | "invalid_cr
 export default function AccountModal({ configured, onClose: dismiss, onSignedIn }: { configured: boolean; onClose: () => void; onSignedIn: (user: AuthUser) => void }) {
   const t = useTranslations("Auth");
   const locale = useLocale();
-  const [mode, setMode] = useState<Mode>("signup");
-  // 兩種登入方式分頁切換，彈窗高度減半；不懂加密的粉絲是多數，預設郵箱
-  const [method, setMethod] = useState<"email" | "wallet">("email");
+  // 彈窗只在用戶點開後才掛載，初始值可以直接讀 localStorage
+  const [mode, setMode] = useState<Mode>(() => (lastLogin() ? "login" : "signup"));
+  // 兩種登入方式分頁切換，彈窗高度減半；不懂加密的粉絲是多數，預設郵箱，上次用錢包登入的預設錢包
+  const [method, setMethod] = useState<"email" | "wallet">(() => lastLogin() ?? "email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -71,6 +88,7 @@ export default function AccountModal({ configured, onClose: dismiss, onSignedIn 
       const data = (await res.json()) as { user?: AuthUser; error?: ErrorCode };
       if (data.user) {
         track(mode === "signup" ? "signed_up" : "logged_in", { method: "email" });
+        rememberLogin("email");
         if (mode === "signup") setSignedUp(data.user);
         else onSignedIn(data.user);
       } else setError(data.error ?? "network");
@@ -141,7 +159,13 @@ export default function AccountModal({ configured, onClose: dismiss, onSignedIn 
         )}
 
         {method === "wallet" ? (
-          <WalletLogin configured={configured} onSignedIn={onSignedIn} />
+          <WalletLogin
+            configured={configured}
+            onSignedIn={(user) => {
+              rememberLogin("wallet");
+              onSignedIn(user);
+            }}
+          />
         ) : mode === "forgot" && resetSent ? (
           <>
             <p className="mt-5 rounded-xl bg-surface-2 px-3.5 py-3 text-sm leading-relaxed text-ink-2">{t("resetSentBody", { email })}</p>
@@ -162,6 +186,7 @@ export default function AccountModal({ configured, onClose: dismiss, onSignedIn 
                   <input
                     ref={first}
                     id="acc-name"
+                    name="nickname"
                     autoComplete="nickname"
                     maxLength={40}
                     value={displayName}
@@ -179,9 +204,11 @@ export default function AccountModal({ configured, onClose: dismiss, onSignedIn 
                 <input
                   ref={mode !== "signup" ? first : undefined}
                   id="acc-email"
+                  name="email"
                   type="email"
                   required
-                  autoComplete="email"
+                  // 郵箱就是登入帳號：標成 username，密碼管理器才會把它和密碼存成一組、填回這一欄
+                  autoComplete="username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
@@ -204,6 +231,7 @@ export default function AccountModal({ configured, onClose: dismiss, onSignedIn 
                   <div className="relative mt-1.5">
                     <input
                       id="acc-password"
+                      name="password"
                       type={showPassword ? "text" : "password"}
                       required
                       minLength={mode === "signup" ? 8 : undefined}
