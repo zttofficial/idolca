@@ -89,6 +89,8 @@ const openLogin = async () => {
   return false;
 };
 check("open sign-up", await openLogin());
+// 郵箱、密碼是頁面上第一、第二個輸入框，頁面別處的輸入框增減時密碼管理器的欄位編號不會錯位
+check("email and password come first on the page", await evaluate("[...document.querySelectorAll('input')].slice(0, 2).map((e) => e.id).join() === 'acc-email,acc-password'"));
 await fill("#acc-name", "UI Tester");
 await fill("#acc-email", uiEmail);
 await fill("#acc-password", "uipass1234");

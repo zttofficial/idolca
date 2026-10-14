@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocale, useTranslations } from "next-intl";
 import type { Wallet } from "@wallet-standard/base";
 import type { AuthUser } from "./AuthContext";
@@ -49,6 +50,14 @@ export default function AccountModal({ configured, onClose: dismiss, onSignedIn 
   const [signedUp, setSignedUp] = useState<AuthUser>();
   const [resetSent, setResetSent] = useState(false);
   const first = useRef<HTMLInputElement>(null);
+  // 彈窗掛在 body 最前面，郵箱和密碼永遠是頁面上第一、第二個輸入框。Bitwarden 按欄位在頁面上的順序編號，
+  // 掃描後頁面別處多了或少了輸入框（導航列搜尋、市場篩選），它拿舊編號填會整體錯位，把密碼填進郵箱欄。
+  // 和共用的 Dialog 一樣掛到 body 上，也避開導航列 backdrop-filter 切掉 fixed 定位的問題
+  const [host] = useState(() => document.createElement("div"));
+  useLayoutEffect(() => {
+    document.body.prepend(host);
+    return () => host.remove();
+  }, [host]);
   const onClose = useCallback(() => (signedUp ? onSignedIn(signedUp) : dismiss()), [signedUp, onSignedIn, dismiss]);
 
   useEffect(() => {
@@ -107,7 +116,7 @@ export default function AccountModal({ configured, onClose: dismiss, onSignedIn 
   };
   const input = "mt-1.5 w-full rounded-xl border border-line bg-surface px-3.5 py-3 text-sm outline-none focus:border-ink disabled:opacity-50";
 
-  return (
+  return createPortal(
     <div role="dialog" aria-modal="true" aria-label={t(title)} className="fixed inset-0 z-[70] overflow-y-auto overscroll-contain bg-black/50 backdrop-blur-sm" onClick={onClose}>
       {/* 視窗矮時整個彈窗可以捲動，不會被切掉 */}
       <div className="flex min-h-full items-center justify-center p-4">
@@ -130,7 +139,8 @@ export default function AccountModal({ configured, onClose: dismiss, onSignedIn 
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    host,
   );
 
   // 普通函式不當元件用：每次渲染都是同一棵樹，輸入框不會因為重建而失焦
@@ -178,31 +188,12 @@ export default function AccountModal({ configured, onClose: dismiss, onSignedIn 
         ) : (
           <>
             <form onSubmit={submit} className="mt-5 space-y-3">
-              {mode === "signup" && (
-                <div>
-                  <label htmlFor="acc-name" className="text-xs font-medium text-ink-2">
-                    {t("nameLabel")}
-                  </label>
-                  <input
-                    ref={first}
-                    id="acc-name"
-                    name="nickname"
-                    autoComplete="nickname"
-                    maxLength={40}
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder={t("namePlaceholder")}
-                    disabled={!configured}
-                    className={input}
-                  />
-                </div>
-              )}
               <div>
                 <label htmlFor="acc-email" className="text-xs font-medium text-ink-2">
                   {t("emailLabel")}
                 </label>
                 <input
-                  ref={mode !== "signup" ? first : undefined}
+                  ref={first}
                   id="acc-email"
                   name="email"
                   type="email"
@@ -246,6 +237,25 @@ export default function AccountModal({ configured, onClose: dismiss, onSignedIn 
                     </button>
                   </div>
                   {mode === "signup" && <p className="mt-1 text-[11px] text-ink-3">{t("passwordHint")}</p>}
+                </div>
+              )}
+              {/* 暱稱放在密碼後面：註冊、登入切換時郵箱和密碼的位置不變（見上方 host 的說明） */}
+              {mode === "signup" && (
+                <div>
+                  <label htmlFor="acc-name" className="text-xs font-medium text-ink-2">
+                    {t("nameLabel")}
+                  </label>
+                  <input
+                    id="acc-name"
+                    name="nickname"
+                    autoComplete="nickname"
+                    maxLength={40}
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder={t("namePlaceholder")}
+                    disabled={!configured}
+                    className={input}
+                  />
                 </div>
               )}
 
