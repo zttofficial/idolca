@@ -22,9 +22,9 @@ const usd = async (who) => {
   const b = await must("GET", "/api/chain/balance", undefined, who);
   return Math.round((b.usdt + b.usdc) * 100) / 100;
 };
-// 出價：建單、錢包簽付款交易、回報確認。回傳確認的回應（被拒時是錯誤碼）
-async function bid(auctionId, key, who, amountUsd) {
-  const created = await api("POST", "/api/bids", { auctionId, amountUsd }, who);
+// 出價：建單（帶收件地址，address 傳 null 時沿用這場上一口的）、錢包簽付款交易、回報確認。回傳確認的回應（被拒時是錯誤碼）
+async function bid(auctionId, key, who, amountUsd, address = ADDRESS) {
+  const created = await api("POST", "/api/bids", { auctionId, amountUsd, ...(address ? { address } : {}) }, who);
   if (!created.ok) return created;
   return api("POST", `/api/bids/${created.json.id}/confirm`, { signature: await signSend(created.json.tx, key.kp) }, who);
 }
@@ -48,6 +48,7 @@ check("auction live", a.status === "live" && a.startUsd === 10 && a.minNextUsd =
 check("fixed listing refused", (await api("PATCH", `/api/items/${itemA.id}`, { priceUsdt: 5 }, S)).json.error === "in_auction");
 check("seller can't bid", (await api("POST", "/api/bids", { auctionId: a.id, amountUsd: 10 }, S)).json.error === "own_auction");
 const b1Start = await usd(B1);
+check("address required to bid", (await api("POST", "/api/bids", { auctionId: a.id, amountUsd: 10 }, B1)).json.error === "address_required");
 check("bidder 1 bids 10", (await bid(a.id, bidder1, B1, 10)).ok);
 check("bid locks the payment", (await usd(B1)) === b1Start - 10);
 check("below minimum refused", (await api("POST", "/api/bids", { auctionId: a.id, amountUsd: 10.5 }, B2)).json.error === "bid_too_low");
@@ -72,10 +73,10 @@ const orderA = (await must("GET", "/api/orders", undefined, B2)).orders.find((o)
 check("winning bid became a paid escrow order", orderA?.auction && orderA.status === "paid" && orderA.priceUsdt === 11 && orderA.feeUsdt === 0.44, JSON.stringify(orderA));
 check("winner notified", await notified(B2, "auction_won_free", "Auction A"));
 check("seller notified of the sale", await notified(S, "auction_sold_free", "Auction A"));
-check("no ship deadline before the winner's address", orderA.shippingAddress === null && orderA.shipBy === null);
-check("seller can't ship without an address", (await api("POST", `/api/orders/${orderA.id}/ship`, { addressAt: null }, S)).json.error === "no_address");
-await must("POST", `/api/orders/${orderA.id}/address`, { address: ADDRESS }, B2);
-check("seller notified of the address", await notified(S, "order_address", "Auction A"));
+check("winning order carries the bid's address", orderA.shippingAddress?.line1 === ADDRESS.line1 && orderA.shipBy !== null, JSON.stringify(orderA.shippingAddress));
+check("seller sees the winner's address", (await must("GET", "/api/orders", undefined, S)).orders.find((o) => o.id === orderA.id)?.shippingAddress?.line1 === ADDRESS.line1);
+await must("POST", `/api/orders/${orderA.id}/address`, { address: { ...ADDRESS, line2: "Unit 2" } }, B2);
+check("seller notified when the winner changes the address", await notified(S, "order_address", "Auction A"));
 await ship(orderA.id, S);
 check("buyer notified of shipping", await notified(B2, "order_shipped", "Auction A"));
 const received = await must("POST", `/api/orders/${orderA.id}/receive`, undefined, B2);
@@ -107,7 +108,7 @@ check("listing gone", (await api("GET", `/api/listings`)).json.listings.every((l
 step("D. 截止後才付款的出價不被接受，全額退回");
 const itemD = await addItem("Auction D");
 const d = await startAuction(itemD.id, { startUsd: 10 });
-const late = await must("POST", "/api/bids", { auctionId: d.id, amountUsd: 10 }, B1);
+const late = await must("POST", "/api/bids", { auctionId: d.id, amountUsd: 10, address: ADDRESS }, B1);
 const b1BeforeLate = await usd(B1);
 await waitEnd(d);
 const lateConfirm = await api("POST", `/api/bids/${late.id}/confirm`, { signature: await signSend(late.tx, bidder1.kp) }, B1);

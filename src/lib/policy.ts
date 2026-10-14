@@ -5,6 +5,8 @@ export const FEE_BPS = 250;
 // 擔保交易：付款後幾天內要寄出，寄出後幾天自動放款
 export const ESCROW_SHIP_DAYS = 7;
 export const ESCROW_CONFIRM_DAYS = 14;
+// 買家付款後幾天內沒填收件地址，訂單自動取消並全額退款（拍賣得標的訂單也一樣）
+export const ESCROW_ADDRESS_DAYS = 7;
 // 提貨收件地址在寄出後保留幾天
 export const ADDRESS_RETENTION_DAYS = 90;
 // 拍賣：賣家手續費（基點）、起標價下限（USD）、可選的拍賣天數、截止前幾分鐘內有人出價就把截止時間延到出價後同樣的分鐘數。

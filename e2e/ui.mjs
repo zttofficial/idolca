@@ -83,7 +83,8 @@ check("logged in", await waitFor(`!document.querySelector('[role=dialog]') && ${
 step("領測試幣");
 // 網站上沒有領測試幣的入口（介面和主網一致），測試直接呼叫 devnet 的接口；帳號選單裡看得到餘額
 check("faucet", await evaluate(`fetch('/api/chain/faucet', { method: 'POST' }).then((r) => r.ok)`));
-await evaluate(`[...document.querySelectorAll('header button[aria-expanded]')].find(b => !b.hasAttribute('aria-haspopup')).click()`);
+// 帳號選單按鈕上寫著錢包地址的開頭（同一排還有通知鈴，也是 aria-expanded 的按鈕）
+await evaluate(`[...document.querySelectorAll('header button[aria-expanded]')].find(b => b.textContent.includes(${JSON.stringify(buyer.address.slice(0, 4))})).click()`);
 await sleep(800);
 check("funded", await waitFor(has("500 USDT"), 60000));
 await shot("1-account-menu");
@@ -142,6 +143,9 @@ await must("POST", `/api/items/${auctionItem.id}/auction`, { startUsd: 10, days:
 await go(`/listing/${auctionItem.id}`);
 check("auction page", await waitFor(has("Live auction"), 20000));
 check("bid", await click("Place bid"));
+// 這場第一次出價：先填收件地址（帶入上一筆訂單的），再選付款方式
+check("bid address prefilled", await waitFor(`document.querySelector('[role=dialog] [autocomplete="address-line1"]')?.value === "123 Teheran-ro"`));
+check("bid continue to payment", await click("Continue to payment"));
 check("pay with Solana", await clickWhenShown("Solana wallet"));
 check("leading", await waitFor(has("You're the highest bidder.")));
 await shot("5b-auction-leading");

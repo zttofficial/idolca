@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/components/auth/AuthContext";
 import { formatPrice } from "@/lib/fx";
-import { ESCROW_SHIP_DAYS } from "@/lib/policy";
+import { ESCROW_ADDRESS_DAYS, ESCROW_SHIP_DAYS } from "@/lib/policy";
 import type { NotificationView } from "@/lib/notifications";
 
 const POLL_MS = 60_000;
@@ -114,7 +114,7 @@ export default function NotificationBell() {
                     <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.read ? "bg-transparent" : "bg-accent"}`} aria-hidden />
                     <span className="min-w-0 flex-1">
                       <span className="block leading-snug text-ink">
-                        {t(`kind_${n.kind}`, { card: n.params.card || t("aCard"), price: formatPrice(n.params.price ?? 0), days: ESCROW_SHIP_DAYS })}
+                        {t(`kind_${n.kind}`, { card: n.params.card || t("aCard"), price: formatPrice(n.params.price ?? 0), days: ESCROW_SHIP_DAYS, addressDays: ESCROW_ADDRESS_DAYS })}
                       </span>
                       <TimeAgo at={n.at} now={now} />
                     </span>

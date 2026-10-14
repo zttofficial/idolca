@@ -1,14 +1,14 @@
 import "server-only";
-import { ESCROW_CONFIRM_DAYS, ESCROW_SHIP_DAYS, FEE_BPS } from "@/lib/policy";
+import { ESCROW_ADDRESS_DAYS, ESCROW_CONFIRM_DAYS, ESCROW_SHIP_DAYS, FEE_BPS } from "@/lib/policy";
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray, isNotNull, isNull, lt, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or } from "drizzle-orm";
 import { PublicKey } from "@solana/web3.js";
 import type { Db } from "./db";
-import { collectorItems, orders, redemptions, users, type OrderStatus, type PayRail } from "./schema";
+import { auctions, bids, collectorItems, orders, redemptions, users, type OrderStatus, type PayRail } from "./schema";
 import { arcPaymentRequest, arcPayout, settleArcPayment } from "./arc-pay";
 import { buildPayment, payout, transferCollectorNft, verifyPayment } from "./funds";
 import { itemTitle } from "@/lib/item-title";
-import { needsAddressReminder, shipDeadline as deadlineFrom } from "@/lib/escrow";
+import { addressDeadline as addressDeadlineFrom, needsAddressReminder, shipDeadline as deadlineFrom } from "@/lib/escrow";
 import { parseAddress, type ShippingAddress } from "@/lib/shipping";
 import { itemCard, notify, type Notice } from "./notifications";
 
@@ -63,7 +63,8 @@ export async function createOrder(db: Db, buyerId: string, buyerWallet: string, 
   return { id, tx: tx! };
 }
 
-// 期限：付款並有收件地址後 SHIP_DAYS 天內賣家要標記寄出（從兩者較晚的時間起算），否則買家可以取消並退款；
+// 期限：付款後 ADDRESS_DAYS 天內買家沒填收件地址，訂單自動取消並退款；
+// 有地址後 SHIP_DAYS 天內賣家要標記寄出（從付款和填地址兩者較晚的時間起算），否則自動退款；
 // 寄出後 CONFIRM_DAYS 天內買家沒確認也沒申訴，自動放款。測試時可以用環境變數縮短（單位：天，可用小數）
 const DAY = 86_400_000;
 const days = (name: string, fallback: number) => {
@@ -72,6 +73,8 @@ const days = (name: string, fallback: number) => {
 };
 export const SHIP_DAYS = days("ESCROW_SHIP_DAYS", ESCROW_SHIP_DAYS);
 export const CONFIRM_DAYS = days("ESCROW_CONFIRM_DAYS", ESCROW_CONFIRM_DAYS);
+export const ADDRESS_DAYS = days("ESCROW_ADDRESS_DAYS", ESCROW_ADDRESS_DAYS);
+const addressDeadline = (o: OrderRow) => addressDeadlineFrom(o.paidAt, o.shippingAddress ? o.addressAt : null, ADDRESS_DAYS);
 const shipDeadline = (o: OrderRow) => deadlineFrom(o.paidAt, o.shippingAddress ? o.addressAt : null, SHIP_DAYS);
 const releaseAt = (o: OrderRow) => (o.shippedAt ? new Date(o.shippedAt.getTime() + CONFIRM_DAYS * DAY) : null);
 
@@ -186,7 +189,8 @@ export async function refundOrder(db: Db, orderId: string, from: OrderStatus[] =
     { to: "buyer", kind: "order_refunded", price: order.priceCents / 100 },
     { to: "seller", kind: "order_refunded_seller" },
   ]);
-  if (order.auctionId) return { ok: true as const, refundTx };
+  // 早期存進來、低於 1 分的價格不再接受（priceToCents），這種訂單退款後卡只回到收藏冊，不按原價重新上架
+  if (order.auctionId || order.priceCents < 1) return { ok: true as const, refundTx };
   await db
     .update(collectorItems)
     .set({ priceCents: order.priceCents, listedAt: new Date() })
@@ -246,9 +250,8 @@ export async function disputeOrder(db: Db, buyerId: string, orderId: string, rea
   return row ?? null;
 }
 
-// 處理逾時：賣家逾時未寄的退款，買家逾時未確認（也沒申訴）的放款。打開訂單頁時和每天的排程都會跑。
-// 已付款但買家還沒填收件地址的訂單沒有寄出期限，不退款也不放款：錢留在託管，等買家補填（付款 2 天後提醒他一次），
-// 或由後台處理（管理員可以退款）。不自動退款，是因為拍賣得標的人可以靠不填地址變相棄標
+// 處理逾時：買家逾時沒填收件地址的退款（付款 2 天後先提醒一次），賣家逾時未寄的退款，買家逾時未確認（也沒申訴）的放款。
+// 打開訂單頁時和每天的排程都會跑。退款時一口價的卡按原價重新上架，拍賣得標的卡回到賣家的收藏冊（見 refundOrder）
 export async function sweepOrders(db: Db) {
   const now = Date.now();
   const open = await db.select().from(orders).where(inArray(orders.status, ["paid", "shipped"]));
@@ -258,9 +261,11 @@ export async function sweepOrders(db: Db) {
   for (const o of remind) await notifyOrder(db, o, [{ to: "buyer", kind: "order_address_needed" }]);
   for (const o of open) {
     try {
+      const address = addressDeadline(o);
       const ship = shipDeadline(o);
       const release = releaseAt(o);
-      if (o.status === "paid" && ship && now >= ship.getTime() && "ok" in (await refundOrder(db, o.id, ["paid"]))) refunded++;
+      const overdue = (o.status === "paid" && address && now >= address.getTime()) || (o.status === "paid" && ship && now >= ship.getTime());
+      if (overdue && "ok" in (await refundOrder(db, o.id, ["paid"]))) refunded++;
       if (o.status === "shipped" && release && now >= release.getTime() && "ok" in (await releaseOrder(db, o.id, ["shipped"]))) released++;
     } catch (err) {
       console.error("sweep failed", o.id, err);
@@ -297,7 +302,8 @@ export type PublicOrder = {
   transferTx: string | null;
   refundTx: string | null;
   disputeReason: string | null;
-  // 賣家寄出期限（買家還沒填地址時沒有）、自動放款時間（ISO）
+  // 買家填地址的期限（已填時沒有）、賣家寄出期限（買家還沒填地址時沒有）、自動放款時間（ISO）
+  addressBy: string | null;
   shipBy: string | null;
   autoReleaseAt: string | null;
   // 收件地址和填寫時間：只在訂單的買家、賣家和後台看得到（myOrders、adminOrders），刊登頁和公開接口不讀這兩欄
@@ -326,6 +332,7 @@ const toPublic = (o: OrderRow, item: typeof collectorItems.$inferSelect | null, 
   transferTx: o.transferTx,
   refundTx: o.refundTx,
   disputeReason: o.disputeReason,
+  addressBy: o.status === "paid" ? (addressDeadline(o)?.toISOString() ?? null) : null,
   shipBy: shipDeadline(o)?.toISOString() ?? null,
   autoReleaseAt: releaseAt(o)?.toISOString() ?? null,
   shippingAddress: addressOf(o.shippingAddress),
@@ -361,6 +368,16 @@ export async function purgeOrderAddresses(db: Db, cutoff: Date) {
     .set({ shippingAddress: null })
     .where(and(isNotNull(orders.shippingAddress), inArray(orders.status, ["completed", "refunded", "cancelled", "pending"]), lt(orders.updatedAt, cutoff)))
     .returning({ id: orders.id });
+  return rows.length;
+}
+
+// 出價上的收件地址：拍賣不在進行中（成交、流拍、取消、作廢）就清掉。結標時已經清過，這裡兜底取消和作廢的拍賣
+export async function purgeBidAddresses(db: Db) {
+  const rows = await db
+    .update(bids)
+    .set({ shippingAddress: null })
+    .where(and(isNotNull(bids.shippingAddress), inArray(bids.auctionId, db.select({ id: auctions.id }).from(auctions).where(ne(auctions.status, "live")))))
+    .returning({ id: bids.id });
   return rows.length;
 }
 

@@ -9,9 +9,11 @@ import { shortAddress, solscanUrl } from "@/lib/solana/config";
 import Price from "@/components/web3/Price";
 import InfoTip from "@/components/ui/InfoTip";
 import PaymentPicker, { type PayRun } from "@/components/pay/PaymentPicker";
+import AddressDialog from "@/components/shipping/AddressDialog";
+import type { ShippingAddress } from "@/lib/shipping";
 
 // 拍賣面板：自由刊登的刊登頁和金庫卡的卡片頁共用。顯示目前出價、截止倒數、保底價有沒有達到、出價紀錄，
-// 出價時打開和購買一樣的付款方式面板。兩條線的差別（怎麼出價、怎麼取消）由呼叫方傳進來
+// 出價時打開和購買一樣的付款方式面板。兩條線的差別（怎麼出價、怎麼取消、付款前要不要先填收件地址）由呼叫方傳進來
 
 // 現在時間，每秒更新；伺服器渲染和水合前是 null，避免兩邊的倒數對不上
 export function useNow(intervalMs = 1000) {
@@ -40,7 +42,7 @@ export function TimeLeft({ endsAt, className }: { endsAt: string; className?: st
   return <span className={`tabular-nums ${className ?? ""}`}>{text}</span>;
 }
 
-export type AuctionMe = { seller: boolean; leading: boolean; refunding: boolean };
+export type AuctionMe = { seller: boolean; leading: boolean; refunding: boolean; hasAddress?: boolean };
 // 自由刊登的出價者用代號（bidder 是 1、2…）；金庫卡的出價在鏈上，直接列錢包地址（wallet）和出價交易（tx）
 export type BidHistoryEntry = { bidder: string; amountUsd: number; at: string; mine: boolean; wallet?: string; tx?: string };
 
@@ -57,8 +59,9 @@ export default function AuctionPanel({
   me: AuctionMe | null;
   // 出價紀錄，新的在前
   history?: BidHistoryEntry[];
-  // 出價：給定金額回傳付款方式面板要用的動作；arcUnavailableNote 是不能用 Arc 時的說明
-  bid: { run: (amountUsd: number) => PayRun; arcUnavailableNote?: string } | null;
+  // 出價：給定金額（和收件地址）回傳付款方式面板要用的動作；arcUnavailableNote 是不能用 Arc 時的說明。
+  // askAddress：付款前先填收件地址（自由刊登的拍賣，這場還沒填過時），表單和一口價購買同一個
+  bid: { run: (amountUsd: number, address?: ShippingAddress) => PayRun; arcUnavailableNote?: string; askAddress?: boolean } | null;
   // 不能出價時改顯示的內容（登入按鈕、綁錢包提示）
   blocked?: React.ReactNode;
   // 賣家在沒人出價前取消
@@ -70,6 +73,11 @@ export default function AuctionPanel({
   const ended = view.status !== "live" || (now !== null && new Date(view.endsAt).getTime() <= now);
   const [input, setInput] = useState("");
   const [picking, setPicking] = useState<number | null>(null);
+  const [address, setAddress] = useState<ShippingAddress>();
+  const tb = useTranslations("Binder");
+  const tListing = useTranslations("Listing");
+  // 要先填地址、這次還沒填時，出價先打開地址表單，填好才到付款方式面板
+  const needAddress = Boolean(bid?.askAddress && !address);
   const [busy, setBusy] = useState(false);
   const [cancelError, setCancelError] = useState(false);
   const amount = input === "" ? view.minNextUsd : Number(input);
@@ -196,10 +204,19 @@ export default function AuctionPanel({
         </div>
       )}
 
-      {picking !== null && bid && (
+      {picking !== null && bid && needAddress && (
+        <AddressDialog
+          title={tb("addressTitle")}
+          body={tb("addressBody")}
+          submitLabel={tListing("addressContinue")}
+          onSubmit={setAddress}
+          onClose={() => setPicking(null)}
+        />
+      )}
+      {picking !== null && bid && !needAddress && (
         <PaymentPicker
           amountUsd={picking}
-          run={bid.run(picking)}
+          run={bid.run(picking, address)}
           event={{ name: "bid_placed", props: { lane: view.lane } }}
           arcUnavailableNote={bid.arcUnavailableNote}
           describeError={(code) => (t.has(`error_${code}`) ? t(`error_${code}`) : null)}

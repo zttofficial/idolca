@@ -1,7 +1,7 @@
 import { and, isNotNull, lt } from "drizzle-orm";
 import { connection } from "next/server";
 import { getDb } from "@/lib/server/db";
-import { purgeOrderAddresses, sweepOrders } from "@/lib/server/orders";
+import { purgeBidAddresses, purgeOrderAddresses, sweepOrders } from "@/lib/server/orders";
 import { sweepAuctions } from "@/lib/server/auctions";
 import { settleEndedVaultAuctions } from "@/lib/server/vault-chain";
 import { purgeNotifications } from "@/lib/server/notifications";
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     .set({ shippingAddress: null })
     .where(and(isNotNull(redemptions.shippingAddress), lt(redemptions.shippedAt, cutoff)))
     .returning({ cardId: redemptions.cardId });
-  const orderAddressesPurged = await purgeOrderAddresses(db, cutoff);
+  const orderAddressesPurged = (await purgeOrderAddresses(db, cutoff)) + (await purgeBidAddresses(db));
   const now = new Date();
   await db.delete(sessions).where(lt(sessions.expiresAt, now));
   await db.delete(loginNonces).where(lt(loginNonces.expiresAt, now));

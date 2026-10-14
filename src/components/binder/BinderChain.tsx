@@ -28,6 +28,7 @@ type Order = {
   transferTx: string | null;
   refundTx: string | null;
   disputeReason: string | null;
+  addressBy: string | null;
   shipBy: string | null;
   autoReleaseAt: string | null;
   // 收件地址：只有這筆訂單的買家和賣家拿得到
@@ -115,7 +116,9 @@ export function Orders() {
                 {o.status !== "cancelled" && tx(t("txPayout"), o.payoutTx)}
               </p>
               {o.status === "paid" && o.shipBy && <p className="mt-0.5 text-[11px] text-ink-3">{t(o.role === "seller" ? "shipBySeller" : "shipByBuyer", { date: dateOf(o.shipBy) })}</p>}
-              {o.status === "paid" && !o.shippingAddress && <p className="mt-0.5 text-[11px] text-notice-ink">{t(o.role === "seller" ? "awaitingAddress" : "addressNeeded")}</p>}
+              {o.status === "paid" && !o.shippingAddress && o.addressBy && (
+                <p className="mt-0.5 text-[11px] text-notice-ink">{t(o.role === "seller" ? "awaitingAddress" : "addressNeeded", { date: dateOf(o.addressBy) })}</p>
+              )}
               {o.status === "paid" && o.shippingAddress && <AddressBlock address={o.shippingAddress} className="mt-2 max-w-xs" />}
               {o.status === "shipped" && o.autoReleaseAt && <p className="mt-0.5 text-[11px] text-ink-3">{t("autoRelease", { date: dateOf(o.autoReleaseAt) })}</p>}
               {o.status === "disputed" && (

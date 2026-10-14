@@ -312,6 +312,8 @@ export const bids = pgTable("bids", {
   paidAt: timestamp("paid_at", { withTimezone: true }),
   // 成為最高出價的時間；付了款但沒被接受（截止了、被別人搶先）的出價沒有，不列進出價紀錄
   acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  // 出價時填的收件地址 JSON（見 src/lib/shipping.ts）：得標時寫進擔保訂單，拍賣結束後清掉
+  shippingAddress: text("shipping_address"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -632,6 +634,7 @@ export const BOOTSTRAP_SQL = [
   `ALTER TABLE pack_orders ADD COLUMN IF NOT EXISTS payer text`,
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS coin text NOT NULL DEFAULT 'usdt'`,
   `ALTER TABLE bids ADD COLUMN IF NOT EXISTS coin text NOT NULL DEFAULT 'usdt'`,
+  `ALTER TABLE bids ADD COLUMN IF NOT EXISTS shipping_address text`,
   `ALTER TABLE pack_orders ADD COLUMN IF NOT EXISTS coin text NOT NULL DEFAULT 'usdt'`,
   `ALTER TABLE redemptions ADD COLUMN IF NOT EXISTS coin text NOT NULL DEFAULT 'usdt'`,
   `ALTER TABLE pack_orders ADD COLUMN IF NOT EXISTS pay_proof text`,

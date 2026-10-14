@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { needsAddressReminder, shipDeadline } from "@/lib/escrow";
+import { addressDeadline, needsAddressReminder, shipDeadline } from "@/lib/escrow";
 
 const DAY = 86_400_000;
 const paid = new Date("2026-10-01T00:00:00Z");
@@ -17,6 +17,17 @@ describe("shipDeadline", () => {
   it("has no deadline until the order is paid and has an address", () => {
     expect(shipDeadline(paid, null, 7)).toBeNull();
     expect(shipDeadline(null, paid, 7)).toBeNull();
+  });
+});
+
+describe("addressDeadline", () => {
+  it("gives the buyer a fixed number of days after payment to add an address", () => {
+    expect(addressDeadline(paid, null, 7)).toEqual(new Date(paid.getTime() + 7 * DAY));
+  });
+
+  it("has no deadline once the address is in or before payment", () => {
+    expect(addressDeadline(paid, paid, 7)).toBeNull();
+    expect(addressDeadline(null, null, 7)).toBeNull();
   });
 });
 

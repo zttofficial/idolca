@@ -20,7 +20,7 @@
 | 鏈上紀錄、金庫卡拍賣的出價紀錄；時間軸元件和自由刊登的交易紀錄共用 | `/card/[id]` | `src/components/card/ActivityList.tsx`，`src/lib/server/history.ts`，`src/app/api/chain/history`、`src/app/api/chain/bids` |
 | 提貨（凍結、委託銷毀、付運費；後台出貨或取消） | `/card/[id]`、`/admin` | `RedeemDialog.tsx`、`vault-chain.ts`、`src/lib/shipping.ts` |
 | 收件地址表單和顯示（提貨、擔保交易共用，預填上次的地址） | 提貨、購買、訂單、後台 | `src/components/shipping/AddressDialog.tsx`，`src/app/api/account/address`、`src/app/api/orders/[id]/address` |
-| 自由上鏈、自由刊登、擔保交易（買家的收件地址、寄出期限）；刊登頁成交後仍保留（成交狀態、交易紀錄） | 收藏冊、`/listing/[id]` | `src/components/binder/AddCard.tsx`、`src/lib/server/items.ts`、`orders.ts`、`src/lib/escrow.ts`、`src/lib/policy.ts` |
+| 自由上鏈、自由刊登、擔保交易（買家的收件地址，7 天沒填自動退款；寄出期限）；刊登頁成交後仍保留（成交狀態、交易紀錄） | 收藏冊、`/listing/[id]` | `src/components/binder/AddCard.tsx`、`src/lib/server/items.ts`、`orders.ts`、`src/lib/escrow.ts`、`src/lib/policy.ts` |
 | 拍賣（兩條線：自由刊登進平台託管，金庫卡在鏈上）、上架時選一口價或拍賣 | `/listing/[id]`、`/card/[id]`、收藏冊 | `src/lib/server/auctions.ts`、`vault-chain.ts`，`src/lib/auction.ts`，`src/components/auction/`、`src/components/market/ListingControl.tsx` |
 | 寄進金庫、收藏卡轉金庫卡 | 收藏冊、`/admin` | `src/app/api/items/[id]/vault`、`src/app/api/admin/items/[id]/vault`、`VaultConvert.tsx` |
 | 付款方式面板（Solana 錢包、Arc 上的 USDC、信用卡佔位） | 購買按鈕 | `src/components/pay/PaymentPicker.tsx`，標誌在 `public/pay/` |
@@ -55,7 +55,7 @@
 | `vault_cards` | 金庫卡實物資料；持有人和掛單以鏈上為準 |
 | `packs`、`pack_pulls`、`pack_orders` | 卡包、每一抽的紀錄、開包訂單 |
 | `orders` | 自由刊登的擔保訂單（拍賣得標的記著 `auction_id`；買家的收件地址和填寫時間 `shipping_address`、`address_at`）；`orders`、`bids`、`pack_orders`、`redemptions` 都記著付款用的幣種（`coin`） |
-| `auctions`、`bids` | 自由刊登的拍賣和每一口出價（付款、退款、是否被接受）；金庫卡的拍賣在鏈上 |
+| `auctions`、`bids` | 自由刊登的拍賣和每一口出價（付款、退款、是否被接受、拍賣進行中時的收件地址）；金庫卡的拍賣在鏈上 |
 | `redemptions` | 提貨申請和收件地址 |
 | `notifications` | 站內通知（種類、卡名和金額、連結、已讀時間；`key` 去重） |
 | `media` | 照片（原圖和浮水印展示圖） |

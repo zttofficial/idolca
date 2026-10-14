@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/AuthContext";
 import { payAndConfirm, payOnArc } from "@/lib/chain-client";
 import type { EvmWallet } from "@/lib/evm/arc-wallet";
 import { setAuction, type ItemAuction } from "@/lib/items";
+import type { ShippingAddress } from "@/lib/shipping";
 import AuctionPanel, { type AuctionMe, type BidHistoryEntry } from "./AuctionPanel";
 
 type Detail = ItemAuction & { history: BidHistoryEntry[]; me: AuctionMe | null };
@@ -35,15 +36,16 @@ export default function FreeAuction({ itemId, initial }: { itemId: string; initi
     return () => clearInterval(id);
   }, [refresh, settled, detail.status, user?.id]);
 
-  const body = (amountUsd: number) => ({ auctionId: initial.id, amountUsd });
+  // 收件地址只在這場第一次出價時送；之後伺服器沿用上一口的
+  const body = (amountUsd: number, address?: ShippingAddress) => ({ auctionId: initial.id, amountUsd, address });
   const confirmUrl = (id: string) => `/api/bids/${id}/confirm`;
-  const run = (amountUsd: number) => ({
+  const run = (amountUsd: number, address?: ShippingAddress) => ({
     solana: async () => {
-      await payAndConfirm("/api/bids", body(amountUsd), confirmUrl, wallet!);
+      await payAndConfirm("/api/bids", body(amountUsd, address), confirmUrl, wallet!);
       await refresh();
     },
     arc: async (evm: EvmWallet) => {
-      await payOnArc<{ payTx: string }>("/api/bids", body(amountUsd), confirmUrl, evm);
+      await payOnArc<{ payTx: string }>("/api/bids", body(amountUsd, address), confirmUrl, evm);
       await refresh();
     },
   });
@@ -53,7 +55,7 @@ export default function FreeAuction({ itemId, initial }: { itemId: string; initi
       view={detail}
       me={detail.me}
       history={detail.history}
-      bid={user && wallet ? { run } : null}
+      bid={user && wallet ? { run, askAddress: !detail.me?.hasAddress } : null}
       onCancel={
         detail.me?.seller
           ? async () => {

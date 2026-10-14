@@ -10,6 +10,7 @@ import { buildPayment, payout, verifyPayment } from "./funds";
 import { MAX_PRICE, priceToCents } from "./items";
 import { itemCard, notify } from "./notifications";
 import { OPEN_ORDER } from "./orders";
+import type { ShippingAddress } from "@/lib/shipping";
 import { AUCTION_DAYS, AUCTION_EXTEND_MINUTES, AUCTION_FEE_BPS, AUCTION_MIN_START, auctionFeeCents, minNextBid, type AuctionView } from "@/lib/auction";
 
 // 自由刊登的拍賣。每口出價都先付全額進平台錢包（Solana 或 Arc），被超過就退回，得標者早就付了錢，不會棄標；
@@ -121,8 +122,21 @@ export async function voidAuction(db: Db, itemId: string) {
 
 const bidderOf = async (db: Db, bidId: string | null) => (bidId ? ((await db.select({ id: bids.bidderId }).from(bids).where(eq(bids.id, bidId)))[0]?.id ?? null) : null);
 
-// 建立出價：檢查金額和身分，回傳付款內容（Solana 付款交易，或 Arc 上要簽的 USDC 授權）。付款確認後才算出價
-export async function createBid(db: Db, bidderId: string, wallet: string, auctionId: string, amountUsd: unknown, rail: PayRail) {
+// 出價者在這場拍賣上一口出價的收件地址：同一場再出價時沿用，不用每次都填
+async function lastBidAddress(db: Db, auctionId: string, bidderId: string) {
+  const [row] = await db
+    .select({ address: bids.shippingAddress })
+    .from(bids)
+    .where(and(eq(bids.auctionId, auctionId), eq(bids.bidderId, bidderId), isNotNull(bids.shippingAddress)))
+    .orderBy(desc(bids.createdAt))
+    .limit(1);
+  return row?.address ?? null;
+}
+
+// 建立出價：檢查金額和身分，回傳付款內容（Solana 付款交易，或 Arc 上要簽的 USDC 授權）。付款確認後才算出價。
+// 和一口價一樣付款前就要有收件地址（這口帶上的，或同一場上一口的）：得標後擔保訂單直接帶著地址，賣家馬上能寄，
+// 得標者不能靠拖著不填地址佔住這張卡
+export async function createBid(db: Db, bidderId: string, wallet: string, auctionId: string, amountUsd: unknown, rail: PayRail, address: ShippingAddress | null) {
   const amount = priceToCents(amountUsd);
   const [a] = await db.select().from(auctions).where(eq(auctions.id, auctionId));
   if (!a || a.status !== "live" || a.endsAt.getTime() <= Date.now()) return { error: "auction_ended" as const };
@@ -132,10 +146,12 @@ export async function createBid(db: Db, bidderId: string, wallet: string, auctio
     const [high] = await db.select({ bidderId: bids.bidderId }).from(bids).where(eq(bids.id, a.highBidId));
     if (high?.bidderId === bidderId) return { error: "already_leading" as const };
   }
+  const shippingAddress = address ? JSON.stringify(address) : await lastBidAddress(db, auctionId, bidderId);
+  if (!shippingAddress) return { error: "address_required" as const };
   const id = randomUUID();
   // 先組好付款交易再寫出價：餘額不夠時丟錯，不留下付不了款的出價
   const tx = rail === "solana" ? await buildPayment(new PublicKey(wallet), amount / 100, memoOf(id)) : null;
-  await db.insert(bids).values({ id, auctionId, bidderId, bidderWallet: wallet, amountCents: amount, rail });
+  await db.insert(bids).values({ id, auctionId, bidderId, bidderWallet: wallet, amountCents: amount, rail, shippingAddress });
   if (rail === "arc") return { id, arc: arcPaymentRequest(memoOf(id), amount, BID_WINDOW_MS / 1000) };
   return { id, tx: tx! };
 }
@@ -250,14 +266,20 @@ async function settleOne(db: Db, a: AuctionRow) {
           payTx: high.payTx,
           paidAt: now,
           auctionId: a.id,
+          // 得標那口的收件地址；早期沒收地址的出價由得標者在訂單頁補填
+          shippingAddress: high.shippingAddress,
+          addressAt: high.shippingAddress ? now : null,
         })
         .onConflictDoNothing(),
       q.update(bids).set({ status: "won" }).where(and(eq(bids.id, high.id), eq(bids.status, "leading"))),
+      // 地址已經寫進訂單，這場所有出價上的都清掉，沒得標的人的地址不留
+      q.update(bids).set({ shippingAddress: null }).where(eq(bids.auctionId, a.id)),
     ]);
   } else {
     await atomic(db, (q) => [
       q.update(auctions).set({ status: "unsold", updatedAt: now }).where(unchanged),
       ...(high ? [q.update(bids).set({ status: "outbid" }).where(and(eq(bids.id, high.id), eq(bids.status, "leading")))] : []),
+      q.update(bids).set({ shippingAddress: null }).where(eq(bids.auctionId, a.id)),
     ]);
   }
   // 截止時間在這期間被新出價延後時不會結標，按結標後的狀態通知
@@ -329,8 +351,8 @@ export type AuctionDetail = AuctionView & {
   id: string;
   itemId: string;
   history: BidHistoryEntry[];
-  // 看的人自己：是不是賣家、是不是目前最高、有沒有退款中的出價
-  me: { seller: boolean; leading: boolean; refunding: boolean } | null;
+  // 看的人自己：是不是賣家、是不是目前最高、有沒有退款中的出價、這場出價時填過收件地址沒有（填過就不再問）
+  me: { seller: boolean; leading: boolean; refunding: boolean; hasAddress: boolean } | null;
 };
 
 // 拍賣頁的完整狀態：出價紀錄只列被接受過的出價，出價者用代號（出價者 1、2…，按第一次出價的順序）
@@ -351,7 +373,8 @@ export async function auctionDetail(db: Db, auctionId: string, viewerId: string 
       .where(and(eq(bids.auctionId, a.id), eq(bids.bidderId, viewerId), inArray(bids.status, ["outbid", "refunding"]), isNotNull(bids.payTx)))
       .limit(1);
     const leader = rows.find((b) => b.id === a.highBidId);
-    me = { seller: a.sellerId === viewerId, leading: leader?.bidderId === viewerId, refunding: Boolean(owed) };
+    const hasAddress = a.status === "live" && Boolean(await lastBidAddress(db, a.id, viewerId));
+    me = { seller: a.sellerId === viewerId, leading: leader?.bidderId === viewerId, refunding: Boolean(owed), hasAddress };
   }
   return { ...auctionView(a), id: a.id, itemId: a.itemId, history, me };
 }
