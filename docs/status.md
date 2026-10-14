@@ -12,7 +12,7 @@
 
 | 功能 | 頁面 | 主要代碼 |
 |---|---|---|
-| 帳號：郵箱密碼或錢包簽名登入、驗證信箱、忘記和修改密碼、設定錢包（收藏錢包或綁定自己的）、管理員 | 帳號選單、`/verify-email`、`/reset-password` | `src/lib/server/auth.ts`、`email-auth.ts`、`mail.ts`、`wallet-auth.ts`、`admin.ts`，`src/components/auth/`，`scripts/grant-admin.ts` |
+| 帳號：郵箱密碼或錢包簽名登入、驗證信箱、忘記和修改密碼、設定錢包（收藏錢包或綁定自己的；綁定之前登入過的錢包時，那個錢包帳號併進郵箱帳號）、管理員 | 帳號選單、`/verify-email`、`/reset-password` | `src/lib/server/auth.ts`、`account-merge.ts`、`email-auth.ts`、`mail.ts`、`wallet-auth.ts`、`admin.ts`，`src/components/auth/`，`scripts/grant-admin.ts` |
 | 收藏錢包（Privy 嵌入式錢包，用到時才載入）、刷卡加值 | 帳號選單、付款時的「設定錢包」 | `src/lib/privy/bridge.ts`，`src/components/auth/PrivyMount.tsx`、`PrivyHost.tsx`、`WalletSetup.tsx` |
 | 結算代幣（USDT、USDC）、平台代付手續費和帳戶租金 | 所有付款 | `src/lib/coins.ts`，`src/lib/server/vault-chain.ts` 的 `forUser`、`pickCoin`，`funds.ts` |
 | 市場（金庫卡、自由刊登兩條線） | `/market` | `src/components/market/MarketBrowser.tsx`、`src/lib/market.ts`、`src/lib/server/market-data.ts` |

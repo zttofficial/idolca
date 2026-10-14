@@ -1,7 +1,8 @@
 // 郵箱帳號的端到端檢查：註冊寄驗證信、沒驗證不能綁錢包和刊登、驗證連結只能用一次、忘記密碼不透露帳號是否存在、
-// 重設密碼登出其他裝置、改密碼；最後用瀏覽器走一遍註冊、忘記密碼和重設頁並截圖。
+// 綁定之前登入過的錢包時把錢包帳號併進來、重設密碼登出其他裝置、改密碼；最後用瀏覽器走一遍註冊、忘記密碼和重設頁並截圖。
 // 只對沒設 RESEND_API_KEY 的開發伺服器跑：信寫進伺服器目錄的 .data/outbox.jsonl，從這裡讀連結（見 lib.mjs 的 lastMail）
-import { api, check, finish, lastMail, linkIn, openBrowser, photo, sleep, step, tokenIn } from "./lib.mjs";
+import { sign as edSign } from "node:crypto";
+import { api, check, finish, lastMail, linkIn, login, newKey, openBrowser, photo, sleep, step, tokenIn } from "./lib.mjs";
 
 const email = `mail-${Date.now()}@example.com`;
 
@@ -29,6 +30,26 @@ check("new link works without a session", (await api("POST", "/api/auth/verify-e
 check("link single-use", (await api("POST", "/api/auth/verify-email", { token: tokenIn(second) })).json.error === "invalid_token");
 check("account verified", (await api("GET", "/api/auth/me", undefined, A)).json.user.emailVerified === true);
 check("listing allowed now", (await api("PATCH", `/api/items/${kept.json.item.id}`, { priceUsdt: 5 }, A)).ok);
+
+step("綁定之前登入過的錢包：錢包帳號併進郵箱帳號");
+const linkWallet = async (key, cookie) => {
+  const ch = (await api("POST", "/api/auth/wallet/nonce", { address: key.address })).json;
+  return api("POST", "/api/auth/wallet/link", { address: key.address, nonce: ch.nonce, signature: edSign(null, Buffer.from(ch.message), key.privateKey).toString("base64") }, cookie);
+};
+const wallet = newKey();
+const W = await login(wallet);
+const walletCard = await api("POST", "/api/items", { photos: [await photo(40), await photo(240)], group: "IVE", member: "Wonyoung" }, W);
+check("card added on the wallet account", walletCard.ok);
+const linked = await linkWallet(wallet, A);
+check("link merges instead of wallet_taken", linked.ok && linked.json.user.walletAddress === wallet.address, JSON.stringify(linked.json));
+const mine = (await api("GET", "/api/items", undefined, A)).json.items ?? [];
+check("wallet account's card moved over", mine.some((i) => i.id === walletCard.json.item.id) && mine.some((i) => i.id === kept.json.item.id));
+check("old wallet session gone", (await api("GET", "/api/auth/me", undefined, W)).json.user === null);
+const relogin = await login(wallet);
+check("wallet login now opens the email account", (await api("GET", "/api/auth/me", undefined, relogin)).json.user?.email === email);
+const other = await api("POST", "/api/auth/register", { email: `mail-other-${Date.now()}@example.com`, password: "otherpass1", displayName: "Other", locale: "en" });
+await api("POST", "/api/auth/verify-email", { token: tokenIn(lastMail(other.json.user.email)) });
+check("wallet on another email account stays taken", (await linkWallet(wallet, other.cookie)).json.error === "wallet_taken");
 
 step("忘記密碼");
 const B = (await api("POST", "/api/auth/login", { email, password: "oldpass123" })).cookie;
