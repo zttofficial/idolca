@@ -58,8 +58,7 @@ export default function MarketBrowser() {
   const members = q.group && !free ? [...new Set(cards.filter((c) => c.group === q.group).map((c) => c.member))].sort(byName) : [];
   const activeCount = (q.group ? 1 : 0) + (q.member ? 1 : 0) + q.types.length + (q.min !== null || q.max !== null ? 1 : 0) + (q.listedOnly ? 1 : 0);
 
-  const chip = (active: boolean) =>
-    `rounded-full border px-3 py-1.5 text-xs transition ${active ? "border-line-strong bg-ink text-bg" : "border-line text-ink-2 hover:text-ink"}`;
+  const chip = (active: boolean) => `rounded-full border px-3 py-1.5 text-xs transition ${active ? "border-line-strong bg-ink text-bg" : "border-line text-ink-2 hover:text-ink"}`;
 
   const filters = (
     <div className="space-y-6 text-sm">
@@ -184,12 +183,15 @@ export default function MarketBrowser() {
       <div className="mt-6 grid gap-8 lg:grid-cols-[220px_1fr]">
         <aside className={`${showFilters ? "block" : "hidden"} rounded-2xl border border-line bg-surface p-4 lg:sticky lg:top-24 lg:block lg:self-start lg:border-0 lg:p-0`}>{filters}</aside>
 
-        <div>
+        {/* min-w-0：結果欄不被裡面的內容撐寬，窄螢幕上不出現橫向捲動 */}
+        <div className="min-w-0">
           {free && <p className="mb-4 rounded-xl bg-notice-bg px-4 py-3 text-xs leading-relaxed text-notice-ink">{tListing("disclaimerShort")}</p>}
           <p className="text-sm text-ink-2">{t("results", { count: result.total })}</p>
           {(free ? listings === null : vault === null) ? (
             <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 xl:grid-cols-4">
-              {Array.from({ length: 8 }, (_, i) => <TileSkeleton key={i} />)}
+              {Array.from({ length: 8 }, (_, i) => (
+                <TileSkeleton key={i} />
+              ))}
             </div>
           ) : result.items.length ? (
             <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 xl:grid-cols-4">
@@ -207,7 +209,7 @@ export default function MarketBrowser() {
           )}
 
           {result.pages > 1 && (
-            <nav aria-label="pagination" className="mt-12 flex items-center justify-center gap-1.5">
+            <nav aria-label="pagination" className="mt-12 flex flex-wrap items-center justify-center gap-1.5">
               <button
                 disabled={result.page === 1}
                 onClick={() => go({ page: result.page - 1 }, true)}
@@ -215,16 +217,22 @@ export default function MarketBrowser() {
               >
                 {t("prev")}
               </button>
-              {Array.from({ length: result.pages }, (_, i) => i + 1).map((n) => (
-                <button
-                  key={n}
-                  aria-current={n === result.page ? "page" : undefined}
-                  onClick={() => go({ page: n }, true)}
-                  className={`h-9 w-9 rounded-full text-sm tabular-nums ${n === result.page ? "bg-ink font-semibold text-bg" : "hover:bg-surface-2"}`}
-                >
-                  {n}
-                </button>
-              ))}
+              {pageList(result.page, result.pages).map((n, i) =>
+                n === null ? (
+                  <span key={`gap-${i}`} className="w-6 text-center text-sm text-ink-3" aria-hidden>
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={n}
+                    aria-current={n === result.page ? "page" : undefined}
+                    onClick={() => go({ page: n }, true)}
+                    className={`h-9 w-9 rounded-full text-sm tabular-nums ${n === result.page ? "bg-ink font-semibold text-bg" : "hover:bg-surface-2"}`}
+                  >
+                    {n}
+                  </button>
+                ),
+              )}
               <button
                 disabled={result.page === result.pages}
                 onClick={() => go({ page: result.page + 1 }, true)}
@@ -261,4 +269,15 @@ function PriceRange({ min, max, onApply }: { min: number | null; max: number | n
       </div>
     </form>
   );
+}
+
+// 頁碼太多時只列第一頁、最後一頁和目前這頁前後各一頁，跳過的用 null（顯示成 …）
+function pageList(page: number, pages: number): (number | null)[] {
+  const keep = [...new Set([1, page - 1, page, page + 1, pages])].filter((n) => n >= 1 && n <= pages).sort((a, b) => a - b);
+  const out: (number | null)[] = [];
+  keep.forEach((n, i) => {
+    if (i > 0 && n - keep[i - 1] > 1) out.push(null);
+    out.push(n);
+  });
+  return out;
 }
