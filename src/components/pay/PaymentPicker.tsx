@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ARC } from "@/lib/arc";
+import { useAuth } from "@/components/auth/AuthContext";
 import { formatPrice } from "@/lib/fx";
 import { useEvmWallets, type EvmWallet } from "@/lib/evm/arc-wallet";
 import { CloseButton } from "@/components/ui/Dialog";
@@ -33,6 +34,9 @@ export default function PaymentPicker({
   onClose: () => void;
 }) {
   const t = useTranslations("Pay");
+  // Arc 主網只開給管理員時，其他人看不到 Arc 這個選項
+  const { user } = useAuth();
+  const arcPay = ARC && Boolean(user?.arcPay);
   const wallets = useEvmWallets();
   const [step, setStep] = useState<"methods" | "evm">("methods");
   const [busy, setBusy] = useState<"solana" | "arc" | null>(null);
@@ -61,10 +65,17 @@ export default function PaymentPicker({
   };
 
   const message = error ? (describeError?.(error) ?? (t.has(`error_${error}`) ? t(`error_${error}`) : t("error_generic"))) : null;
-  const row = "flex w-full items-center gap-3 rounded-xl border border-line px-4 py-3 text-left transition enabled:hover:border-line-strong enabled:hover:bg-surface-2 disabled:cursor-not-allowed";
+  const row =
+    "flex w-full items-center gap-3 rounded-xl border border-line px-4 py-3 text-left transition enabled:hover:border-line-strong enabled:hover:bg-surface-2 disabled:cursor-not-allowed";
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={t("title")} className="fixed inset-0 z-[70] overflow-y-auto overscroll-contain bg-black/50 backdrop-blur-sm" onClick={() => !busy && onClose()}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("title")}
+      className="fixed inset-0 z-[70] overflow-y-auto overscroll-contain bg-black/50 backdrop-blur-sm"
+      onClick={() => !busy && onClose()}
+    >
       <div className="flex min-h-full items-end justify-center p-4 sm:items-center">
         <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-start justify-between gap-3">
@@ -97,7 +108,7 @@ export default function PaymentPicker({
                 <Logo src="/pay/solana.svg" />
                 <Method name={t("solanaName")} desc={t("solanaDesc")} busy={busy === "solana" ? t("waiting") : null} />
               </button>
-              {ARC && (
+              {arcPay && (
                 <button onClick={chooseArc} disabled={!run.arc || busy !== null} className={`${row} ${run.arc ? "" : "opacity-50"}`}>
                   <Logo src="/pay/arc.svg" />
                   <Method name={t("arcName")} desc={run.arc ? t("arcDesc") : (arcUnavailableNote ?? t("arcDesc"))} busy={busy === "arc" ? t("waiting") : null} />

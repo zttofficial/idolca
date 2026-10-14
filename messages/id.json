@@ -574,7 +574,6 @@
     "nameError": "Nama harus 2–24 karakter.",
     "arcTitle": "USDC di Arc",
     "arcConnect": "Hubungkan dompet untuk lihat saldo",
-    "arcNoWallet": "Tidak ada dompet EVM (seperti MetaMask) di browser ini. Pembayaran di Arc memakainya.",
     "walletLoginTitle": "Masuk dengan dompet Solana",
     "verifyNotice": "Verifikasi email dulu untuk menjual kartu dan menautkan dompet. Kami sudah mengirim tautan ke {email}.",
     "verifyResend": "Kirim ulang email",

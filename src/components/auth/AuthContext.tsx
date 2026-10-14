@@ -16,6 +16,8 @@ export type AuthUser = {
   walletKind: "external" | "privy" | null;
   // 管理員才看得到後台入口；後台接口在伺服器端另外檢查
   isAdmin: boolean;
+  // 能不能用 Arc 付款（Arc 主網只開給管理員時是 false）
+  arcPay: boolean;
   // 已確認滿 18 歲（開卡包要）
   ageConfirmed: boolean;
 };

@@ -60,6 +60,8 @@ export type PublicUser = {
   walletAddress: string | null;
   walletKind: "external" | "privy" | null;
   isAdmin: boolean;
+  // 能不能用 Arc 付款：設了 ARC_PAY_ADMIN_ONLY=1 時只有管理員能用（見 arc-gate.ts），前端照它決定顯不顯示 Arc
+  arcPay: boolean;
   ageConfirmed: boolean;
 };
 
@@ -78,6 +80,7 @@ export const publicUser = (u: typeof users.$inferSelect): PublicUser => ({
   // 錢包登入的帳號沒記種類，一律是自己的錢包
   walletKind: u.walletAddress ? (u.walletKind ?? "external") : null,
   isAdmin: isAdmin(u),
+  arcPay: process.env.ARC_PAY_ADMIN_ONLY !== "1" || isAdmin(u),
   ageConfirmed: u.ageConfirmedAt !== null,
 });
 

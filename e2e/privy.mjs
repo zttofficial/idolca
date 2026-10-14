@@ -34,7 +34,12 @@ const created = !me.walletAddress;
 if (created) {
   await b.go("/");
   check("open account menu", await b.waitFor(`(() => { const x = [...document.querySelectorAll('button')].find(b => b.textContent.includes(${JSON.stringify(me.displayName)})); x?.click(); return !!x; })()`, 20000));
+  check("wallet setup in the menu", await b.waitFor(b.has("Set up a wallet"), 10000));
+  await b.shot("privy-0-menu");
+  await b.click("Set up a wallet");
   check("collection wallet offered", await b.waitFor(b.has("Create my collection wallet"), 10000));
+  // 視窗要整個在畫面裡（從導航列的選單打開時曾被切掉）
+  check("setup dialog fully visible", await b.evaluate("(() => { const p = document.querySelector('[role=dialog] > div > div'); const r = p.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight && r.height > 200; })()"));
   await b.shot("privy-1-setup");
   await b.click("Create my collection wallet");
   const asked = await b.waitFor("!!document.querySelector('input[autocomplete=one-time-code]')", 60000);

@@ -97,9 +97,11 @@ function Bridge() {
         }
         await until(() => Boolean(embedded()));
         const wallet = embedded()!;
-        const { accounts } = await (wallet.features["standard:connect"] as { connect: () => Promise<{ accounts: readonly { address: string }[] }> }).connect();
+        await (wallet.features["standard:connect"] as { connect: () => Promise<unknown> }).connect();
+        // 頁面剛載入、Privy 剛恢復登入時，錢包的帳戶可能晚一點才出現
+        await until(() => wallet.accounts.length > 0);
         registerWallet(wallet as unknown as Wallet);
-        return accounts[0].address;
+        return wallet.accounts[0].address;
       },
       deposit: async (address) => {
         await live.current.depositFunds({ destination: { asset: "usdc", chain: "solana", wallet: address }, fiat: { defaultAmount: "50" } });

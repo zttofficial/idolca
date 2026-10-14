@@ -574,7 +574,6 @@
     "nameError": "Names need 2–24 characters.",
     "arcTitle": "USDC on Arc",
     "arcConnect": "Connect wallet to see balance",
-    "arcNoWallet": "No EVM wallet (such as MetaMask) found in this browser. Arc payments use one.",
     "walletLoginTitle": "Sign in with a Solana wallet",
     "verifyNotice": "Verify your email to sell cards and link a wallet. We sent a link to {email}.",
     "verifyResend": "Resend the email",

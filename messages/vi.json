@@ -574,7 +574,6 @@
     "nameError": "Tên cần 2–24 ký tự.",
     "arcTitle": "USDC trên Arc",
     "arcConnect": "Kết nối ví để xem số dư",
-    "arcNoWallet": "Trình duyệt này không có ví EVM (như MetaMask). Thanh toán trên Arc cần dùng nó.",
     "walletLoginTitle": "Đăng nhập bằng ví Solana",
     "verifyNotice": "Xác minh email để bán thẻ và liên kết ví. Chúng tôi đã gửi liên kết đến {email}.",
     "verifyResend": "Gửi lại email",

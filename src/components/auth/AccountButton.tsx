@@ -12,7 +12,7 @@ import CopyButton from "@/components/ui/CopyButton";
 import { ARC, arcExplorerUrl } from "@/lib/arc";
 import { evmAddress, useEvmWallets } from "@/lib/evm/arc-wallet";
 import InfoTip from "@/components/ui/InfoTip";
-import { WalletSetupPanel } from "./WalletSetup";
+import { WalletSetupDialog } from "./WalletSetup";
 import { CLUSTER } from "@/lib/solana/config";
 import { requestPrivy } from "@/lib/privy/bridge";
 
@@ -25,7 +25,9 @@ export default function AccountButton() {
 
   useEffect(() => {
     if (!open) return;
+    // 從選單打開的彈窗掛在 body 上，點彈窗裡面不算點到選單外面
     const onDown = (e: MouseEvent) => {
+      if ((e.target as Element).closest?.("[role=dialog]")) return;
       if (menu.current && !menu.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("mousedown", onDown);
@@ -59,7 +61,7 @@ export default function AccountButton() {
         <span className="hidden max-w-28 truncate sm:inline">{user.displayName}</span>
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-line bg-surface p-3 text-sm shadow-xl">
+        <div className="absolute right-0 mt-2 max-h-[calc(100dvh-5rem)] w-80 overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface p-3 text-sm shadow-xl">
           <ProfileHeader />
 
           <nav className="mt-2 border-t border-line pt-2">
@@ -89,11 +91,7 @@ export default function AccountButton() {
           </nav>
 
           <div className="mt-2 border-t border-line pt-2">{user.walletAddress ? <WalletBox address={user.walletAddress} collection={user.walletKind === "privy"} /> : <LinkWalletBox />}</div>
-          {ARC && (
-            <div className="mt-2 border-t border-line pt-2">
-              <ArcBalance />
-            </div>
-          )}
+          {ARC && user.arcPay && <ArcBalance />}
 
           {user.email && (
             <div className="mt-2 border-t border-line pt-2">
@@ -223,16 +221,20 @@ function WalletBox({ address, collection }: { address: string; collection: boole
   );
 }
 
-// 還沒有錢包：建立收藏錢包或綁定自己的錢包，之後才能買賣
+// 還沒有錢包：按鈕打開「設定錢包」（建立收藏錢包或綁定自己的錢包），和購買時的提示同一個視窗
 function LinkWalletBox() {
   const t = useTranslations("Auth");
+  const [open, setOpen] = useState(false);
   return (
     <div className="px-3 py-1">
-      <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold">
+      <p className="flex items-center gap-1.5 text-xs font-semibold">
         {t("linkTitle")}
         <InfoTip text={t("linkBody")} label={t("linkTitle")} align="start" />
       </p>
-      <WalletSetupPanel />
+      <button onClick={() => setOpen(true)} className="btn-primary mt-2 w-full rounded-full py-1.5 text-xs font-semibold">
+        {t("walletSetupTitle")}
+      </button>
+      {open && <WalletSetupDialog onClose={() => setOpen(false)} />}
     </div>
   );
 }
@@ -310,8 +312,8 @@ function PasswordBox() {
   );
 }
 
-// Arc 上的 USDC：Arc 付款用的是瀏覽器裡的 EVM 錢包（MetaMask 等），和帳號綁定的 Solana 錢包分開，網站不記它的地址。
-// 錢包已經授權過本站就直接讀餘額；沒授權時按「連接錢包查看」才請求連線，不會自己彈窗
+// Arc 上的 USDC：Arc 付款用的是瀏覽器裡的 EVM 錢包（MetaMask 等），和帳號的 Solana 錢包分開，網站不記它的地址。
+// 只給能用 Arc 付款、瀏覽器裡又有 EVM 錢包的人看；錢包已經授權過本站就直接讀餘額，沒授權時按「連接錢包查看」才請求連線
 function ArcBalance() {
   const t = useTranslations("Auth");
   const wallets = useEvmWallets();
@@ -335,8 +337,9 @@ function ArcBalance() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 只跟著錢包清單重讀
   }, [wallets]);
 
+  if (!wallets.length) return null;
   return (
-    <div className="px-3 py-1">
+    <div className="mt-2 border-t border-line px-3 pt-3 pb-1">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold">{t("arcTitle")}</p>
         {address && <CopyButton text={address} label={t("copy")} copiedLabel={t("copied")} className="text-[11px] font-semibold text-ink-3" />}
@@ -351,12 +354,10 @@ function ArcBalance() {
             <p className="font-semibold tabular-nums">{usdc === null ? "…" : formatStable(usdc, "USDC")}</p>
           </div>
         </>
-      ) : wallets.length ? (
+      ) : (
         <button onClick={() => load(true)} className="btn-secondary mt-2 w-full rounded-full py-1.5 text-xs font-semibold">
           {t("arcConnect")}
         </button>
-      ) : (
-        <p className="mt-1 text-[11px] leading-relaxed text-ink-3">{t("arcNoWallet")}</p>
       )}
     </div>
   );

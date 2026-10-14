@@ -574,7 +574,6 @@
     "nameError": "昵称要 2 到 24 个字。",
     "arcTitle": "Arc 上的 USDC",
     "arcConnect": "连接钱包查看余额",
-    "arcNoWallet": "这个浏览器没有 EVM 钱包（MetaMask 等），Arc 付款要用它。",
     "walletLoginTitle": "用 Solana 钱包登录",
     "verifyNotice": "验证邮箱后才能卖卡和绑定钱包。验证链接已发到 {email}。",
     "verifyResend": "重发验证邮件",

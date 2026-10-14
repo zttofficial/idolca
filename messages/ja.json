@@ -574,7 +574,6 @@
     "nameError": "名前は 2〜24 文字にしてください。",
     "arcTitle": "Arc の USDC",
     "arcConnect": "ウォレットを接続して残高を見る",
-    "arcNoWallet": "このブラウザに EVM ウォレット（MetaMask など）が見つかりません。Arc での支払いに使います。",
     "walletLoginTitle": "Solana ウォレットでログイン",
     "verifyNotice": "カードの出品とウォレット連携にはメール認証が必要です。{email} に認証リンクを送りました。",
     "verifyResend": "認証メールを再送",

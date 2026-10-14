@@ -574,7 +574,6 @@
     "nameError": "닉네임은 2~24자로 해 주세요.",
     "arcTitle": "Arc의 USDC",
     "arcConnect": "지갑을 연결해 잔액 보기",
-    "arcNoWallet": "이 브라우저에 EVM 지갑(MetaMask 등)이 없어요. Arc 결제에 필요해요.",
     "walletLoginTitle": "Solana 지갑으로 로그인",
     "verifyNotice": "카드 판매와 지갑 연결은 이메일 인증 후에 할 수 있어요. {email}(으)로 인증 링크를 보냈어요.",
     "verifyResend": "인증 메일 다시 보내기",

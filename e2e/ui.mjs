@@ -5,7 +5,7 @@
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { BASE, adminKey, api, check, finish, login, must, newKey, photo, sleep, step } from "./lib.mjs";
+import { BASE, adminKey, api, check, finish, login, must, newKey, photo, signSend, sleep, step } from "./lib.mjs";
 
 const OUT = process.env.E2E_OUT ?? ".data/e2e-shots";
 const CHROME = process.env.CHROME_PATH ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
@@ -22,6 +22,10 @@ for (const [i, member] of ["Yeji", "Chaeryeong"].entries()) {
 }
 const seller = newKey();
 const S = await login(seller);
+// 要買的金庫卡由測試自己準備：入庫一張寄存在賣家錢包的卡，賣家用 5 USD 掛單（不靠 devnet 上剛好有便宜的卡）
+const vaultCard = (await must("POST", "/api/admin/vault", { photos: [await photo(200), await photo(20)], group: "ITZY", member: "Lia", album: "BORN TO BE", version: "Album Ver.", rarity: "album", location: "SEL-E2E-04", depositor: seller.address }, AD)).card;
+const listTx = (await must("POST", "/api/chain/vault/tx", { action: "list", cardId: vaultCard.id, priceUsdt: 5 }, S)).tx;
+await must("POST", "/api/chain/vault/confirm", { action: "list", cardId: vaultCard.id, signature: await signSend(listTx, seller.kp) }, S);
 const item = (await must("POST", "/api/items", { photos: [await photo(40), await photo(260)], title: "UI test set", group: "ITZY", member: "Ryujin, Yuna", quantity: 2, source: "pob", priceUsdt: 8 }, S)).item;
 
 // ---- 買家：瀏覽器 + 測試錢包 ----
@@ -85,10 +89,10 @@ check("funded", await waitFor(has("500 USDT"), 60000));
 await shot("1-account-menu");
 
 step("買金庫卡");
-const state = (await must("GET", "/api/chain/state")).cards;
-const [cardId] = Object.entries(state).filter(([, s]) => s.listing).sort((a, b) => a[1].listing.priceUsdt - b[1].listing.priceUsdt)[0];
+const cardId = vaultCard.id;
 await go(`/card/${cardId}`);
-check("buy", await click("Buy now for"));
+// 卡片頁讀到鏈上狀態才出現購買按鈕；金庫卡多、公共節點限流時會慢一點
+check("buy", (await waitFor(has("Buy now for"), 60000)) && (await click("Buy now for")));
 check("pay with Solana", await clickWhenShown("Solana wallet"));
 check("bought", await waitFor(has("Bought. The digital collectible is in your wallet")));
 await shot("2-card-bought");

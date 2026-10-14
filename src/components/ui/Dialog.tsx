@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 
 // 全站共用的關閉鈕：右上角的圓形 ×
@@ -16,7 +17,8 @@ export function CloseButton({ onClick, className = "" }: { onClick: () => void; 
 }
 
 // 彈窗外框：半透明遮罩加置中的面板，右上角 × 關閉，點遮罩或按 Esc 也會關。內容由呼叫方排。
-// layer 是疊放層級：要蓋在別的彈窗上面時（例如付款途中要輸入收藏錢包的驗證碼）給更高的
+// layer 是疊放層級：要蓋在別的彈窗上面時（例如付款途中要輸入收藏錢包的驗證碼）給更高的。
+// 一律掛到 body 上：從導航列的選單裡打開時，導航列的 backdrop-filter 會讓 fixed 定位改成相對導航列，彈窗會被切掉
 export default function Dialog({
   label,
   onClose,
@@ -35,7 +37,7 @@ export default function Dialog({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-  return (
+  return createPortal(
     <div role="dialog" aria-modal="true" aria-label={label} className={`fixed inset-0 ${layer} overflow-y-auto overscroll-contain bg-black/50 backdrop-blur-sm`} onClick={onClose}>
       <div className="flex min-h-full items-center justify-center p-4">
         <div className={`relative w-full rounded-2xl border border-line bg-surface p-6 shadow-2xl ${className}`} onClick={(e) => e.stopPropagation()}>
@@ -43,6 +45,7 @@ export default function Dialog({
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

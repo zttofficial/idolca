@@ -72,7 +72,7 @@ Arc 上的 USDC 原生支援 EIP-3009 的 `transferWithAuthorization`（主網�
 
 - `NEXT_PUBLIC_ARC_NETWORK`：`testnet` 或 `mainnet`，留空時只有 Solana 付款。
 - `ARC_PLATFORM_KEY`：平台熱錢包私鑰，代送授權、付手續費、退款；本機可以用 `ARC_PLATFORM_KEYFILE` 指向金鑰檔。地址必須和 `arc-<網路>.json` 的 `platform` 一致，否則通道不開通。
-- `ARC_PAY_ADMIN_ONLY=1`：只有管理員能用 Arc 付款。
+- `ARC_PAY_ADMIN_ONLY=1`：只有管理員能用 Arc 付款。帳號資料帶 `arcPay`，其他人的付款面板和帳號選單都不出現 Arc；帳號選單的 Arc USDC 餘額也只在瀏覽器裡偵測到 EVM 錢包時顯示。
 - `ARC_RPC_URL`：伺服器端 RPC，留空用官方公共端點。
 
 ## Arc 網路
