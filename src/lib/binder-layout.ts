@@ -10,7 +10,8 @@ export type BinderLayout = {
 };
 
 export const EMPTY_LAYOUT: BinderLayout = { order: [], hidden: [] };
-export const MAX_LAYOUT_KEYS = 3000;
+// 一本冊子最多記這麼多個卡套和拿出冊子的卡；整本一次上傳，一萬個鍵約 0.5 MB
+export const MAX_LAYOUT_KEYS = 10000;
 const KEY_PATTERN = /^(vault|item|card):[\w.-]{1,100}$/;
 export const isLayoutKey = (k: unknown): k is string => typeof k === "string" && KEY_PATTERN.test(k);
 

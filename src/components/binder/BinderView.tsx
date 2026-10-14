@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { MINT_FEE_USD } from "@/lib/policy";
@@ -14,12 +14,15 @@ import InfoTip from "@/components/ui/InfoTip";
 import BinderBook from "./BinderBook";
 import BinderArranger from "./BinderArranger";
 import { arrange, clearPocket, EMPTY_LAYOUT, isTrackedOnly, takeOut } from "@/lib/binder-layout";
-import { OnChainCards, Orders } from "./BinderChain";
+import { Orders } from "./BinderChain";
 import { listVaultCard, refreshChainState, useChainState, useTemplateMarket, useVaultCards, vaultAction } from "@/lib/chain-client";
 import { useAuth } from "@/components/auth/AuthContext";
 import { Thumbs } from "@/components/market/PhotoGallery";
 import { Link } from "@/i18n/navigation";
-import { binderActions, useBinder, type BinderEntry } from "@/lib/binder";
+import { binderActions, useBinder, type Binder, type BinderEntry } from "@/lib/binder";
+import { binderSearch, filterBinder, isNarrowed, parseBinderQuery, type BinderQuery, type FilterFields } from "@/lib/binder-filter";
+import { nameKey } from "@/lib/facets";
+import { ClearFilters, FilterBar, FiltersButton, GroupMemberFilter, SearchField } from "@/components/market/CardFilters";
 import { GROUPS, TEMPLATES, templateCard, type Template } from "@/lib/catalog";
 import type { Card } from "@/lib/cards";
 import { formatPrice } from "@/lib/fx";
@@ -27,56 +30,63 @@ import { shortAddress, solscanUrl } from "@/lib/solana/config";
 import { itemTitle } from "@/lib/item-title";
 import { putOnChain, setAuction, setDescription, setListing, useMyItems, type CollectorItem, requestVault } from "@/lib/items";
 
-type Tab = "binder" | "onchain" | "orders" | "progress" | "wants";
-const TABS: Tab[] = ["binder", "onchain", "orders", "progress", "wants"];
+type Tab = "binder" | "orders" | "progress" | "wants";
+const TABS: Tab[] = ["binder", "orders", "progress", "wants"];
 type Owned = { template: Template; entry: BinderEntry };
-// 卡冊裡的一格：錢包裡的金庫卡、開卡包抽到的卡、自己上鏈的卡，或在圖鑑裡標記「有」的卡款
-type Slot = { kind: "vault"; card: Card } | { kind: "item"; item: CollectorItem } | { kind: "card"; owned: Owned };
+// 卡冊裡的一格：錢包裡的金庫卡、開卡包抽到的卡、自己上鏈的卡，或在圖鑑裡標記「有」的卡款（card 是它畫成卡片的樣子）
+type Slot = { kind: "vault"; card: Card } | { kind: "item"; item: CollectorItem } | { kind: "card"; owned: Owned; card: Card };
 
 export default function BinderView() {
   const t = useTranslations("Binder");
+  const tMarket = useTranslations("Market");
   const binder = useBinder();
   const { user, ready, login } = useAuth();
-  // 頁籤和篩選跟著網址走：?tab=orders 看訂單，?filter=listed 只看在售中（上架很多張時管理價格和下架，不必翻卡冊）。
-  // 帳號選單和付款後的連結直接帶參數過來；已經在收藏冊時點這些連結也會切換
+  // 頁籤和篩選跟著網址走：?tab=orders 看訂單；卡冊頁籤的 ?filter=listed 只看在售中（上架很多張時管理價格和下架，不必翻卡冊），
+  // ?q=、?group=、?member= 搜尋和篩團體、成員（binder-filter.ts）。帳號選單和付款後的連結直接帶參數過來；已經在收藏冊時點這些連結也會切換。
+  // 錢包裡的金庫卡本來就在卡冊裡，舊的 ?tab=onchain（數位珍藏頁籤）不再單獨列，落回卡冊
   const pathname = usePathname();
   const router = useRouter();
   const sp = useSearchParams();
   const wanted = sp.get("tab") as Tab | null;
   const tab: Tab = wanted && TABS.includes(wanted) ? wanted : "binder";
-  const onlyListed = sp.get("filter") === "listed";
-  const setView = (next: { tab?: Tab; listed?: boolean }) => {
-    const params = new URLSearchParams();
+  const query = useMemo(() => parseBinderQuery(new URLSearchParams(sp.toString())), [sp]);
+  const narrowed = isNarrowed(query);
+  const setView = (next: { tab?: Tab; query?: BinderQuery }) => {
     const t2 = next.tab ?? tab;
+    const params = new URLSearchParams();
     if (t2 !== "binder") params.set("tab", t2);
-    if (t2 === "binder" && (next.listed ?? onlyListed)) params.set("filter", "listed");
+    else binderSearch(next.query ?? query, params);
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
   const setTab = (next: Tab) => setView({ tab: next });
-  const setOnlyListed = (listed: boolean) => setView({ listed });
+  const setQuery = (patch: Partial<BinderQuery>) => setView({ query: { ...query, ...patch } });
   const vault = useVaultCards();
   // 鏈上持有人隨時會變（開卡包、買賣），每次進收藏冊都重讀一次
   useEffect(() => {
     refreshChainState();
   }, []);
-  // 錢包裡的金庫卡（買來的、開卡包抽到的、寄存的）
-  const myVault = user?.walletAddress && vault ? vault.filter((c) => c.owner === user.walletAddress) : [];
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [selectedVault, setSelectedVault] = useState<string | null>(null);
   const [arranging, setArranging] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const items = useMyItems();
-
-  // 按圖鑑順序排列，和實體卡冊一樣同一團體、同一成員的卡放在一起
-  const owned: Owned[] = TEMPLATES.filter((x) => binder.have[x.id]).map((template) => ({ template, entry: binder.have[template.id] }));
+  const wallet = user?.walletAddress ?? undefined;
+  // 卡冊的內容和擺法只在資料變了才重算，翻頁、開關詳情不重算（幾千張卡時每次重畫都跑一遍會卡）。
+  // 內容和擺法分開算：整理時只改擺法，卡的資料（content.byKey）不變，整理畫面裡沒動到的頁就不必重畫
+  const content = useMemo(() => binderContent(vault, wallet, items, binder.have), [vault, wallet, items, binder.have]);
+  const model = useMemo(() => arrangeBinder(content, binder.layout), [content, binder.layout]);
+  // 「全部」篩冊子裡的卡（照擺放順序），「在售中」篩在售的卡（拿出冊子的也算）
+  const filtered = useMemo(() => filterBinder(query.listed ? model.listedSlots : model.ordered, slotFields, query), [model, query]);
   const wants = TEMPLATES.filter((x) => binder.want[x.id]);
 
   // 學 Pocamarket 和 KOCA：收藏冊要登入才用；未登入時介紹功能，不擺一堆空卡位
   if (!ready) return <div className="mt-10 h-64 animate-pulse rounded-2xl bg-surface-2" />;
-  if (!user) return <LoggedOut localCount={owned.length + wants.length} onLogin={login} />;
+  if (!user) return <LoggedOut localCount={model.owned.length + wants.length} onLogin={login} />;
 
-  if (!owned.length && !wants.length && !items.length && !user.walletAddress) {
+  const { owned, byKey, layout, pockets, hiddenCards, present, inBinder, listedSlots } = model;
+  if (!owned.length && !wants.length && !items.length && !wallet) {
     return (
       <div className="mt-10 rounded-2xl border border-dashed border-line px-6 py-16 text-center">
         <h2 className="text-lg font-semibold">{t("emptyTitle")}</h2>
@@ -91,26 +101,9 @@ export default function BinderView() {
     );
   }
 
-  // 真實的卡排前面：錢包裡的金庫卡、開卡包抽到的卡、自己上鏈的卡；圖鑑標記的卡款裡，有照片的排在沒照片的前面
-  const withPhoto = (o: Owned) => Boolean(ownedCard(o, vault).image);
-  const slots: Slot[] = [
-    ...myVault.map((card) => ({ kind: "vault" as const, card })),
-    ...items.map((item) => ({ kind: "item" as const, item })),
-    ...[...owned.filter(withPhoto), ...owned.filter((o) => !withPhoto(o))].map((o) => ({ kind: "card" as const, owned: o })),
-  ];
-  const byKey = new Map(slots.map((slot) => [slotKey(slot), slot]));
-  const keys = [...byKey.keys()];
-  // 只是記錄的卡不進卡盒；以前被拿出冊子的放回冊子
-  const { layout, pockets, hiddenCards } = arrange(keys, {
-    ...binder.layout,
-    hidden: binder.layout.hidden.filter((k) => !isTrackedOnly(k)),
-  });
-  const present = new Set(keys);
   // 統計冊子裡的卡（拿出收藏冊的不算）：張數、團體數、自己上鏈的張數，跟著擺法即時變
-  const inBinder = slots.filter((slot) => !hiddenCards.includes(slotKey(slot)));
   const copies = inBinder.reduce((n, slot) => n + (slot.kind === "card" ? slot.owned.entry.count : 1), 0);
-  const groupOf = (slot: Slot) => (slot.kind === "vault" ? slot.card.group : slot.kind === "item" ? slot.item.group : slot.owned.template.group);
-  const groups = new Set(inBinder.map((slot) => groupOf(slot).trim().toLowerCase())).size;
+  const groups = new Set(inBinder.map((slot) => nameKey(slotFields(slot).group))).size;
   const stats = [
     { label: t("statCards"), value: copies.toLocaleString("en-US") },
     { label: t("statGroups"), value: groups },
@@ -125,14 +118,27 @@ export default function BinderView() {
     binderActions.setLayout(clearPocket(layout, key));
     binderActions.setCount(key.slice("card:".length), 0);
   };
-  // 在售中：一口價刊登或拍賣中的收藏卡，和在託管程序裡掛單或拍賣的金庫卡（拿出冊子的也算）
-  const listedSlots = slots.filter(
-    (slot) => (slot.kind === "vault" && (slot.card.status === "listed" || slot.card.status === "auction")) || (slot.kind === "item" && (slot.item.priceUsdt !== null || Boolean(slot.item.auction))),
-  );
+  // 整理收藏冊是在整本冊子的卡套上換位置，只能在「全部」且沒有搜尋、篩選時進行；篩選結果是擠在一起的連續卡套，在上面換位置對不上原本的卡套
+  const canArrange = !query.listed && !narrowed;
+  const arrangingNow = arranging && canArrange;
+  const activeFilters = (query.group ? 1 : 0) + (query.member ? 1 : 0);
   const openSlot = (slot: Slot) => (slot.kind === "vault" ? setSelectedVault(slot.card.id) : slot.kind === "item" ? setSelectedItem(slot.item.id) : setSelected(slot.owned.template.id));
   const selectedOwned = owned.find((o) => o.template.id === selected);
   const pickedItem = items.find((i) => i.id === selectedItem);
-  const pickedVault = myVault.find((c) => c.id === selectedVault);
+  const pickedVault = model.myVault.find((c) => c.id === selectedVault);
+  // 篩選結果和在售中：同一本書，卡套連續排；在售中的卡套上掛售價
+  const shownSlots = filtered.shown.map((slot) =>
+    query.listed ? (
+      <span key={slotKey(slot)} className="relative block h-full w-full">
+        <SlotView slot={slot} onSelect={() => openSlot(slot)} />
+        <span className="pointer-events-none absolute right-1 bottom-1 rounded-md bg-ink/80 px-1.5 py-0.5 text-[10px] font-semibold text-white tabular-nums">
+          {formatPrice(slot.kind === "vault" ? slot.card.priceUsdt : slot.kind === "item" ? (slot.item.priceUsdt ?? 0) : 0)}
+        </span>
+      </span>
+    ) : (
+      <SlotView key={slotKey(slot)} slot={slot} onSelect={() => openSlot(slot)} />
+    ),
+  );
 
   return (
     <div className="mt-8">
@@ -150,7 +156,7 @@ export default function BinderView() {
 
       <div className="mt-8 flex items-center justify-between gap-4 border-b border-line">
         <div role="tablist" className="flex gap-6 overflow-x-auto">
-          {TABS.filter((id) => user || (id !== "onchain" && id !== "orders")).map((id) => (
+          {TABS.map((id) => (
             <button
               key={id}
               role="tab"
@@ -173,76 +179,105 @@ export default function BinderView() {
 
       {tab === "binder" && (
         <div className="mt-6">
-          <div className="mb-4 flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
-            {!arranging && (
-              <div role="radiogroup" aria-label={t("filterLabel")} className="mr-auto flex rounded-full bg-surface-2 p-1 text-xs font-semibold">
-                {([false, true] as const).map((only) => (
-                  <button
-                    key={String(only)}
-                    role="radio"
-                    aria-checked={onlyListed === only}
-                    onClick={() => setOnlyListed(only)}
-                    className={`rounded-full px-3 py-1 transition ${onlyListed === only ? "bg-surface text-ink shadow-sm" : "text-ink-3 hover:text-ink"}`}
-                  >
-                    {only ? t("filterListed", { count: listedSlots.length }) : t("filterAll")}
-                  </button>
-                ))}
-              </div>
+          {/* 錢包裡的金庫卡（買來的、盲盒抽到的）跟著鏈上持有放進卡冊；沒綁錢包時提醒一句 */}
+          {!wallet && <p className="mb-4 text-xs text-ink-3">{t("vaultCardsNeedWallet")}</p>}
+          <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+            {!arrangingNow && (
+              <>
+                {/* 搜尋和團體 → 成員篩選跟市場同一套元件和比對規則（CardFilters.tsx、facets.ts） */}
+                <SearchField value={query.q} onSearch={(q) => setQuery({ q })} placeholder={t("searchPlaceholder")} />
+                <FiltersButton always active={activeFilters} open={showFilters} onClick={() => setShowFilters((v) => !v)} />
+                {/* 面板收起時也看得到、清得掉生效中的篩選 */}
+                {!showFilters && activeFilters > 0 && <ClearFilters onClick={() => setQuery({ group: null, member: null })} />}
+                <div role="radiogroup" aria-label={t("filterLabel")} className="flex rounded-full bg-surface-2 p-1 text-xs font-semibold">
+                  {([false, true] as const).map((only) => (
+                    <button
+                      key={String(only)}
+                      role="radio"
+                      aria-checked={query.listed === only}
+                      onClick={() => setQuery({ listed: only })}
+                      className={`rounded-full px-3 py-1 transition ${query.listed === only ? "bg-surface text-ink shadow-sm" : "text-ink-3 hover:text-ink"}`}
+                    >
+                      {only ? t("filterListed", { count: listedSlots.length }) : t("filterAll")}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
-            {!arranging && !onlyListed && hiddenCards.length > 0 && <p className="text-xs text-ink-3">{t("hiddenCount", { count: hiddenCards.length })}</p>}
-            {arranging && (
+            {arrangingNow && (
               <button onClick={() => window.confirm(t("resetLayoutConfirm")) && binderActions.setLayout(EMPTY_LAYOUT)} className="mr-auto text-xs text-ink-3 hover:text-ink">
                 {t("resetLayout")}
               </button>
             )}
-            {!onlyListed && (
+            {canArrange && (
               <button
-                onClick={() => setArranging(!arranging)}
-                className={`rounded-full px-4 py-1.5 text-sm font-semibold ${arranging ? "btn-primary" : "border border-line hover:bg-surface-2"}`}
+                onClick={() => setArranging(!arrangingNow)}
+                className={`rounded-full px-4 py-1.5 text-sm font-semibold ${arrangingNow ? "btn-primary" : "border border-line hover:bg-surface-2"}`}
               >
-                {t(arranging ? "arrangeDone" : "arrange")}
+                {t(arrangingNow ? "arrangeDone" : "arrange")}
               </button>
             )}
           </div>
-          {onlyListed ? (
-            listedSlots.length ? (
-              // 和卡冊同一本書，只放在售中的卡，卡套上掛售價
-              <BinderBook
-                slots={listedSlots.map((slot) => (
-                  <span key={slotKey(slot)} className="relative block h-full w-full">
-                    <SlotView slot={slot} onSelect={() => openSlot(slot)} />
-                    <span className="pointer-events-none absolute right-1 bottom-1 rounded-md bg-ink/80 px-1.5 py-0.5 text-[10px] font-semibold text-white tabular-nums">
-                      {formatPrice(slot.kind === "vault" ? slot.card.priceUsdt : slot.kind === "item" ? (slot.item.priceUsdt ?? 0) : 0)}
-                    </span>
-                  </span>
-                ))}
-              />
-            ) : (
-              <p className="rounded-2xl border border-dashed border-line px-6 py-12 text-center text-sm text-ink-3">{t("listedEmpty")}</p>
-            )
-          ) : arranging ? (
+          {arrangingNow ? (
             <BinderArranger
               layout={layout}
               pockets={pockets}
               boxed={hiddenCards}
               present={present}
+              version={byKey}
               render={(key) => <SlotView slot={byKey.get(key)!} />}
               onChange={binderActions.setLayout}
               onTakeOut={takeOutCard}
             />
           ) : (
-            <BinderBook
-              slots={pockets.map((key, i) => {
-                const slot = key ? byKey.get(key) : undefined;
-                if (!slot) return null;
-                return <SlotView key={i} slot={slot} onSelect={() => openSlot(slot)} />;
-              })}
-            />
+            <>
+              {/* 篩選面板放在卡冊上方、預設收起，卡冊保持整個寬度 */}
+              <FilterBar open={showFilters}>
+                <GroupMemberFilter
+                  layout="chips"
+                  groups={filtered.facets.groups}
+                  total={filtered.facets.total}
+                  members={filtered.facets.members}
+                  group={query.group}
+                  member={query.member}
+                  onGroup={(group) => setQuery({ group, member: null })}
+                  onMember={(member) => setQuery({ member })}
+                />
+                {activeFilters > 0 && <ClearFilters onClick={() => setQuery({ group: null, member: null })} />}
+              </FilterBar>
+
+              {/* min-w-0：卡冊不被裡面的內容撐寬，窄螢幕上不出現橫向捲動 */}
+              <div className="min-w-0">
+                {/* 面板收起時也看得出篩的是哪個團體、成員 */}
+                {narrowed && (
+                  <p className="mb-3 text-sm text-ink-2">
+                    {query.group && <span className="font-semibold text-ink">{[query.group, query.member].filter(Boolean).join(" › ")} · </span>}
+                    {tMarket("results", { count: filtered.shown.length })}
+                  </p>
+                )}
+                {!narrowed && !query.listed && hiddenCards.length > 0 && <p className="mb-3 text-xs text-ink-3">{t("hiddenCount", { count: hiddenCards.length })}</p>}
+                {narrowed || query.listed ? (
+                  shownSlots.length ? (
+                    // 換了篩選條件就回到第一頁
+                    <BinderBook key={binderSearch(query).toString()} slots={shownSlots} />
+                  ) : (
+                    <p className="rounded-2xl border border-dashed border-line px-6 py-12 text-center text-sm text-ink-3">{narrowed ? tMarket("noResults") : t("listedEmpty")}</p>
+                  )
+                ) : (
+                  <BinderBook
+                    slots={pockets.map((key, i) => {
+                      const slot = key ? byKey.get(key) : undefined;
+                      if (!slot) return null;
+                      return <SlotView key={i} slot={slot} onSelect={() => openSlot(slot)} />;
+                    })}
+                  />
+                )}
+              </div>
+            </>
           )}
         </div>
       )}
 
-      {tab === "onchain" && <OnChainCards />}
       {tab === "orders" && <Orders />}
       {tab === "progress" && <Progress />}
 
@@ -307,13 +342,72 @@ export default function BinderView() {
   );
 }
 
+// 卡冊裡有哪些卡：只依賴卡的資料，資料沒變時由 useMemo 沿用
+function binderContent(vault: Card[] | null, wallet: string | undefined, items: CollectorItem[], have: Binder["have"]) {
+  // 錢包裡的金庫卡（買來的、開卡包抽到的、寄存的）
+  const myVault = wallet && vault ? vault.filter((c) => c.owner === wallet) : [];
+  // 按圖鑑順序排列，和實體卡冊一樣同一團體、同一成員的卡放在一起
+  const owned: Owned[] = TEMPLATES.filter((x) => have[x.id]).map((template) => ({ template, entry: have[template.id] }));
+  const tracked = owned.map((o) => ({ kind: "card" as const, owned: o, card: ownedCard(o, vault) }));
+  // 真實的卡排前面：錢包裡的金庫卡、開卡包抽到的卡、自己上鏈的卡；圖鑑標記的卡款裡，有照片的排在沒照片的前面
+  const slots: Slot[] = [
+    ...myVault.map((card) => ({ kind: "vault" as const, card })),
+    ...items.map((item) => ({ kind: "item" as const, item })),
+    ...tracked.filter((s) => s.card.image),
+    ...tracked.filter((s) => !s.card.image),
+  ];
+  const byKey = new Map(slots.map((slot) => [slotKey(slot), slot]));
+  return {
+    myVault,
+    owned,
+    slots,
+    byKey,
+    present: new Set(byKey.keys()),
+    // 在售中：一口價刊登或拍賣中的收藏卡，和在託管程序裡掛單或拍賣的金庫卡（拿出冊子的也算）
+    listedSlots: slots.filter(
+      (slot) =>
+        (slot.kind === "vault" && (slot.card.status === "listed" || slot.card.status === "auction")) ||
+        (slot.kind === "item" && (slot.item.priceUsdt !== null || Boolean(slot.item.auction))),
+    ),
+  };
+}
+
+// 照擺法把卡放進卡套
+function arrangeBinder(content: ReturnType<typeof binderContent>, saved: Binder["layout"]) {
+  const { slots, byKey } = content;
+  // 只是記錄的卡不進卡盒；以前被拿出冊子的放回冊子
+  const arranged = arrange([...byKey.keys()], { ...saved, hidden: saved.hidden.filter((k) => !isTrackedOnly(k)) });
+  const hidden = new Set(arranged.hiddenCards);
+  return {
+    ...content,
+    ...arranged,
+    inBinder: slots.filter((slot) => !hidden.has(slotKey(slot))),
+    // 冊子裡的卡照擺放順序排好，篩選結果用這個順序
+    ordered: arranged.pockets.flatMap((key) => (key ? [byKey.get(key)!] : [])),
+  };
+}
+
+// 篩選比對的欄位：和市場的搜尋範圍一致，金庫卡多比對編號，收藏卡多比對標題
+function slotFields(slot: Slot): FilterFields {
+  if (slot.kind === "vault") {
+    const c = slot.card;
+    return { group: c.group, member: c.member, text: `${c.group} ${c.member} ${c.album} ${c.version} ${c.serial}` };
+  }
+  if (slot.kind === "item") {
+    const i = slot.item;
+    return { group: i.group, member: i.member, text: `${itemTitle(i)} ${i.group} ${i.member} ${i.album ?? ""} ${i.version ?? ""}` };
+  }
+  const x = slot.owned.template;
+  return { group: x.group, member: x.member, text: `${x.group} ${x.member} ${x.album} ${x.version}` };
+}
+
 // 卡在擺法裡的鍵（見 binder-layout.ts）
 const slotKey = (slot: Slot) => (slot.kind === "vault" ? `vault:${slot.card.id}` : slot.kind === "item" ? `item:${slot.item.id}` : `card:${slot.owned.template.id}`);
 
 function SlotView({ slot, onSelect }: { slot: Slot; onSelect?: () => void }) {
   if (slot.kind === "vault") return <VaultSlot card={slot.card} onSelect={onSelect} />;
   if (slot.kind === "item") return <ItemPocket item={slot.item} onSelect={onSelect} />;
-  return <Pocket owned={slot.owned} onSelect={onSelect} />;
+  return <Pocket owned={slot.owned} card={slot.card} onSelect={onSelect} />;
 }
 
 function ownedCard({ template, entry }: Owned, vault: Card[] | null) {
@@ -321,11 +415,11 @@ function ownedCard({ template, entry }: Owned, vault: Card[] | null) {
   return entry.photo ? { ...base, image: { front: entry.photo } } : base;
 }
 
-// 手動標記的卡（不是鏈上的卡）：虛線框加「僅記錄」標籤，和真卡分開。沒給 onSelect 時只畫卡面，不能點（整理收藏冊時用）
-function Pocket({ owned, onSelect }: { owned: Owned; onSelect?: () => void }) {
+// 手動標記的卡（不是鏈上的卡）：虛線框加「僅記錄」標籤，和真卡分開。沒給 onSelect 時只畫卡面，不能點（整理收藏冊時用）。
+// card 由收藏冊算好傳進來，不在每個卡套裡各自讀一次金庫清單
+function Pocket({ owned, card, onSelect }: { owned: Owned; card: Card; onSelect?: () => void }) {
   const t = useTranslations("Binder");
   const tRarity = useTranslations("Rarity");
-  const card = ownedCard(owned, useVaultCards());
   const Tag = onSelect ? "button" : "span";
   return (
     <Tag onClick={onSelect} className="group relative block h-full w-full overflow-hidden rounded-[5px] border-2 border-dashed border-ink-3/60 text-left">
@@ -465,7 +559,15 @@ function ItemSheet({ item, onClose, onTakeOut }: { item: CollectorItem; onClose:
           )}
 
           <div className="mt-auto flex flex-col gap-2 pt-5">
-            {!fake && !item.vaultRequestedAt && (
+            {item.openOrder && (
+              <div className="rounded-xl bg-surface-2 px-4 py-3 text-sm">
+                <p className="font-semibold">{t("itemSold", { status: t(`orderStatus_${item.openOrder}`) })}</p>
+                <Link href="/binder?tab=orders" className="mt-1 inline-block text-xs font-semibold text-accent-ink hover:underline">
+                  {t("goToOrders")}
+                </Link>
+              </div>
+            )}
+            {!fake && !item.vaultRequestedAt && !item.openOrder && (
               <ListingControl
                 lane="free"
                 price={item.priceUsdt}
@@ -478,7 +580,7 @@ function ItemSheet({ item, onClose, onTakeOut }: { item: CollectorItem; onClose:
                 onCancelAuction={() => setAuction(item.id, null)}
               />
             )}
-            {!fake && !item.auction && <VaultRequest item={item} />}
+            {!fake && !item.auction && !item.openOrder && <VaultRequest item={item} />}
             <TakeOutButton onTakeOut={onTakeOut} />
           </div>
         </div>

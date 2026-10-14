@@ -66,6 +66,13 @@ export const check = (label, ok, extra = "") => {
   console.log(`  ${ok ? "✓" : "✗"} ${label} ${extra}`);
   if (!ok) failures++;
 };
+// 擔保訂單用的收件地址（格式見 src/lib/shipping.ts）
+export const ADDRESS = { name: "Kim Minji", phone: "+82 10 1234 5678", line1: "123 Teheran-ro", line2: "", city: "Seoul", region: "", postal: "06134", country: "KR" };
+// 賣家標記寄出：帶上他看到的收件地址的填寫時間
+export async function ship(orderId, seller) {
+  const o = (await must("GET", "/api/orders", undefined, seller)).orders.find((x) => x.id === orderId);
+  return must("POST", `/api/orders/${orderId}/ship`, { addressAt: o?.addressAt }, seller);
+}
 export const step = (s) => console.log(`\n▶ ${s}`);
 export function finish() {
   console.log(failures ? `\n${failures} FAILED` : "\nALL PASSED");

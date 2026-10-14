@@ -9,6 +9,7 @@ import { arcPaymentRequest, arcPayout, settleArcPayment } from "./arc-pay";
 import { buildPayment, payout, verifyPayment } from "./funds";
 import { MAX_PRICE, priceToCents } from "./items";
 import { itemCard, notify } from "./notifications";
+import { OPEN_ORDER } from "./orders";
 import { AUCTION_DAYS, AUCTION_EXTEND_MINUTES, AUCTION_FEE_BPS, AUCTION_MIN_START, auctionFeeCents, minNextBid, type AuctionView } from "@/lib/auction";
 
 // 自由刊登的拍賣。每口出價都先付全額進平台錢包（Solana 或 Arc），被超過就退回，得標者早就付了錢，不會棄標；
@@ -29,7 +30,6 @@ const AUCTION_DAY_MS = seconds("AUCTION_DAY_SECONDS", DAY);
 export const BID_WINDOW_MS = seconds("AUCTION_BID_WINDOW_SECONDS", 2 * 60_000);
 const EXTEND_MS = seconds("AUCTION_EXTEND_SECONDS", AUCTION_EXTEND_MINUTES * 60_000);
 const memoOf = (bidId: string) => `idolca:bid:${bidId}`;
-const OPEN_ORDER: (typeof orders.$inferSelect.status)[] = ["paid", "shipped", "disputed", "refunding", "releasing"];
 
 export function auctionView(a: AuctionRow, now = Date.now()): AuctionView {
   return {

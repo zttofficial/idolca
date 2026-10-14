@@ -3,7 +3,7 @@
 // 網站要用縮短的時間啟動（拍賣選 1 天時實際只有 AUCTION_DAY_SECONDS 秒）：
 //   PGLITE_DIR=.data/pglite-e2e AUCTION_DAY_SECONDS=25 AUCTION_BID_WINDOW_SECONDS=6 AUCTION_EXTEND_SECONDS=4 npm run dev
 // 用法：npm run test:e2e:auction
-import { adminKey, api, check, finish, login, must, newKey, photo, signSend, sleep, step } from "./lib.mjs";
+import { ADDRESS, adminKey, api, check, finish, login, must, newKey, photo, ship, signSend, sleep, step } from "./lib.mjs";
 
 const AD = await login(adminKey());
 const seller = newKey();
@@ -72,7 +72,11 @@ const orderA = (await must("GET", "/api/orders", undefined, B2)).orders.find((o)
 check("winning bid became a paid escrow order", orderA?.auction && orderA.status === "paid" && orderA.priceUsdt === 11 && orderA.feeUsdt === 0.44, JSON.stringify(orderA));
 check("winner notified", await notified(B2, "auction_won_free", "Auction A"));
 check("seller notified of the sale", await notified(S, "auction_sold_free", "Auction A"));
-await must("POST", `/api/orders/${orderA.id}/ship`, undefined, S);
+check("no ship deadline before the winner's address", orderA.shippingAddress === null && orderA.shipBy === null);
+check("seller can't ship without an address", (await api("POST", `/api/orders/${orderA.id}/ship`, { addressAt: null }, S)).json.error === "no_address");
+await must("POST", `/api/orders/${orderA.id}/address`, { address: ADDRESS }, B2);
+check("seller notified of the address", await notified(S, "order_address", "Auction A"));
+await ship(orderA.id, S);
 check("buyer notified of shipping", await notified(B2, "order_shipped", "Auction A"));
 const received = await must("POST", `/api/orders/${orderA.id}/receive`, undefined, B2);
 check("seller paid after receipt", Boolean(received.payoutTx));

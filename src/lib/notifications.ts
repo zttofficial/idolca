@@ -9,6 +9,8 @@ export const NOTIFICATION_KINDS = [
   "auction_unsold",
   "auction_lost",
   "order_paid",
+  "order_address",
+  "order_address_needed",
   "vault_sold",
   "order_shipped",
   "order_completed",

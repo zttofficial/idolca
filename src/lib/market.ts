@@ -4,6 +4,7 @@
 
 import type { Listing } from "./items";
 import type { Card, Rarity } from "./cards";
+import { groupMemberFacets, hit, inGroupMember, sameName } from "./facets";
 
 export const PAGE_SIZE = 12;
 export const SORTS = ["newest", "priceAsc", "priceDesc"] as const;
@@ -63,15 +64,6 @@ export function toSearch(q: MarketQuery) {
 const forSale = (c: Card) => c.status === "listed" || c.status === "auction";
 const listingPrice = (l: Listing) => l.priceUsdt ?? l.auction?.highUsd ?? l.auction?.startUsd ?? 0;
 
-// 關鍵字比對，多個詞要全部命中
-function hit(hay: string, q: string) {
-  if (!q) return true;
-  const h = hay.toLowerCase();
-  return q
-    .toLowerCase()
-    .split(/\s+/)
-    .every((w) => h.includes(w));
-}
 // 金庫卡比對團體、成員、專輯、版本、編號
 const matches = (card: Card, q: string) => hit(`${card.group} ${card.member} ${card.album} ${card.version} ${card.serial}`, q);
 
@@ -85,8 +77,7 @@ export function applyQuery(cards: Card[], q: MarketQuery) {
   const filtered = cards.filter(
     (c) =>
       matches(c, q.q) &&
-      (!q.group || c.group === q.group) &&
-      (!q.member || c.member === q.member) &&
+      inGroupMember(c, q.group, q.member) &&
       (!q.types.length || q.types.includes(c.rarity)) &&
       // 價格篩選只看在售的卡（價格是鏈上的掛單價或拍賣的目前出價）
       ((q.min === null && q.max === null) || (forSale(c) && (q.min === null || c.priceUsdt >= q.min) && (q.max === null || c.priceUsdt <= q.max))) &&
@@ -111,7 +102,7 @@ export function applyListingQuery(listings: Listing[], q: MarketQuery) {
   const filtered = listings.filter(
     (l) =>
       hit(`${l.title ?? ""} ${l.group} ${l.member} ${l.album ?? ""} ${l.version ?? ""}`, q.q) &&
-      (!q.group || l.group.toLowerCase() === q.group.toLowerCase()) &&
+      (!q.group || sameName(l.group, q.group)) &&
       (q.min === null || listingPrice(l) >= q.min) &&
       (q.max === null || listingPrice(l) <= q.max),
   );
@@ -123,14 +114,8 @@ export function applyListingQuery(listings: Listing[], q: MarketQuery) {
   return paginate(sorted, q.page);
 }
 
-// 各團體、成員在目前其他篩選條件下的數量，用來在選項旁顯示
+// 各團體、成員在目前其他篩選條件下的數量，用來在選項旁顯示（和收藏冊共用 facets.ts 的算法）
 export function facetCounts(cards: Card[], q: MarketQuery) {
   const base = cards.filter((c) => matches(c, q.q) && (!q.types.length || q.types.includes(c.rarity)) && (!q.listedOnly || forSale(c)));
-  const groups = new Map<string, number>();
-  const members = new Map<string, number>();
-  for (const c of base) {
-    groups.set(c.group, (groups.get(c.group) ?? 0) + 1);
-    if (q.group && c.group === q.group) members.set(c.member, (members.get(c.member) ?? 0) + 1);
-  }
-  return { groups, members };
+  return groupMemberFacets(base, (c) => c, q.group);
 }

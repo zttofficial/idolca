@@ -3,6 +3,7 @@ import { collectorItems } from "@/lib/server/schema";
 import { MAX_DESCRIPTION, priceToCents, publicItem } from "@/lib/server/items";
 import { requireUser, unverifiedEmail } from "@/lib/server/require-user";
 import { liveAuction } from "@/lib/server/auctions";
+import { openOrders } from "@/lib/server/orders";
 import { notifyIndexNow } from "@/lib/server/indexnow";
 
 // 持有人改自己的卡：
@@ -28,6 +29,8 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/items/[id]
     // 已申請寄進金庫（或已轉成金庫卡）的不能再刊登
     if (price !== null && (current.vaultRequestedAt || current.vaultCardId)) return Response.json({ error: "in_vault" }, { status: 409 });
     if (price !== null && (await liveAuction(a.db, id))) return Response.json({ error: "in_auction" }, { status: 409 });
+    // 已經賣出、訂單還沒結束的卡不能重新刊登
+    if (price !== null && (await openOrders(a.db, [id])).size) return Response.json({ error: "in_order" }, { status: 409 });
     changes.priceCents = price;
     changes.listedAt = price === null ? null : (current.listedAt ?? new Date());
   }

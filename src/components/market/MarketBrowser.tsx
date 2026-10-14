@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import HoloTile from "./HoloTile";
@@ -10,6 +10,8 @@ import { openAddCard } from "@/components/binder/AddCard";
 import { useListings, useVaultCards } from "@/lib/chain-client";
 import Select from "@/components/ui/Select";
 import { LANES, RARITIES, SORTS, applyListingQuery, applyQuery, facetCounts, parseQuery, toSearch, type MarketQuery } from "@/lib/market";
+import { countOf, sameName } from "@/lib/facets";
+import { ClearFilters, FilterPanel, FiltersButton, GroupMemberFilter, SearchField } from "./CardFilters";
 
 // 市場頁：金庫卡 / 自由刊登兩條線；搜尋、團體 → 成員、類型、價格、只看在售、排序、分頁，狀態全在網址裡
 export default function MarketBrowser() {
@@ -38,62 +40,23 @@ export default function MarketBrowser() {
     if (scroll) top.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  // 搜尋框：輸入停頓 300ms 再更新網址
-  const [text, setText] = useState(q.q);
-  const lastSent = useRef(q.q);
-  useEffect(() => {
-    if (text === lastSent.current) return;
-    const timer = setTimeout(() => {
-      lastSent.current = text;
-      go({ q: text.trim() });
-    }, 300);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- go 依賴最新的 q，只在輸入變化時觸發
-  }, [text]);
-
   const byName = (a: string, b: string) => a.localeCompare(b, "en", { sensitivity: "base" });
   const groups = free ? [...new Set((listings ?? []).map((l) => l.group))].sort(byName) : [...new Set(cards.map((c) => c.group))].sort(byName);
-  const groupCount = (g: string | null) =>
-    free ? (listings ?? []).filter((l) => !g || l.group === g).length : g ? (facets.groups.get(g) ?? 0) : [...facets.groups.values()].reduce((a, b) => a + b, 0);
-  const members = q.group && !free ? [...new Set(cards.filter((c) => c.group === q.group).map((c) => c.member))].sort(byName) : [];
+  const groupCount = (g: string | null) => (free ? (listings ?? []).filter((l) => !g || sameName(l.group, g)).length : g ? countOf(facets.groups, g) : facets.total);
+  const members = q.group && !free ? [...new Set(cards.filter((c) => sameName(c.group, q.group!)).map((c) => c.member))].sort(byName) : [];
   const activeCount = (q.group ? 1 : 0) + (q.member ? 1 : 0) + q.types.length + (q.min !== null || q.max !== null ? 1 : 0) + (q.listedOnly ? 1 : 0);
 
-  const chip = (active: boolean) => `rounded-full border px-3 py-1.5 text-xs transition ${active ? "border-line-strong bg-ink text-bg" : "border-line text-ink-2 hover:text-ink"}`;
-
   const filters = (
-    <div className="space-y-6 text-sm">
-      <div>
-        <p className="text-xs font-semibold text-ink-3">{t("group")}</p>
-        <ul className="mt-2 space-y-0.5">
-          {[null, ...groups].map((g) => (
-            <li key={g ?? "all"}>
-              <button
-                onClick={() => go({ group: g, member: null })}
-                className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left ${q.group === g ? "bg-surface-3 font-semibold" : "hover:bg-surface-2"}`}
-              >
-                <span>{g ?? t("allGroups")}</span>
-                <span className="text-xs text-ink-3 tabular-nums">{groupCount(g)}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {members.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-ink-3">{t("member")}</p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <button onClick={() => go({ member: null })} className={chip(!q.member)}>
-              {t("allMembers")}
-            </button>
-            {members.map((m) => (
-              <button key={m} onClick={() => go({ member: m })} className={chip(q.member === m)}>
-                {m} <span className="opacity-60 tabular-nums">{facets.members.get(m) ?? 0}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+    <>
+      <GroupMemberFilter
+        groups={groups.map((g) => ({ name: g, count: groupCount(g) }))}
+        total={groupCount(null)}
+        members={members.map((m) => ({ name: m, count: countOf(facets.members, m) }))}
+        group={q.group}
+        member={q.member}
+        onGroup={(group) => go({ group, member: null })}
+        onMember={(member) => go({ member })}
+      />
 
       {!free && (
         <div>
@@ -123,12 +86,8 @@ export default function MarketBrowser() {
         </label>
       )}
 
-      {activeCount > 0 && (
-        <button onClick={() => go({ group: null, member: null, types: [], min: null, max: null, listedOnly: false })} className="text-xs font-semibold text-accent-ink hover:underline">
-          {t("clear")}
-        </button>
-      )}
-    </div>
+      {activeCount > 0 && <ClearFilters onClick={() => go({ group: null, member: null, types: [], min: null, max: null, listedOnly: false })} />}
+    </>
   );
 
   return (
@@ -150,24 +109,8 @@ export default function MarketBrowser() {
         ))}
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <label className="flex min-w-60 flex-1 items-center gap-2 rounded-full border border-line bg-surface px-4 py-2.5 focus-within:border-ink">
-          <svg viewBox="0 0 20 20" className="h-4 w-4 text-ink-3" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-            <circle cx="9" cy="9" r="6" />
-            <path d="m14 14 4 4" />
-          </svg>
-          <input
-            type="search"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            aria-label={t("searchPlaceholder")}
-            className="w-full bg-transparent text-sm outline-none placeholder:text-ink-3"
-          />
-        </label>
-        <button onClick={() => setShowFilters((v) => !v)} className="rounded-full border border-line px-4 py-2.5 text-sm font-medium lg:hidden">
-          {t("filters")}
-          {activeCount > 0 && <span className="ml-1.5 rounded-full bg-accent px-1.5 text-[11px] font-bold text-white">{activeCount}</span>}
-        </button>
+        <SearchField value={q.q} onSearch={(text) => go({ q: text })} placeholder={t("searchPlaceholder")} />
+        <FiltersButton active={activeCount} onClick={() => setShowFilters((v) => !v)} />
         <label className="flex items-center gap-2 text-sm text-ink-2">
           <span className="hidden sm:inline">{t("sortLabel")}</span>
           <Select
@@ -181,7 +124,7 @@ export default function MarketBrowser() {
       </div>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[220px_1fr]">
-        <aside className={`${showFilters ? "block" : "hidden"} rounded-2xl border border-line bg-surface p-4 lg:sticky lg:top-24 lg:block lg:self-start lg:border-0 lg:p-0`}>{filters}</aside>
+        <FilterPanel open={showFilters}>{filters}</FilterPanel>
 
         {/* min-w-0：結果欄不被裡面的內容撐寬，窄螢幕上不出現橫向捲動 */}
         <div className="min-w-0">

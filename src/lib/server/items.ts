@@ -3,7 +3,8 @@ import { randomUUID } from "node:crypto";
 import { TEMPLATES } from "@/lib/catalog";
 import { and, count, desc, eq, inArray, isNotNull, ne, or } from "drizzle-orm";
 import type { Db } from "./db";
-import { auctions, collectorItems, orders, users } from "./schema";
+import { auctions, collectorItems, orders, users, type OrderStatus } from "./schema";
+import type { Listing, ListingDeal, ListingEvent } from "@/lib/items";
 import { auctionView, latestAuctions, recentAuction, type AuctionRow } from "./auctions";
 
 export type ItemRow = typeof collectorItems.$inferSelect;
@@ -40,16 +41,26 @@ export function publicItem(r: ItemRow) {
   };
 }
 
-// 自由刊登對外顯示的內容：收藏品加上賣家暱稱，不含賣家帳號資料。拍賣中的卡附上拍賣狀態，上架時間用開拍時間
-export const publicListing = (r: ItemRow, seller: string, auction?: AuctionRow | null) => {
+// 自由刊登對外顯示的內容：收藏品加上賣家暱稱，不含賣家帳號資料。拍賣中的卡附上拍賣狀態，上架時間用開拍時間；
+// 不在售的卡附上最近一筆成交
+export const publicListing = (r: ItemRow, seller: string, auction?: AuctionRow | null, deal?: ListingDeal | null) => {
   const item = publicItem(r);
   return {
     ...item,
     listedAt: item.listedAt ?? auction?.createdAt.toISOString() ?? null,
     seller,
     auction: auction ? { ...auctionView(auction), id: auction.id } : null,
+    deal: deal ?? null,
+    vaultCardId: r.vaultCardId,
   };
 };
+
+// 算成交的訂單：付了款、沒退款的（pending 是沒付款就放棄的，refunded、cancelled 是退了款的）
+const DEAL_STATUSES: OrderStatus[] = ["paid", "shipped", "disputed", "refunding", "releasing", "completed"];
+const dealOf = (o: typeof orders.$inferSelect): ListingDeal =>
+  o.status === "completed"
+    ? { status: "sold", priceUsdt: o.priceCents / 100, at: o.updatedAt.toISOString() }
+    : { status: "trading", priceUsdt: o.priceCents / 100, at: (o.paidAt ?? o.updatedAt).toISOString() };
 
 // 在售：一口價刊登中，或拍賣進行中。假卡一律不算
 const liveAuctionItems = (db: Db) => db.select({ id: auctions.itemId }).from(auctions).where(eq(auctions.status, "live"));
@@ -82,7 +93,7 @@ export function matchTemplate(group: string, member: string, album?: string | nu
 
 export const newItemId = () => randomUUID();
 
-// 在售的自由刊登（一口價和拍賣中），新的在前；假卡即使有價格也不出現
+// 在售的自由刊登（一口價和拍賣中），新的在前；假卡即使有價格也不出現。成交了的卡不列在市場上，刊登頁的網址一直有效
 export async function listListings(db: Db, limit = 200) {
   const rows = await db
     .select({ item: collectorItems, seller: users.displayName })
@@ -99,20 +110,50 @@ export async function listListings(db: Db, limit = 200) {
     .sort((a, b) => (b.listedAt ?? "").localeCompare(a.listedAt ?? ""));
 }
 
-// 刊登頁：一口價刊登中、拍賣中，或拍賣成交、流拍不到 7 天的卡（出價的人回來看得到結果）
+// 刊登頁：在售的卡（一口價、拍賣中，拍賣成交或流拍不到 7 天的也顯示拍賣結果），
+// 以及不在售但有公開紀錄的卡：成交過、做成了數位珍藏（NFT 元數據連到這頁）、或已寄進金庫轉成金庫卡。
+// 只存在收藏冊裡、沒成交過也沒做成數位珍藏的卡不公開
 export async function getListing(db: Db, id: string) {
   const [r] = await db
     .select({ item: collectorItems, seller: users.displayName })
     .from(collectorItems)
     .innerJoin(users, eq(users.id, collectorItems.userId))
     .where(eq(collectorItems.id, id));
-  if (!r || r.item.verification !== "unverified") return null;
-  const auction = r.item.priceCents === null ? await recentAuction(db, id) : null;
-  if (r.item.priceCents === null && !auction) return null;
-  return publicListing(r.item, r.seller, auction);
+  if (!r) return null;
+  const genuine = r.item.verification === "unverified";
+  const auction = genuine && r.item.priceCents === null ? await recentAuction(db, id) : null;
+  if (genuine && (r.item.priceCents !== null || auction)) return publicListing(r.item, r.seller, auction);
+  const [last] = await db
+    .select()
+    .from(orders)
+    .where(and(eq(orders.itemId, id), inArray(orders.status, DEAL_STATUSES)))
+    .orderBy(desc(orders.createdAt))
+    .limit(1);
+  if (!last && !r.item.mintTx && !r.item.vaultCardId) return null;
+  return publicListing(r.item, r.seller, null, last ? dealOf(last) : null);
 }
 
-export type Listing = ReturnType<typeof publicListing>;
+// 刊登頁的交易紀錄，新的在前：目前的一口價刊登、每場拍賣（開拍、流拍、取消）、每筆放款完成的成交
+export async function listingHistory(db: Db, listing: Listing): Promise<ListingEvent[]> {
+  const [rounds, sales] = await Promise.all([
+    db.select().from(auctions).where(eq(auctions.itemId, listing.id)),
+    db
+      .select()
+      .from(orders)
+      .where(and(eq(orders.itemId, listing.id), eq(orders.status, "completed"))),
+  ]);
+  const events: ListingEvent[] = [];
+  if (listing.priceUsdt !== null && listing.listedAt) events.push({ type: "list", date: listing.listedAt, priceUsdt: listing.priceUsdt });
+  for (const a of rounds) {
+    events.push({ type: "auction", date: a.createdAt.toISOString(), priceUsdt: a.startCents / 100 });
+    if (a.status === "unsold" || a.status === "cancelled") events.push({ type: a.status === "unsold" ? "unsold" : "cancelAuction", date: a.updatedAt.toISOString() });
+  }
+  for (const o of sales) {
+    const tx = o.transferTx ? { chain: "solana" as const, signature: o.transferTx } : o.payTx ? { chain: o.rail, signature: o.payTx } : undefined;
+    events.push({ type: "sale", date: o.updatedAt.toISOString(), priceUsdt: o.priceCents / 100, tx });
+  }
+  return events.sort((a, b) => b.date.localeCompare(a.date));
+}
 
 // 刊登頁的賣家卡片：暱稱、加入時間、成交筆數、在售件數、有沒有綁錢包，以及這位賣家的其他刊登（最多 4 則）。
 // 只給公開資訊，不含郵箱和錢包地址

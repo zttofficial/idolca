@@ -44,12 +44,20 @@ export type CollectorItem = {
   createdAt: string;
   // 拍賣中時的拍賣狀態（收藏冊只帶進行中的；刊登頁也帶剛結束的）
   auction?: ItemAuction | null;
+  // 收藏冊：已賣出、訂單還沒結束時的訂單狀態
+  openOrder?: "paid" | "shipped" | "disputed" | "refunding" | "releasing" | null;
 };
 
 export type ItemAuction = AuctionView & { id: string };
 
-// 自由刊登：收藏品加上賣家暱稱
-export type Listing = CollectorItem & { seller: string; auction: ItemAuction | null };
+// 不在售的卡最近一筆成交：trading 買家已付款、還沒放款，sold 已放款；at 是付款或放款的時間
+export type ListingDeal = { status: "trading" | "sold"; priceUsdt: number; at: string };
+
+// 自由刊登：收藏品加上賣家暱稱。不在售的卡帶最近一筆成交；寄進金庫鑑定過的帶金庫卡 id
+export type Listing = CollectorItem & { seller: string; auction: ItemAuction | null; deal: ListingDeal | null; vaultCardId: string | null };
+
+// 刊登頁的交易紀錄。成交連到 NFT 轉給買家的交易，沒上鏈的卡連到買家的付款交易（可能在 Arc 上）
+export type ListingEvent = { type: "list" | "auction" | "unsold" | "cancelAuction" | "sale"; date: string; priceUsdt?: number; tx?: { chain: "solana" | "arc"; signature: string } };
 
 
 const EMPTY: CollectorItem[] = [];

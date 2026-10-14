@@ -94,8 +94,26 @@ export const isTemplateOf = (c: Pick<Card, "group" | "member" | "album" | "versi
   norm(c.group) === norm(t.group) && norm(c.member) === norm(t.member) && norm(c.album) === norm(t.album) && norm(c.version) === norm(t.version);
 
 // 卡款渲染成卡片：金庫裡有這個卡款就用那張卡（帶實拍照片），否則畫佔位卡面
+// 每份金庫清單建一次「卡款 → 卡」的索引（有照片的優先，同樣有無照片時取清單裡較前的），之後每次查都是 O(1)；
+// 收藏冊幾百個卡款對上幾千張金庫卡時，逐一掃清單會變成 O(n²)
+const templateKey = (c: Pick<Card, "group" | "member" | "album" | "version">) => JSON.stringify([c.group, c.member, c.album, c.version].map(norm));
+const indexes = new WeakMap<Card[], Map<string, Card>>();
+function templateIndex(vault: Card[]) {
+  let index = indexes.get(vault);
+  if (!index) {
+    index = new Map();
+    for (const c of vault) {
+      const key = templateKey(c);
+      const prev = index.get(key);
+      if (!prev || (c.image && !prev.image)) index.set(key, c);
+    }
+    indexes.set(vault, index);
+  }
+  return index;
+}
+
 export function templateCard(t: Template, vault?: Card[] | null): Card {
-  const match = vault?.find((c) => c.image && isTemplateOf(c, t)) ?? vault?.find((c) => isTemplateOf(c, t));
+  const match = vault && templateIndex(vault).get(templateKey(t));
   if (match) return match;
   return {
     id: t.id,

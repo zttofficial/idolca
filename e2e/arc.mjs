@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { PublicKey } from "@solana/web3.js";
 import { createPublicClient, http, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { adminKey, api, check, conn, finish, login, must, newKey, photo, step } from "./lib.mjs";
+import { ADDRESS, adminKey, api, check, conn, finish, login, must, newKey, photo, step } from "./lib.mjs";
 import { ARC_USDC, arcTypedData } from "../src/lib/arc.ts";
 
 const RPC = process.env.E2E_ARC_RPC ?? "https://rpc.testnet.arc.io";
@@ -69,7 +69,7 @@ step("擔保交易在 Arc 上付款，後台退款退回 Arc");
 const seller = newKey();
 const S = await login(seller);
 const item = (await must("POST", "/api/items", { photos: [await photo(200), await photo(20)], title: "Arc Escrow", group: "ITZY", member: "Yuna", quantity: 1, source: "pob", priceUsdt: 0.2 }, S)).item;
-const escrow = await must("POST", "/api/orders", { itemId: item.id, rail: "arc" }, B);
+const escrow = await must("POST", "/api/orders", { itemId: item.id, rail: "arc", address: ADDRESS }, B);
 check("escrow order returns an authorization", escrow.arc?.value === "200000");
 const escrowPaid = await must("POST", `/api/orders/${escrow.id}/confirm`, await sign(escrow.arc), B);
 check("escrow paid on Arc", /^0x[0-9a-f]{64}$/.test(escrowPaid.payTx));

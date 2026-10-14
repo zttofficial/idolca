@@ -5,7 +5,8 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/components/auth/AuthContext";
 import { formatPrice } from "@/lib/fx";
-import { formatAddress, type ShippingAddress } from "@/lib/shipping";
+import type { ShippingAddress } from "@/lib/shipping";
+import { AddressBlock } from "@/components/shipping/AddressDialog";
 import VaultIntake from "./VaultIntake";
 import VaultGrade from "./VaultGrade";
 import AdminPacks from "./AdminPacks";
@@ -45,6 +46,8 @@ type Order = {
   disputeReason: string | null;
   shipBy: string | null;
   autoReleaseAt: string | null;
+  // 買家的收件地址，申訴時核對寄到哪裡
+  shippingAddress: ShippingAddress | null;
 };
 
 // 後台：管理員帳號登入後使用，權限由伺服器按會話檢查
@@ -158,6 +161,8 @@ export default function AdminConsole() {
                       {tx(tb("txPayout"), o.payoutTx)}
                       {tx(tb("txRefund"), o.refundTx, o.rail === "arc")}
                     </p>
+                    {open &&
+                      (o.shippingAddress ? <AddressBlock address={o.shippingAddress} className="mt-2 max-w-xs" /> : <p className="mt-1 text-xs text-notice-ink">{t("orderNoAddress")}</p>)}
                   </div>
                   {open && (
                     <div className="flex gap-2">
@@ -195,7 +200,7 @@ export default function AdminConsole() {
           <ul className="mt-4 divide-y divide-line rounded-2xl border border-line bg-surface">
             {redemptions.map((r) => {
               const shipped = r.shipTx || r.onChain?.burned;
-              const address = r.shippingAddress ? formatAddress(JSON.parse(r.shippingAddress) as ShippingAddress) : null;
+              const address = r.shippingAddress ? (JSON.parse(r.shippingAddress) as ShippingAddress) : null;
               return (
                 <li key={r.cardId} className="flex flex-wrap items-center gap-4 px-4 py-3 text-sm">
                   <div className="min-w-0 flex-1">
@@ -210,7 +215,7 @@ export default function AdminConsole() {
                       {tx(t("refundTx"), r.refundTx)}
                       {r.feeCents > 0 && <span className={r.feePaid ? "text-up" : "text-down"}>{t(r.feePaid ? "feePaid" : "feeUnpaid", { fee: formatPrice(r.feeCents / 100, 2) })}</span>}
                     </p>
-                    {address && !shipped && <pre className="mt-2 rounded-lg bg-surface-2 px-3 py-2 font-sans text-xs whitespace-pre-wrap text-ink-2">{address}</pre>}
+                    {address && !shipped && <AddressBlock address={address} className="mt-2 max-w-xs" />}
                   </div>
                   {r.cancelledAt ? (
                     <span className="text-xs font-semibold text-ink-3">{t("redeemCancelled")}</span>

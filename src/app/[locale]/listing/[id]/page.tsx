@@ -15,9 +15,11 @@ import VerificationBadge from "@/components/binder/VerificationBadge";
 import { Link } from "@/i18n/navigation";
 import { itemTitle } from "@/lib/item-title";
 import { getDb } from "@/lib/server/db";
-import { getListing, getSeller } from "@/lib/server/items";
+import { getListing, getSeller, listingHistory } from "@/lib/server/items";
 import ListingTile from "@/components/market/ListingTile";
-import type { Listing } from "@/lib/items";
+import ActivityList from "@/components/card/ActivityList";
+import type { Listing, ListingEvent } from "@/lib/items";
+import { arcExplorerUrl } from "@/lib/arc";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 
 export async function generateMetadata(props: PageProps<"/[locale]/listing/[id]">): Promise<Metadata> {
@@ -26,13 +28,20 @@ export async function generateMetadata(props: PageProps<"/[locale]/listing/[id]"
   const listing = db ? await getListing(db, (await props.params).id) : null;
   if (!listing) return {};
   const t = await getTranslations("Meta");
-  return pageMetadata({ locale: await getLocale(), path: `/listing/${listing.id}`, title: itemTitle(listing), description: t("listingDescription", { title: itemTitle(listing) }), image: listing.photo });
+  // 不在售的卡（成交了、下架了、拍賣結束了、假卡）網址一直有效，但不讓搜尋引擎收錄
+  const title = itemTitle(listing);
+  return pageMetadata({ locale: await getLocale(), path: `/listing/${listing.id}`, title, description: t("listingDescription", { title }), image: listing.photo, noindex: !onSale(listing) });
 }
 
 const SECTION = "rounded-2xl border border-line bg-surface p-5";
 
+// 在售：一口價刊登中或拍賣進行中。拍賣結束 7 天內還顯示拍賣面板，但卡可能已經過戶給得標者，不再當成在售
+const onSale = (l: Listing) => l.verification === "unverified" && (l.priceUsdt !== null || l.auction?.status === "live");
+const txHref = (tx: NonNullable<ListingEvent["tx"]>) => (tx.chain === "arc" ? arcExplorerUrl("tx", tx.signature) : solscanUrl("tx", tx.signature));
+
 // 自由刊登的商品頁：卡在賣家手上、平台未查驗。和金庫卡的卡片頁（/card/[id]）分開，免責聲明放在價格旁邊。
-// 拍賣中的卡在同一頁顯示拍賣面板（目前出價、倒數、出價紀錄）；拍賣結束 7 天內還看得到結果
+// 拍賣中的卡在同一頁顯示拍賣面板（目前出價、倒數、出價紀錄）；拍賣結束 7 天內還看得到結果。
+// 成交了、下架了的卡網址一直有效（訂單、通知和 NFT 元數據都連到這裡），顯示成交狀態和交易紀錄，不列在市場上
 export default function ListingPage(props: PageProps<"/[locale]/listing/[id]">) {
   return (
     <>
@@ -53,7 +62,9 @@ async function ListingContent({ params }: { params: PageProps<"/[locale]/listing
   const db = await getDb();
   const listing = db ? await getListing(db, (await params).id) : null;
   if (!listing) notFound();
-  const seller = (await getSeller(db!, listing.id))!;
+  const selling = onSale(listing);
+  // 不在售時刊登者可能已經換成買家，不顯示賣家卡片和「其他刊登」
+  const [seller, history] = await Promise.all([selling ? getSeller(db!, listing.id) : null, listingHistory(db!, listing)]);
   const t = await getTranslations("Listing");
   const tSource = await getTranslations("Source");
   const tMint = await getTranslations("Mint");
@@ -99,13 +110,15 @@ async function ListingContent({ params }: { params: PageProps<"/[locale]/listing
             {listing.auction ? (
               <>
                 <FreeAuction itemId={listing.id} initial={listing.auction} />
-                <SellerCard seller={seller} />
+                {seller && <SellerCard seller={seller} />}
               </>
+            ) : !selling ? (
+              <DealStatus listing={listing} />
             ) : (
               <>
                 <p className="text-xs text-ink-3">{t("price")}</p>
                 <Price amount={listing.priceUsdt ?? 0} className="mt-1 text-3xl font-bold tabular-nums" />
-                <SellerCard seller={seller} />
+                <SellerCard seller={seller!} />
                 <EscrowBuy itemId={listing.id} priceUsdt={listing.priceUsdt ?? 0} />
                 <ol className="mt-4 space-y-1.5 text-xs leading-relaxed text-ink-2">
                   {(["step1", "step2", "step3"] as const).map((k, i) => (
@@ -158,10 +171,15 @@ async function ListingContent({ params }: { params: PageProps<"/[locale]/listing
               </div>
             </dl>
           </div>
+
+          <section className={SECTION}>
+            <h2 className="text-base font-semibold">{t("historyTitle")}</h2>
+            <ActivityList events={history.map(({ tx, ...e }) => ({ ...e, tx: tx && { id: tx.signature, href: txHref(tx) } }))} />
+          </section>
         </div>
       </div>
 
-      {seller.others.length > 0 && (
+      {seller && seller.others.length > 0 && (
         <section className="mt-14">
           <h2 className="text-lg font-semibold">{t("sellerMore", { name: seller.name })}</h2>
           <div className="mt-5 grid grid-cols-2 gap-5 sm:grid-cols-4">
@@ -171,6 +189,31 @@ async function ListingContent({ params }: { params: PageProps<"/[locale]/listing
           </div>
         </section>
       )}
+    </>
+  );
+}
+
+// 不在售時的狀態：已轉成金庫卡、已售出（成交價和日期）、交易中（買家已付款、還沒放款），或目前沒有在售
+async function DealStatus({ listing }: { listing: Listing }) {
+  const t = await getTranslations("Listing");
+  if (listing.vaultCardId)
+    return (
+      <>
+        <p className="text-sm font-semibold">{t("statusVaulted")}</p>
+        <Link href={`/card/${listing.vaultCardId}`} className="mt-2 inline-block text-sm font-semibold text-accent-ink hover:underline">
+          {t("viewVaultCard")}
+        </Link>
+      </>
+    );
+  const deal = listing.deal;
+  if (!deal) return <p className="text-sm text-ink-2">{t("statusOffMarket")}</p>;
+  // 日期和交易紀錄一樣用 UTC 的日期
+  const date = deal.at.slice(0, 10);
+  return (
+    <>
+      <p className="text-xs text-ink-3">{t(deal.status === "sold" ? "statusSold" : "statusTrading")}</p>
+      <Price amount={deal.priceUsdt} className="mt-1 text-3xl font-bold tabular-nums" />
+      <p className="mt-1 text-xs text-ink-3">{t(deal.status === "sold" ? "soldOn" : "paidOn", { date })}</p>
     </>
   );
 }

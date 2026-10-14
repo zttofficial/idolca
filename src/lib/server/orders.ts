@@ -1,13 +1,15 @@
 import "server-only";
 import { ESCROW_CONFIRM_DAYS, ESCROW_SHIP_DAYS, FEE_BPS } from "@/lib/policy";
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, lt, or } from "drizzle-orm";
 import { PublicKey } from "@solana/web3.js";
 import type { Db } from "./db";
-import { collectorItems, orders, users, type OrderStatus, type PayRail } from "./schema";
+import { collectorItems, orders, redemptions, users, type OrderStatus, type PayRail } from "./schema";
 import { arcPaymentRequest, arcPayout, settleArcPayment } from "./arc-pay";
 import { buildPayment, payout, transferCollectorNft, verifyPayment } from "./funds";
 import { itemTitle } from "@/lib/item-title";
+import { needsAddressReminder, shipDeadline as deadlineFrom } from "@/lib/escrow";
+import { parseAddress, type ShippingAddress } from "@/lib/shipping";
 import { itemCard, notify, type Notice } from "./notifications";
 
 // 自由刊登的擔保交易。貨款先進平台錢包，買家確認收貨後才放給賣家，NFT 同時由平台轉給買家。
@@ -19,31 +21,49 @@ const memoOf = (orderId: string) => `idolca:order:${orderId}`;
 
 // 訂單的通知都連到收藏冊的訂單頁
 const ORDERS_HREF = "/binder?tab=orders";
-async function notifyOrder(db: Db, order: OrderRow, notices: { to: "buyer" | "seller"; kind: Notice["kind"]; price?: number }[]) {
+// ref 預設是訂單編號（同一種通知每張訂單只發一次）；同一件事會發生多次時（買家改地址）另外帶上區分的 ref
+async function notifyOrder(db: Db, order: OrderRow, notices: { to: "buyer" | "seller"; kind: Notice["kind"]; price?: number; ref?: string }[]) {
   const { card } = await itemCard(db, order.itemId);
   await notify(
     db,
-    notices.map((n) => ({ userId: n.to === "buyer" ? order.buyerId : order.sellerId, kind: n.kind, params: { card, price: n.price }, href: ORDERS_HREF, ref: order.id })),
+    notices.map((n) => ({ userId: n.to === "buyer" ? order.buyerId : order.sellerId, kind: n.kind, params: { card, price: n.price }, href: ORDERS_HREF, ref: n.ref ?? order.id })),
   );
 }
 
 export type OrderRow = typeof orders.$inferSelect;
 
-// 建立待付款訂單：Solana 付款組好付款交易，Arc 付款給出要買家簽名的 USDC 授權轉帳內容
-export async function createOrder(db: Db, buyerId: string, buyerWallet: string, itemId: string, rail: PayRail = "solana") {
+// 付了款、還沒結束的訂單。這期間卡還在賣家的收藏冊裡，但不能再刊登、拍賣或寄進金庫
+export const OPEN_ORDER: OrderStatus[] = ["paid", "shipped", "disputed", "refunding", "releasing"];
+export async function openOrders(db: Db, itemIds: string[]) {
+  const out = new Map<string, OrderStatus>();
+  if (!itemIds.length) return out;
+  const rows = await db
+    .select({ itemId: orders.itemId, status: orders.status })
+    .from(orders)
+    .where(and(inArray(orders.itemId, itemIds), inArray(orders.status, OPEN_ORDER)));
+  for (const r of rows) out.set(r.itemId, r.status);
+  return out;
+}
+
+// 建立待付款訂單：Solana 付款組好付款交易，Arc 付款給出要買家簽名的 USDC 授權轉帳內容。
+// 一口價在付款前就要有收件地址，付款成功的那一刻賣家就能寄
+export async function createOrder(db: Db, buyerId: string, buyerWallet: string, itemId: string, rail: PayRail, address: ShippingAddress) {
   const [item] = await db.select().from(collectorItems).where(eq(collectorItems.id, itemId));
-  if (!item || item.priceCents === null || item.verification !== "unverified") return { error: "not_listed" as const };
+  // 價格至少 1 分（priceToCents 擋下更低的價格，這裡再擋住早期存進來的 0 元刊登）
+  if (!item || item.priceCents === null || item.priceCents < 1 || item.verification !== "unverified") return { error: "not_listed" as const };
   if (item.userId === buyerId) return { error: "own_listing" as const };
   const id = randomUUID();
   const feeCents = Math.round((item.priceCents * FEE_BPS) / 10_000);
   // 先組好付款交易再寫訂單：餘額不夠時丟錯，不留下付不了款的訂單
   const tx = rail === "solana" ? await buildPayment(new PublicKey(buyerWallet), item.priceCents / 100, memoOf(id)) : null;
-  await db.insert(orders).values({ id, itemId, buyerId, sellerId: item.userId, priceCents: item.priceCents, feeCents, buyerWallet, rail });
+  await db
+    .insert(orders)
+    .values({ id, itemId, buyerId, sellerId: item.userId, priceCents: item.priceCents, feeCents, buyerWallet, rail, shippingAddress: JSON.stringify(address), addressAt: new Date() });
   if (rail === "arc") return { id, arc: arcPaymentRequest(memoOf(id), item.priceCents) };
   return { id, tx: tx! };
 }
 
-// 期限：付款後 SHIP_DAYS 天內賣家要標記寄出，否則買家可以取消並退款；
+// 期限：付款並有收件地址後 SHIP_DAYS 天內賣家要標記寄出（從兩者較晚的時間起算），否則買家可以取消並退款；
 // 寄出後 CONFIRM_DAYS 天內買家沒確認也沒申訴，自動放款。測試時可以用環境變數縮短（單位：天，可用小數）
 const DAY = 86_400_000;
 const days = (name: string, fallback: number) => {
@@ -52,7 +72,7 @@ const days = (name: string, fallback: number) => {
 };
 export const SHIP_DAYS = days("ESCROW_SHIP_DAYS", ESCROW_SHIP_DAYS);
 export const CONFIRM_DAYS = days("ESCROW_CONFIRM_DAYS", ESCROW_CONFIRM_DAYS);
-const shipDeadline = (o: OrderRow) => (o.paidAt ? new Date(o.paidAt.getTime() + SHIP_DAYS * DAY) : null);
+const shipDeadline = (o: OrderRow) => deadlineFrom(o.paidAt, o.shippingAddress ? o.addressAt : null, SHIP_DAYS);
 const releaseAt = (o: OrderRow) => (o.shippedAt ? new Date(o.shippedAt.getTime() + CONFIRM_DAYS * DAY) : null);
 
 // 退款給買家：退回原來付款的那條通道
@@ -101,15 +121,39 @@ export async function confirmOrderPayment(db: Db, buyerId: string, orderId: stri
   return { ok: true as const, payTx: signature };
 }
 
-export async function markShipped(db: Db, sellerId: string, orderId: string) {
+// 買家填寫或修改收件地址：付款後、寄出前都可以（拍賣得標的訂單、早期沒收地址的訂單在這裡補填）。
+// 寄出期限從這次填寫起算，所以改地址只會讓賣家多一點時間；每次都通知賣家
+export async function setOrderAddress(db: Db, buyerId: string, orderId: string, address: ShippingAddress) {
+  const now = new Date();
+  const [row] = await db
+    .update(orders)
+    .set({ shippingAddress: JSON.stringify(address), addressAt: now, updatedAt: now })
+    .where(and(eq(orders.id, orderId), eq(orders.buyerId, buyerId), eq(orders.status, "paid")))
+    .returning();
+  if (row) await notifyOrder(db, row, [{ to: "seller", kind: "order_address", ref: `${row.id}:${now.getTime()}` }]);
+  return row ?? null;
+}
+
+// 賣家標記寄出：要有收件地址，並帶上他看到的那份地址的填寫時間；買家在這之後改過地址就擋下，讓賣家重新讀過
+export async function markShipped(db: Db, sellerId: string, orderId: string, addressAt: unknown) {
+  const seen = typeof addressAt === "string" ? new Date(addressAt) : null;
+  if (!seen || Number.isNaN(seen.getTime())) return { error: "no_address" as const };
   const now = new Date();
   const [row] = await db
     .update(orders)
     .set({ status: "shipped", shippedAt: now, updatedAt: now })
-    .where(and(eq(orders.id, orderId), eq(orders.sellerId, sellerId), eq(orders.status, "paid")))
+    .where(and(eq(orders.id, orderId), eq(orders.sellerId, sellerId), eq(orders.status, "paid"), isNotNull(orders.shippingAddress), eq(orders.addressAt, seen)))
     .returning();
-  if (row) await notifyOrder(db, row, [{ to: "buyer", kind: "order_shipped" }]);
-  return row ?? null;
+  if (!row) {
+    const [o] = await db
+      .select()
+      .from(orders)
+      .where(and(eq(orders.id, orderId), eq(orders.sellerId, sellerId)));
+    if (o?.status !== "paid") return { error: "not_paid" as const };
+    return { error: o.shippingAddress ? ("address_changed" as const) : ("no_address" as const) };
+  }
+  await notifyOrder(db, row, [{ to: "buyer", kind: "order_shipped" }]);
+  return { ok: true as const };
 }
 
 // 把訂單從允許的狀態鎖成處理中；拿不到鎖表示別人已經在處理或狀態不對
@@ -181,11 +225,12 @@ export async function confirmReceived(db: Db, buyerId: string, orderId: string) 
   return releaseOrder(db, orderId, ["shipped"]);
 }
 
-// 買家取消：賣家過了寄出期限還沒寄，全額退款
+// 買家取消：賣家過了寄出期限還沒寄，全額退款。還沒填地址的訂單沒有期限，不能取消
 export async function cancelUnshipped(db: Db, buyerId: string, orderId: string) {
   const [order] = await db.select().from(orders).where(and(eq(orders.id, orderId), eq(orders.buyerId, buyerId)));
   const deadline = order && shipDeadline(order);
-  if (!order || order.status !== "paid" || !deadline) return { error: "not_paid" as const };
+  if (!order || order.status !== "paid") return { error: "not_paid" as const };
+  if (!deadline) return { error: "no_address" as const };
   if (Date.now() < deadline.getTime()) return { error: "too_early" as const };
   return refundOrder(db, orderId, ["paid"]);
 }
@@ -201,12 +246,16 @@ export async function disputeOrder(db: Db, buyerId: string, orderId: string, rea
   return row ?? null;
 }
 
-// 處理逾時：賣家逾時未寄的退款，買家逾時未確認（也沒申訴）的放款。打開訂單頁時和每天的排程都會跑
+// 處理逾時：賣家逾時未寄的退款，買家逾時未確認（也沒申訴）的放款。打開訂單頁時和每天的排程都會跑。
+// 已付款但買家還沒填收件地址的訂單沒有寄出期限，不退款也不放款：錢留在託管，等買家補填（付款 2 天後提醒他一次），
+// 或由後台處理（管理員可以退款）。不自動退款，是因為拍賣得標的人可以靠不填地址變相棄標
 export async function sweepOrders(db: Db) {
   const now = Date.now();
   const open = await db.select().from(orders).where(inArray(orders.status, ["paid", "shipped"]));
   let refunded = 0;
   let released = 0;
+  const remind = open.filter((o) => o.status === "paid" && needsAddressReminder(o.paidAt, o.shippingAddress ? o.addressAt : null, now));
+  for (const o of remind) await notifyOrder(db, o, [{ to: "buyer", kind: "order_address_needed" }]);
   for (const o of open) {
     try {
       const ship = shipDeadline(o);
@@ -248,11 +297,17 @@ export type PublicOrder = {
   transferTx: string | null;
   refundTx: string | null;
   disputeReason: string | null;
-  // 賣家寄出期限、自動放款時間（ISO）
+  // 賣家寄出期限（買家還沒填地址時沒有）、自動放款時間（ISO）
   shipBy: string | null;
   autoReleaseAt: string | null;
+  // 收件地址和填寫時間：只在訂單的買家、賣家和後台看得到（myOrders、adminOrders），刊登頁和公開接口不讀這兩欄
+  shippingAddress: ShippingAddress | null;
+  addressAt: string | null;
   updatedAt: string;
 };
+
+// 寫入時已經驗證過，讀出來原樣顯示（可寄送國家清單之後改了也不會讓舊地址消失）
+const addressOf = (json: string | null) => (json ? (JSON.parse(json) as ShippingAddress) : null);
 
 const toPublic = (o: OrderRow, item: typeof collectorItems.$inferSelect | null, role: "buyer" | "seller"): PublicOrder => ({
   id: o.id,
@@ -273,8 +328,41 @@ const toPublic = (o: OrderRow, item: typeof collectorItems.$inferSelect | null, 
   disputeReason: o.disputeReason,
   shipBy: shipDeadline(o)?.toISOString() ?? null,
   autoReleaseAt: releaseAt(o)?.toISOString() ?? null,
+  shippingAddress: addressOf(o.shippingAddress),
+  addressAt: o.shippingAddress ? (o.addressAt?.toISOString() ?? null) : null,
   updatedAt: o.updatedAt.toISOString(),
 });
+
+// 買家上一次填過的收件地址（擔保訂單或金庫卡提貨，取較新的），表單用來預填；只回給本人
+export async function lastAddress(db: Db, userId: string): Promise<ShippingAddress | null> {
+  const [[o], [r]] = await Promise.all([
+    db
+      .select({ address: orders.shippingAddress, at: orders.addressAt })
+      .from(orders)
+      .where(and(eq(orders.buyerId, userId), isNotNull(orders.shippingAddress)))
+      .orderBy(desc(orders.addressAt))
+      .limit(1),
+    db
+      .select({ address: redemptions.shippingAddress, at: redemptions.createdAt })
+      .from(redemptions)
+      .where(and(eq(redemptions.userId, userId), isNotNull(redemptions.shippingAddress)))
+      .orderBy(desc(redemptions.createdAt))
+      .limit(1),
+  ]);
+  const newer = !o ? r : !r ? o : (o.at?.getTime() ?? 0) >= r.at.getTime() ? o : r;
+  // 預填用：重新驗證，不合現在規則的（例如國家已不能寄）就不帶入
+  return newer?.address ? parseAddress(JSON.parse(newer.address)) : null;
+}
+
+// 排程：清掉結束超過 cutoff 的訂單（完成、退款、取消）和沒付款就放棄的訂單上的收件地址
+export async function purgeOrderAddresses(db: Db, cutoff: Date) {
+  const rows = await db
+    .update(orders)
+    .set({ shippingAddress: null })
+    .where(and(isNotNull(orders.shippingAddress), inArray(orders.status, ["completed", "refunded", "cancelled", "pending"]), lt(orders.updatedAt, cutoff)))
+    .returning({ id: orders.id });
+  return rows.length;
+}
 
 // 我買的和我賣的訂單（不含沒付款就放棄的）
 export async function myOrders(db: Db, userId: string): Promise<PublicOrder[]> {

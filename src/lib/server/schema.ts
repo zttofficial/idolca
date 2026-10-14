@@ -255,6 +255,11 @@ export const orders = pgTable("orders", {
   shippedAt: timestamp("shipped_at", { withTimezone: true }),
   // 拍賣得標產生的訂單：記下是哪場拍賣，退款時不把卡按得標價重新上架
   auctionId: text("auction_id"),
+  // 買家的收件地址 JSON（格式同提貨，見 src/lib/shipping.ts），只給這筆訂單的買家、賣家和管理員看。
+  // 一口價在付款前填；拍賣得標的由得標者在訂單頁補填。address_at 是最後一次填寫的時間：寄出期限從付款和它兩者較晚的時間起算，
+  // 賣家標記寄出時也要帶上看到的這個時間，買家剛改過地址就擋下。訂單結束 90 天後由排程清除
+  shippingAddress: text("shipping_address"),
+  addressAt: timestamp("address_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -499,6 +504,8 @@ export const BOOTSTRAP_SQL = [
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS rail text NOT NULL DEFAULT 'solana'`,
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS payer text`,
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS auction_id text`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_address text`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS address_at timestamptz`,
   `CREATE TABLE IF NOT EXISTS auctions (
     id text PRIMARY KEY,
     item_id text NOT NULL,

@@ -12,12 +12,17 @@ import { solscanUrl } from "@/lib/solana/config";
 import { arcExplorerUrl } from "@/lib/arc";
 import type { EvmWallet } from "@/lib/evm/arc-wallet";
 import PaymentPicker from "@/components/pay/PaymentPicker";
+import AddressDialog from "@/components/shipping/AddressDialog";
+import type { ShippingAddress } from "@/lib/shipping";
 
-// 自由刊登的購買：按下購買先選付款方式（Solana 錢包或 Arc 上的 USDC），貨款付進平台託管，賣家寄出、買家確認收貨後才放款
+// 自由刊登的購買：按下購買先填收件地址（和提貨共用的表單，預填上次的地址），再選付款方式（Solana 錢包或 Arc 上的 USDC）。
+// 地址隨建單送出，貨款付進平台託管，賣家寄出、買家確認收貨後才放款
 export default function EscrowBuy({ itemId, priceUsdt }: { itemId: string; priceUsdt: number }) {
   const t = useTranslations("Listing");
+  const tb = useTranslations("Binder");
   const { user, login } = useAuth();
-  const [picking, setPicking] = useState(false);
+  const [step, setStep] = useState<"address" | "pay">();
+  const [address, setAddress] = useState<ShippingAddress>();
   const [paid, setPaid] = useState<{ tx: string; rail: "solana" | "arc" }>();
   const wallet = user?.walletAddress;
   // 自己的刊登：按鈕置灰，滑過或點一下時提示不能買。用「我上鏈的卡」判斷，郵箱帳號（卡在平台代管）也準
@@ -26,11 +31,11 @@ export default function EscrowBuy({ itemId, priceUsdt }: { itemId: string; price
 
   // 兩種付款方式，由付款方式面板呼叫；失敗時丟錯，面板顯示說明
   const buyOnSolana = async () => {
-    const { signature } = await payAndConfirm("/api/orders", { itemId }, (id) => `/api/orders/${id}/confirm`, wallet!);
+    const { signature } = await payAndConfirm("/api/orders", { itemId, address }, (id) => `/api/orders/${id}/confirm`, wallet!);
     setPaid({ tx: signature, rail: "solana" });
   };
   const buyOnArc = async (evm: EvmWallet) => {
-    const { payTx } = await payOnArc<{ payTx: string }>("/api/orders", { itemId }, (id) => `/api/orders/${id}/confirm`, evm);
+    const { payTx } = await payOnArc<{ payTx: string }>("/api/orders", { itemId, address }, (id) => `/api/orders/${id}/confirm`, evm);
     setPaid({ tx: payTx, rail: "arc" });
   };
 
@@ -72,17 +77,30 @@ export default function EscrowBuy({ itemId, priceUsdt }: { itemId: string; price
       ) : !wallet ? (
         <GetWalletPrompt text={t("linkWalletToBuy")} className="mt-4" />
       ) : (
-        <button className={button} disabled={picking} onClick={() => setPicking(true)}>
+        <button className={button} disabled={step !== undefined} onClick={() => setStep("address")}>
           {t("buyEscrow", { price: formatPrice(priceUsdt) })}
         </button>
       )}
-      {picking && (
+      {step === "address" && (
+        <AddressDialog
+          title={tb("addressTitle")}
+          body={tb("addressBody")}
+          submitLabel={t("addressContinue")}
+          initial={address}
+          onSubmit={(a) => {
+            setAddress(a);
+            setStep("pay");
+          }}
+          onClose={() => setStep(undefined)}
+        />
+      )}
+      {step === "pay" && (
         <PaymentPicker
           amountUsd={priceUsdt}
           run={{ solana: buyOnSolana, arc: buyOnArc }}
           event={{ name: "purchased", props: { lane: "free" } }}
           describeError={(code) => (t.has(`error_${code}`) ? t(`error_${code}`) : null)}
-          onClose={() => setPicking(false)}
+          onClose={() => setStep(undefined)}
         />
       )}
     </>

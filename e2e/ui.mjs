@@ -123,10 +123,13 @@ await shot("4-card-redeeming");
 step("擔保購買自由刊登");
 await go(`/listing/${item.id}`);
 check("buy with escrow", await click("Buy with escrow"));
+// 收件地址表單帶入了提貨時填的地址，直接繼續
+check("address prefilled", await waitFor(`document.querySelector('[role=dialog] [autocomplete="address-line1"]')?.value === "123 Teheran-ro"`));
+check("continue to payment", await click("Continue to payment"));
 check("pay with Solana", await clickWhenShown("Solana wallet"));
 check("paid", await waitFor(has("Paid into escrow")));
 const orders = (await must("GET", "/api/orders", undefined, S)).orders;
-await must("POST", `/api/orders/${orders[0].id}/ship`, undefined, S);
+await must("POST", `/api/orders/${orders[0].id}/ship`, { addressAt: orders[0].addressAt }, S);
 await go("/binder?tab=orders");
 check("confirm received", await click("Confirm received"));
 check("completed", await waitFor(has("Completed")));
@@ -166,9 +169,9 @@ check("sold back", await waitFor(has("Sold back"), 60000));
 await shot("7-pack-sold");
 
 step("收藏冊");
-await go("/binder?tab=onchain");
+await go("/binder");
 await sleep(3000);
-await shot("8-binder-onchain");
+await shot("8-binder");
 
 step("後台出貨");
 const ship = await api("POST", `/api/admin/redemptions/${cardId}/ship`, undefined, AD);

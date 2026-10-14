@@ -54,7 +54,7 @@ export default async function TermsPage() {
           title: "Free listings and escrow",
           body: [
             "Free listings are cards that stay with the seller. Idolca does not inspect them; they are marked unverified, and the listing photos and description are the seller's responsibility.",
-            `Purchases of free listings go through Idolca escrow. The buyer's payment is held until the buyer confirms receipt. If the seller does not mark the order shipped within ${ESCROW_SHIP_DAYS} days of payment, the order is refunded in full. If the buyer neither confirms nor reports a problem within ${ESCROW_CONFIRM_DAYS} days of shipping, payment is released to the seller.`,
+            `Purchases of free listings go through Idolca escrow. The buyer's payment is held until the buyer confirms receipt. The buyer gives a shipping address before paying, or for a won auction, in their Orders afterwards; only the seller and Idolca can see it. If the seller does not mark the order shipped within ${ESCROW_SHIP_DAYS} days of payment or of the buyer adding the address, whichever is later, the order is refunded in full. If the buyer neither confirms nor reports a problem within ${ESCROW_CONFIRM_DAYS} days of shipping, payment is released to the seller.`,
             `A buyer who reports a problem pauses the release; Idolca reviews the case and either refunds the buyer or releases payment to the seller. On release, the seller receives the price minus a ${pct(FEE_BPS)} fee, and if the seller made the card an NFT, it moves to the buyer.`,
             "Idolca may mark a card as fake if it is reported or found to be counterfeit. A fake card is delisted, relabelled and frozen on-chain, and this cannot be undone.",
           ],
@@ -95,7 +95,7 @@ export default async function TermsPage() {
         },
         {
           title: "Changes",
-          body: [`We may update these terms. Material changes are announced on the site before they take effect. Shipping addresses are kept for ${ADDRESS_RETENTION_DAYS} days after shipment, as described in the privacy policy.`],
+          body: [`We may update these terms. Material changes are announced on the site before they take effect. Shipping addresses are kept for ${ADDRESS_RETENTION_DAYS} days after a redemption ships or an escrow order ends, as described in the privacy policy.`],
         },
       ]}
     />

@@ -4,6 +4,7 @@ import { allow, tooMany } from "@/lib/server/rate-limit";
 import { collectorItems } from "@/lib/server/schema";
 import { MAX_DESCRIPTION, MAX_PHOTOS, matchTemplate, newItemId, priceToCents, publicItem } from "@/lib/server/items";
 import { auctionView, latestAuctions } from "@/lib/server/auctions";
+import { openOrders } from "@/lib/server/orders";
 import { saveUploads } from "@/lib/server/media";
 import { isCardSource } from "@/lib/sources";
 
@@ -15,15 +16,13 @@ export async function GET() {
     .from(collectorItems)
     .where(and(eq(collectorItems.userId, a.user.id), isNull(collectorItems.vaultCardId)))
     .orderBy(desc(collectorItems.createdAt));
-  // 拍賣中的卡附上拍賣狀態，收藏冊顯示目前出價和截止時間
-  const latest = await latestAuctions(
-    a.db,
-    rows.map((r) => r.id),
-  );
+  // 拍賣中的卡附上拍賣狀態，收藏冊顯示目前出價和截止時間；已賣出、訂單還沒結束的卡附上訂單狀態
+  const ids = rows.map((r) => r.id);
+  const [latest, open] = await Promise.all([latestAuctions(a.db, ids), openOrders(a.db, ids)]);
   return Response.json({
     items: rows.map((r) => {
       const auction = latest.get(r.id);
-      return { ...publicItem(r), auction: auction?.status === "live" ? { ...auctionView(auction), id: auction.id } : null };
+      return { ...publicItem(r), auction: auction?.status === "live" ? { ...auctionView(auction), id: auction.id } : null, openOrder: open.get(r.id) ?? null };
     }),
   });
 }

@@ -1,7 +1,7 @@
-// 擔保交易：逾時退款、申訴與後台退款、逾時自動放款、後台放款，以及每一步該收到的站內通知。
+// 擔保交易：付款前要收件地址、賣家看得到地址而刊登頁看不到、買家改地址後賣家要重讀、逾時退款、申訴與後台退款、逾時自動放款、後台放款，以及每一步該收到的站內通知。
 // 網站要用縮短的期限啟動：ESCROW_SHIP_DAYS=0.0003 ESCROW_CONFIRM_DAYS=0.0003 CRON_SECRET=<同 E2E_CRON_SECRET> npm run dev
 // 用法：E2E_CRON_SECRET=testcron npm run test:e2e:escrow
-import { adminKey, api, check, finish, login, mintSelf, must, newKey, photo, signSend, sleep, step } from "./lib.mjs";
+import { ADDRESS, BASE, adminKey, api, check, finish, login, mintSelf, must, newKey, photo, ship, signSend, sleep, step } from "./lib.mjs";
 
 const CRON = process.env.E2E_CRON_SECRET ?? "testcron";
 const AD = await login(adminKey());
@@ -14,7 +14,7 @@ await must("POST", "/api/chain/faucet", undefined, B);
 
 const list = async (title) => (await must("POST", "/api/items", { photos: [await photo(200), await photo(20)], title, group: "ITZY", member: "Yuna", quantity: 1, source: "pob", priceUsdt: 3 }, S)).item;
 const buy = async (itemId) => {
-  const { id, tx } = await must("POST", "/api/orders", { itemId }, B);
+  const { id, tx } = await must("POST", "/api/orders", { itemId, address: ADDRESS }, B);
   await must("POST", `/api/orders/${id}/confirm`, { signature: await signSend(tx, buyer.kp) }, B);
   return id;
 };
@@ -25,10 +25,14 @@ const notified = async (who, kind, card) => (await must("GET", "/api/notificatio
 
 step("A. 賣家逾時未寄 → 買家取消退款");
 const itemA = await list("Escrow A");
+check("address required", (await api("POST", "/api/orders", { itemId: itemA.id }, B)).json.error === "invalid_address");
 const a = await buy(itemA.id);
 let o = await order(a);
 check("paid with shipBy", o.status === "paid" && Boolean(o.shipBy), o.shipBy);
 check("seller notified of the sale", await notified(S, "order_paid", "Escrow A"));
+check("seller sees the address", (await order(a, S)).shippingAddress?.city === "Seoul");
+check("listing page hides the address", !(await (await fetch(`${BASE}/listing/${itemA.id}`)).text()).includes("Teheran"));
+check("address prefilled from the last order", (await must("GET", "/api/account/address", undefined, B)).address?.line1 === ADDRESS.line1);
 const early = await api("POST", `/api/orders/${a}/refund`, undefined, B);
 check("too early refused", early.status === 409 && early.json.error === "too_early");
 await sleep(Math.max(0, Date.parse(o.shipBy) - Date.now()) + 1500);
@@ -44,7 +48,11 @@ check("seller notified of the refund", await notified(S, "order_refunded_seller"
 step("B. 寄出 → 申訴 → 後台退款");
 const itemB = await list("Escrow B");
 const b = await buy(itemB.id);
-await must("POST", `/api/orders/${b}/ship`, undefined, S);
+const stale = (await order(b, S)).addressAt;
+await must("POST", `/api/orders/${b}/address`, { address: { ...ADDRESS, line2: "Apt 2" } }, B);
+check("seller notified of the new address", await notified(S, "order_address", "Escrow B"));
+check("ship with a stale address refused", (await api("POST", `/api/orders/${b}/ship`, { addressAt: stale }, S)).json.error === "address_changed");
+await ship(b, S);
 check("buyer notified of shipping", await notified(B, "order_shipped", "Escrow B"));
 check("dispute", (await api("POST", `/api/orders/${b}/dispute`, { reason: "Wrong member" }, B)).ok);
 check("seller notified of the dispute", await notified(S, "order_disputed", "Escrow B"));
@@ -62,7 +70,7 @@ step("C. 寄出後逾時未確認 → 排程自動放款");
 // C 由賣家做成數位珍藏：成交時數位珍藏也要轉給買家；其他刊登沒上鏈，只過戶不轉 NFT
 const itemC = await mintSelf((await list("Escrow C")).id, seller, S);
 const c = await buy(itemC.id);
-await must("POST", `/api/orders/${c}/ship`, undefined, S);
+await ship(c, S);
 o = await order(c);
 check("shipped with autoReleaseAt", o.status === "shipped" && Boolean(o.autoReleaseAt), o.autoReleaseAt);
 check("cron needs secret", (await api("GET", "/api/cron/daily")).status === 403);
@@ -76,7 +84,7 @@ check("seller notified of the payout", await notified(S, "order_completed", "Esc
 step("D. 申訴 → 後台放款");
 const itemD = await list("Escrow D");
 const d = await buy(itemD.id);
-await must("POST", `/api/orders/${d}/ship`, undefined, S);
+await ship(d, S);
 await must("POST", `/api/orders/${d}/dispute`, { reason: "Not arrived" }, B);
 const rel = await api("POST", `/api/admin/orders/${d}/release`, undefined, AD);
 check("admin release", rel.ok && Boolean(rel.json.payoutTx), rel.json.payoutTx ?? JSON.stringify(rel.json));
