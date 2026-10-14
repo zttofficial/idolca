@@ -1,4 +1,4 @@
-// 站內通知的種類和顯示資料，伺服器和瀏覽器共用。文字在 messages 的 Notifications.kind_*，參數是卡名、金額和寄出期限
+// 站內通知的種類和顯示資料，伺服器和瀏覽器共用。文字在 messages 的 Notifications.kind_*，參數是卡名、金額和寄出期限；寄出類的通知另外帶物流單號
 export const NOTIFICATION_KINDS = [
   "bid_received",
   "outbid",
@@ -13,15 +13,17 @@ export const NOTIFICATION_KINDS = [
   "order_address_needed",
   "vault_sold",
   "order_shipped",
+  "order_tracking",
   "order_completed",
   "order_completed_held",
   "order_refunded",
   "order_refunded_seller",
   "order_disputed",
+  "redeem_shipped",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
-// price 是 USD
-export type NotificationParams = { card: string; price?: number };
+// price 是 USD；tracking 是物流單號（擔保訂單寄出、更正單號、提貨寄出）
+export type NotificationParams = { card: string; price?: number; tracking?: string };
 
 export type NotificationView = { id: string; kind: NotificationKind; params: NotificationParams; href: string; read: boolean; at: string };

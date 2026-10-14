@@ -11,7 +11,11 @@ const DRAFT_KEY = "idolca:shipping-address";
 const isEmpty = (a: ShippingAddress) => Object.values(a).every((v) => !v);
 
 // 收件地址表單（金庫卡提貨、擔保交易的一口價購買和訂單補填共用）。欄位和驗證見 src/lib/shipping.ts。
-// 沒給 initial 時預填我上一次填過的地址：先問伺服器（擔保訂單或提貨，取較新的），沒有再用這個瀏覽器存的
+// 沒給 initial 時預填我上一次填過的地址：先問伺服器（擔保訂單或提貨，取較新的），沒有再用這個瀏覽器存的。
+// note 和 submitLabel 可以傳函式，隨正在填的地址變（提貨用它按國家即時顯示運費）。
+// countries 限定可選的國家（提貨只列卡所在金庫寄得到的）；預填的地址不在裡面時不能送出，由 note 說明
+type ByAddress = string | ((address: ShippingAddress) => string);
+
 export default function AddressDialog({
   title,
   body,
@@ -20,16 +24,18 @@ export default function AddressDialog({
   busyLabel,
   busy = false,
   initial,
+  countries: allowed = SHIP_COUNTRIES,
   onSubmit,
   onClose,
 }: {
   title: string;
   body: string;
-  note?: string;
-  submitLabel: string;
+  note?: ByAddress;
+  submitLabel: ByAddress;
   busyLabel?: string;
   busy?: boolean;
   initial?: ShippingAddress | null;
+  countries?: readonly string[];
   onSubmit: (address: ShippingAddress) => void;
   onClose: () => void;
 }) {
@@ -61,9 +67,12 @@ export default function AddressDialog({
 
   const countries = useMemo(() => {
     const names = new Intl.DisplayNames([locale], { type: "region" });
-    return SHIP_COUNTRIES.map((code) => ({ code, name: names.of(code) ?? code })).sort((x, y) => x.name.localeCompare(y.name, locale));
-  }, [locale]);
-  const valid = parseAddress(a);
+    return allowed.map((code) => ({ code, name: names.of(code) ?? code })).sort((x, y) => x.name.localeCompare(y.name, locale));
+  }, [locale, allowed]);
+  const parsed = parseAddress(a);
+  const valid = parsed && allowed.includes(parsed.country) ? parsed : null;
+  const byAddress = (v: ByAddress | undefined) => (typeof v === "function" ? v(a) : v);
+  const noteText = byAddress(note);
   const set = (k: keyof ShippingAddress) => (e: { target: { value: string } }) => setA((x) => ({ ...x, [k]: e.target.value }));
   const field = "mt-1 w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-ink";
   const label = "block text-xs text-ink-3";
@@ -116,13 +125,13 @@ export default function AddressDialog({
             <Select required searchable value={a.country} onChange={(country) => setA((x) => ({ ...x, country }))} options={countries.map((c) => ({ value: c.code, label: c.name }))} className={field} />
           </label>
         </div>
-        {note && <p className="mt-5 rounded-xl bg-surface-2 px-4 py-3 text-xs leading-relaxed text-ink-2">{note}</p>}
+        {noteText && <p className="mt-5 rounded-xl bg-surface-2 px-4 py-3 text-xs leading-relaxed text-ink-2">{noteText}</p>}
         <div className="mt-5 flex justify-end gap-3">
           <button type="button" onClick={onClose} className="rounded-full border border-line px-5 py-2 text-sm hover:bg-surface-2">
             {t("cancel")}
           </button>
           <button disabled={!valid || busy} className="btn-primary rounded-full px-5 py-2 text-sm font-semibold disabled:opacity-50">
-            {busy && busyLabel ? busyLabel : submitLabel}
+            {busy && busyLabel ? busyLabel : byAddress(submitLabel)}
           </button>
         </div>
       </form>

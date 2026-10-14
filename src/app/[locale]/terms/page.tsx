@@ -4,8 +4,9 @@ import { getLocale } from "next-intl/server";
 import LegalPage from "@/components/legal/LegalPage";
 import { BUYBACK_RATE } from "@/lib/packs";
 import { ADDRESS_RETENTION_DAYS, AUCTION_DAYS, AUCTION_EXTEND_MINUTES, AUCTION_FEE_BPS, AUCTION_MIN_START, ESCROW_ADDRESS_DAYS, ESCROW_CONFIRM_DAYS, ESCROW_SHIP_DAYS, FEE_BPS } from "@/lib/policy";
-import { REDEEM_FEE_USDT } from "@/lib/shipping";
+import { REDEEM_FEE_RANGE } from "@/lib/shipping";
 import { CURRENCY } from "@/lib/fx";
+import { VAULT_LIST } from "@/lib/vaults";
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({ locale: await getLocale(), path: "/terms", title: "Terms of Service", description: "The rules for buying, selling, auctions, escrow, mystery packs and vault shipping on Idolca, including fees and how disputes are handled." });
@@ -19,7 +20,7 @@ export default async function TermsPage() {
   return (
     <LegalPage
       title="Terms of Service"
-      updated="2026-10-12"
+      updated="2026-10-14"
       note={locale === "en" ? undefined : "These terms are provided in English, and the English version governs."}
       intro="These terms govern your use of Idolca, a marketplace and vault for K-pop photocards that records ownership on the Solana blockchain. By creating an account, connecting a wallet or making a transaction, you agree to them."
       sections={[
@@ -34,6 +35,7 @@ export default async function TermsPage() {
           title: "Vault cards",
           body: [
             "A vault card is a physical photocard that Idolca has received, authenticated, photographed and stored. Each vault card has one Solana NFT in the Idolca Vault collection; whoever holds the NFT owns the physical card.",
+            `We keep vault cards in ${VAULT_LIST.length} vaults: ${VAULT_LIST.map((v) => `${v.city}, ${new Intl.DisplayNames(["en"], { type: "region" }).of(v.country)}`).join(" and ")}. Each card is stored in one vault, shown on its card page, and ships from that vault when redeemed. When you send us a card, you choose which vault receives it.`,
             "Idolca is responsible for vault cards while they are in our custody. If a vault card is lost or damaged before it ships to you, we compensate the holder at its fair market value.",
           ],
         },
@@ -46,8 +48,8 @@ export default async function TermsPage() {
         {
           title: "Redemption",
           body: [
-            `Holders can redeem a vault card to have the physical card shipped. Redemption freezes the NFT and charges a shipping fee of ${REDEEM_FEE_USDT} ${CURRENCY} in the same transaction. When we ship, the NFT is burned and the card leaves the vault.`,
-            "We ship by tracked international mail to the countries listed in the redemption form. If we cannot ship to the address you give, we cancel the redemption, unfreeze the NFT and refund the shipping fee. Risk passes to you when the carrier delivers the card.",
+            `Holders can redeem a vault card to have the physical card shipped. Redemption freezes the NFT and charges a shipping fee in the same transaction. The fee is priced by the vault the card is stored in and the destination: it covers postage from that vault and packing plus a margin for exchange-rate, fuel-surcharge and postal price changes, currently ${REDEEM_FEE_RANGE.min} to ${REDEEM_FEE_RANGE.max} ${CURRENCY}, and the redemption form shows the exact amount before you confirm. When we ship, the NFT is burned and the card leaves the vault.`,
+            "We ship by tracked mail to the countries and regions the card's vault serves, which the redemption form lists. If we cannot ship to the address you give, we cancel the redemption, unfreeze the NFT and refund the shipping fee. Risk passes to you when the carrier delivers the card.",
           ],
         },
         {

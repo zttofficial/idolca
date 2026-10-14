@@ -2,6 +2,7 @@ import { SITE_URL } from "@/lib/server/chain";
 import { getDb } from "@/lib/server/db";
 import { getVaultRow, toCard } from "@/lib/server/vault-cards";
 import { gradeLabel } from "@/lib/grading";
+import { VAULTS } from "@/lib/vaults";
 
 // 金庫卡 NFT 的元數據 JSON（Metaplex 標準），錢包和外部市場讀它顯示名稱、圖片和屬性
 export async function GET(_request: Request, ctx: RouteContext<"/api/meta/card/[id]">) {
@@ -13,7 +14,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/meta/card/[
   return Response.json({
     name: `${card.group} ${card.member} ${card.version} #${card.serial}`,
     symbol: "IDOLCA",
-    description: `${card.group} ${card.member} photocard (${card.album}, ${card.version}), authenticated and stored in the Idolca vault. Burn this NFT to have the physical card shipped to you.`,
+    description: `${card.group} ${card.member} photocard (${card.album}, ${card.version}), authenticated and stored in the Idolca ${VAULTS[card.vault].city} vault. Burn this NFT to have the physical card shipped to you.`,
     image,
     external_url: `${SITE_URL}/card/${card.id}`,
     attributes: [
@@ -28,6 +29,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/meta/card/[
             { trait_type: "Grade Cert", value: card.grade.cert },
           ]
         : []),
+      { trait_type: "Vault", value: VAULTS[card.vault].city },
       { trait_type: "Custody", value: "vault" },
       { trait_type: "Verification", value: "authentic" },
     ],

@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   const cutoff = new Date(Date.now() - ADDRESS_RETENTION_DAYS * 86_400_000);
   const purged = await db
     .update(redemptions)
-    .set({ shippingAddress: null })
+    .set({ shippingAddress: null, trackingCarrier: null, trackingNumber: null })
     .where(and(isNotNull(redemptions.shippingAddress), lt(redemptions.shippedAt, cutoff)))
     .returning({ cardId: redemptions.cardId });
   const orderAddressesPurged = (await purgeOrderAddresses(db, cutoff)) + (await purgeBidAddresses(db));

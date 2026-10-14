@@ -7,6 +7,8 @@ import { useAuth } from "@/components/auth/AuthContext";
 import { formatPrice } from "@/lib/fx";
 import type { ShippingAddress } from "@/lib/shipping";
 import { AddressBlock } from "@/components/shipping/AddressDialog";
+import { TrackingBlock, TrackingDialog } from "@/components/shipping/Tracking";
+import { trackingOf, type Tracking } from "@/lib/tracking";
 import VaultIntake from "./VaultIntake";
 import VaultGrade from "./VaultGrade";
 import AdminPacks from "./AdminPacks";
@@ -15,10 +17,13 @@ import { itemTitle } from "@/lib/item-title";
 import type { CollectorItem } from "@/lib/items";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 import { arcExplorerUrl } from "@/lib/arc";
+import { VAULTS, type VaultId } from "@/lib/vaults";
 
 type Redemption = {
   cardId: string;
   card: string;
+  // 卡所在的金庫，從那裡寄出
+  vault: VaultId;
   wallet: string;
   requestTx: string;
   shipTx: string | null;
@@ -28,6 +33,8 @@ type Redemption = {
   cancelTx: string | null;
   refundTx: string | null;
   cancelledAt: string | null;
+  trackingCarrier: string | null;
+  trackingNumber: string | null;
   createdAt: string;
   onChain: { redeeming: boolean; burned: boolean } | null;
 };
@@ -46,8 +53,9 @@ type Order = {
   disputeReason: string | null;
   shipBy: string | null;
   autoReleaseAt: string | null;
-  // 買家的收件地址，申訴時核對寄到哪裡
+  // 買家的收件地址和賣家填的物流單號，申訴時核對寄到哪裡、包裹走到哪
   shippingAddress: ShippingAddress | null;
+  tracking: Tracking | null;
 };
 
 // 後台：管理員帳號登入後使用，權限由伺服器按會話檢查
@@ -60,6 +68,8 @@ export default function AdminConsole() {
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();
+  // 正在填單號的提貨：還沒出貨是出貨（同一筆交易解凍並銷毀），已出貨是改單號
+  const [shipping, setShipping] = useState<{ cardId: string; vault: VaultId; shipped: boolean; initial: Tracking | null }>();
 
   const call = useCallback(
     async <T,>(method: string, path: string, body?: unknown): Promise<T> => {
@@ -163,6 +173,7 @@ export default function AdminConsole() {
                     </p>
                     {open &&
                       (o.shippingAddress ? <AddressBlock address={o.shippingAddress} className="mt-2 max-w-xs" /> : <p className="mt-1 text-xs text-notice-ink">{t("orderNoAddress")}</p>)}
+                    {o.tracking && <TrackingBlock tracking={o.tracking} className="mt-2 max-w-xs" />}
                   </div>
                   {open && (
                     <div className="flex gap-2">
@@ -201,6 +212,7 @@ export default function AdminConsole() {
             {redemptions.map((r) => {
               const shipped = r.shipTx || r.onChain?.burned;
               const address = r.shippingAddress ? (JSON.parse(r.shippingAddress) as ShippingAddress) : null;
+              const tracking = trackingOf(r.trackingCarrier, r.trackingNumber);
               return (
                 <li key={r.cardId} className="flex flex-wrap items-center gap-4 px-4 py-3 text-sm">
                   <div className="min-w-0 flex-1">
@@ -208,6 +220,7 @@ export default function AdminConsole() {
                       {r.card}
                     </Link>
                     <p className="mt-0.5 flex flex-wrap gap-3 text-xs text-ink-3">
+                      <span>{t("shipsFrom", { vault: VAULTS[r.vault].code })}</span>
                       <span className="font-mono">{shortAddress(r.wallet)}</span>
                       {tx(t("requestTx"), r.requestTx)}
                       {tx(t("shipTx"), r.shipTx)}
@@ -216,16 +229,28 @@ export default function AdminConsole() {
                       {r.feeCents > 0 && <span className={r.feePaid ? "text-up" : "text-down"}>{t(r.feePaid ? "feePaid" : "feeUnpaid", { fee: formatPrice(r.feeCents / 100, 2) })}</span>}
                     </p>
                     {address && !shipped && <AddressBlock address={address} className="mt-2 max-w-xs" />}
+                    {tracking && <TrackingBlock tracking={tracking} className="mt-2 max-w-xs" />}
                   </div>
                   {r.cancelledAt ? (
                     <span className="text-xs font-semibold text-ink-3">{t("redeemCancelled")}</span>
                   ) : shipped ? (
-                    <span className="text-xs font-semibold text-up">{t("shipped")}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-semibold text-up">{t("shipped")}</span>
+                      {r.shipTx && (
+                        <button
+                          disabled={busy !== undefined}
+                          onClick={() => setShipping({ cardId: r.cardId, vault: r.vault, shipped: true, initial: tracking })}
+                          className="rounded-full border border-line px-4 py-1.5 text-xs hover:bg-surface-2 disabled:opacity-50"
+                        >
+                          {t(tracking ? "editTracking" : "addTracking")}
+                        </button>
+                      )}
+                    </div>
                   ) : (
                     <div className="flex gap-2">
                       <button
                         disabled={busy !== undefined || !address || !r.feePaid}
-                        onClick={() => act(r.cardId, () => call("POST", `/api/admin/redemptions/${r.cardId}/ship`))}
+                        onClick={() => setShipping({ cardId: r.cardId, vault: r.vault, shipped: false, initial: null })}
                         className="btn-primary rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
                       >
                         {busy === r.cardId ? "…" : t("ship")}
@@ -296,6 +321,25 @@ export default function AdminConsole() {
           </ul>
         )}
       </section>
+
+      {shipping && (
+        <TrackingDialog
+          title={t(shipping.shipped ? "editTracking" : "ship")}
+          body={t(shipping.shipped ? "editTrackingBody" : "shipBody")}
+          submitLabel={t(shipping.shipped ? "saveTracking" : "ship")}
+          busy={busy === shipping.cardId}
+          error={error ? t("error", { error }) : undefined}
+          initial={shipping.initial}
+          defaultCarrier={VAULTS[shipping.vault].carrier}
+          onSubmit={(tracking) =>
+            act(shipping.cardId, async () => {
+              await call("POST", `/api/admin/redemptions/${shipping.cardId}/${shipping.shipped ? "tracking" : "ship"}`, { tracking });
+              setShipping(undefined);
+            })
+          }
+          onClose={() => setShipping(undefined)}
+        />
+      )}
     </div>
   );
 }

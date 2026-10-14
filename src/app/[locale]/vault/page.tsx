@@ -32,6 +32,7 @@ export default async function VaultPage() {
             </>
           )}
         </p>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-2">{t("locations")}</p>
         <VaultSummary />
 
         <div className="mt-10">

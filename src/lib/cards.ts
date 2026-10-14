@@ -1,6 +1,7 @@
 // 金庫卡的資料型別。卡片資料存在資料庫（vault_cards 表，見 src/lib/server/vault-cards.ts），
 // 持有人、掛單價格和狀態以鏈上即時狀態為準
 import type { Grade } from "./grading";
+import type { VaultId } from "./vaults";
 
 export type Rarity = "album" | "pob" | "luckydraw" | "fansign";
 export const RARITY_LIST: Rarity[] = ["album", "pob", "luckydraw", "fansign"];
@@ -29,6 +30,8 @@ export type Card = {
   owner: string;
   status: VaultStatus;
   intakeDate: string;
+  // 所在的金庫（提貨從這裡寄出）和金庫裡的倉位
+  vault: VaultId;
   location: string;
   // 入庫時拍攝的正反面。沒有照片時畫佔位卡面
   image?: { front: string; back?: string };

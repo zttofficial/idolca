@@ -6,8 +6,9 @@ import { Link } from "@/i18n/navigation";
 import type { VaultStatus } from "@/lib/cards";
 import { useVaultCards } from "@/lib/chain-client";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
+import { VAULT_IDS, type VaultId } from "@/lib/vaults";
 
-export type VaultRow = { serial: string; title: string; asset: string; owner: string; status: VaultStatus; intakeDate: string; cardId: string };
+export type VaultRow = { serial: string; title: string; asset: string; owner: string; status: VaultStatus; intakeDate: string; vault: VaultId; cardId: string };
 
 const STATUS_STYLE: Record<VaultStatus, string> = {
   vaulted: "bg-up/10 text-up",
@@ -21,7 +22,18 @@ const STATUSES: VaultStatus[] = ["vaulted", "listed", "auction", "redeeming", "r
 // 金庫清單：資料庫裡的卡加上鏈上即時的持有人和狀態，包括已提貨銷毀的。還沒讀到時是 null
 function useRows(): VaultRow[] | null {
   const cards = useVaultCards(true);
-  return cards?.map((c) => ({ serial: c.serial, title: `${c.group} ${c.member} · ${c.version}`, asset: c.asset, owner: c.owner, status: c.status, intakeDate: c.intakeDate, cardId: c.id })) ?? null;
+  return (
+    cards?.map((c) => ({
+      serial: c.serial,
+      title: `${c.group} ${c.member} · ${c.version}`,
+      asset: c.asset,
+      owner: c.owner,
+      status: c.status,
+      intakeDate: c.intakeDate,
+      vault: c.vault,
+      cardId: c.id,
+    })) ?? null
+  );
 }
 
 export function VaultSummary() {
@@ -50,26 +62,31 @@ export default function VaultTable() {
   const loaded = useRows();
   const rows = loaded ?? [];
   const tStatus = useTranslations("Status");
+  const tVault = useTranslations("Vaults");
   const [status, setStatus] = useState<VaultStatus | null>(null);
+  const [vault, setVault] = useState<VaultId | null>(null);
   const [q, setQ] = useState("");
   const words = q.toLowerCase().split(/\s+/).filter(Boolean);
   const shown = rows.filter(
-    (r) => (!status || r.status === status) && words.every((w) => `${r.serial} ${r.title} ${r.asset} ${r.owner}`.toLowerCase().includes(w)),
+    (r) => (!status || r.status === status) && (!vault || r.vault === vault) && words.every((w) => `${r.serial} ${r.title} ${r.asset} ${r.owner}`.toLowerCase().includes(w)),
   );
-  const count = (s: VaultStatus | null) => rows.filter((r) => !s || r.status === s).length;
+  const count = (s: VaultStatus | null) => rows.filter((r) => (!s || r.status === s) && (!vault || r.vault === vault)).length;
+  const tab = (active: boolean) => `rounded-full border px-3 py-1.5 text-xs ${active ? "border-line-strong bg-ink text-bg" : "border-line text-ink-2 hover:text-ink"}`;
 
   return (
     <div>
+      {/* 按金庫分開看：每張卡只在一個金庫，提貨從那裡寄出 */}
+      <div role="tablist" aria-label={t("colVault")} className="mb-3 flex flex-wrap gap-1.5">
+        {[null, ...VAULT_IDS].map((v) => (
+          <button key={v ?? "all"} role="tab" aria-selected={vault === v} onClick={() => setVault(v)} className={tab(vault === v)}>
+            {v ? tVault(v) : t("allVaults")} <span className="opacity-60 tabular-nums">{rows.filter((r) => !v || r.vault === v).length}</span>
+          </button>
+        ))}
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div role="tablist" className="flex flex-wrap gap-1.5">
           {[null, ...STATUSES].map((s) => (
-            <button
-              key={s ?? "all"}
-              role="tab"
-              aria-selected={status === s}
-              onClick={() => setStatus(s)}
-              className={`rounded-full border px-3 py-1.5 text-xs ${status === s ? "border-line-strong bg-ink text-bg" : "border-line text-ink-2 hover:text-ink"}`}
-            >
+            <button key={s ?? "all"} role="tab" aria-selected={status === s} onClick={() => setStatus(s)} className={tab(status === s)}>
               {s ? tStatus(s) : t("all")} <span className="opacity-60 tabular-nums">{count(s)}</span>
             </button>
           ))}
@@ -85,7 +102,7 @@ export default function VaultTable() {
       </div>
 
       <div className="mt-4 overflow-x-auto rounded-2xl border border-line">
-        <table className="w-full min-w-[720px] text-left text-sm">
+        <table className="w-full min-w-[800px] text-left text-sm">
           <thead className="bg-surface-2 text-xs text-ink-3">
             <tr>
               <th className="px-4 py-3 font-medium">{t("colSerial")}</th>
@@ -93,6 +110,7 @@ export default function VaultTable() {
               <th className="px-4 py-3 font-medium">{t("colAsset")}</th>
               <th className="px-4 py-3 font-medium">{t("colOwner")}</th>
               <th className="px-4 py-3 font-medium">{t("colStatus")}</th>
+              <th className="px-4 py-3 font-medium">{t("colVault")}</th>
               <th className="px-4 py-3 font-medium">{t("colIntake")}</th>
             </tr>
           </thead>
@@ -114,12 +132,13 @@ export default function VaultTable() {
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_STYLE[r.status]}`}>{tStatus(r.status)}</span>
                 </td>
+                <td className="px-4 py-3 text-xs text-ink-2">{tVault(r.vault)}</td>
                 <td className="px-4 py-3 text-xs text-ink-2 tabular-nums">{r.intakeDate}</td>
               </tr>
             ))}
             {shown.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-sm text-ink-3">
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-ink-3">
                   {loaded ? t(rows.length ? "noResults" : "empty") : "…"}
                 </td>
               </tr>

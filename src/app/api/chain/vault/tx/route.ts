@@ -2,7 +2,8 @@ import { PublicKey } from "@solana/web3.js";
 import { allow, tooMany } from "@/lib/server/rate-limit";
 import { chainError, fail, requireWalletUser } from "@/lib/server/require-user";
 import { buildBid, buildBuy, buildCancel, buildCancelAuction, buildCreateAuction, buildList, buildRedeemRequest, marketReady, vaultAuctionsReady, vaultState } from "@/lib/server/vault-chain";
-import { REDEEM_FEE_USDT, parseAddress } from "@/lib/shipping";
+import { parseAddress, redeemFeeUsd } from "@/lib/shipping";
+import { getVaultRow } from "@/lib/server/vault-cards";
 import { AUCTION_DAYS, AUCTION_MIN_START } from "@/lib/auction";
 
 // 金庫卡的交易：伺服器組好、用戶錢包簽名送出。buy 購買、list 掛單、cancel 取消掛單、redeem 申請提貨（要附收件地址，交易裡含運費）；
@@ -60,10 +61,17 @@ export async function POST(request: Request) {
         if (state.auction?.seller !== a.wallet) return fail("not_allowed", 403);
         if (state.auction.bidCount > 0) return fail("has_bids", 409);
         return Response.json({ tx: await buildCancelAuction(card, me) });
-      case "redeem":
+      case "redeem": {
         if (state.owner !== a.wallet || state.redeeming) return fail("not_allowed", 403);
-        if (!parseAddress(body.address)) return fail("invalid_address");
-        return Response.json({ tx: await buildRedeemRequest(card, me, REDEEM_FEE_USDT), feeUsdt: REDEEM_FEE_USDT });
+        const address = parseAddress(body.address);
+        if (!address) return fail("invalid_address");
+        // 運費按卡所在的金庫（從資料庫讀）和收件國家在伺服器算，確認時用同一個地址再算一次對帳；那個金庫不寄的地方不收
+        const row = await getVaultRow(a.db, card);
+        if (!row) return fail("not_found", 404);
+        const fee = redeemFeeUsd(row.vault, address.country);
+        if (fee === null) return fail("not_shipped_here");
+        return Response.json({ tx: await buildRedeemRequest(card, me, fee), feeUsdt: fee });
+      }
       default:
         return fail("invalid_action");
     }

@@ -116,6 +116,7 @@ export default function NotificationBell() {
                       <span className="block leading-snug text-ink">
                         {t(`kind_${n.kind}`, { card: n.params.card || t("aCard"), price: formatPrice(n.params.price ?? 0), days: ESCROW_SHIP_DAYS, addressDays: ESCROW_ADDRESS_DAYS })}
                       </span>
+                      {n.params.tracking && <span className="block font-mono text-xs text-ink-2">{t("trackingLine", { number: n.params.tracking })}</span>}
                       <TimeAgo at={n.at} now={now} />
                     </span>
                   </Link>

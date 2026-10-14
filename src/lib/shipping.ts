@@ -1,13 +1,34 @@
-// 提貨寄送：收件地址的欄位和驗證（瀏覽器和伺服器共用），以及運費。
-// 運費在申請提貨的同一筆交易裡付給平台，用 NEXT_PUBLIC_REDEEM_FEE_USDT 設定（預設 5 USDT，含追蹤號的國際掛號）
+// 提貨寄送：收件地址的欄位和驗證（瀏覽器和伺服器共用），以及按（卡所在的金庫，目的地）計價的運費。
+// 運費在申請提貨的同一筆交易裡付給平台；伺服器組交易和對帳都從資料庫讀卡所在的金庫，用 redeemFeeUsd(金庫, 收件國家) 算，不採用前端傳來的金額
+import { REDEEM_FEE_BUFFER, REDEEM_FEE_STEP_USD } from "./policy";
+import { VAULTS, VAULT_LIST, isVaultId } from "./vaults";
 
-export const REDEEM_FEE_USDT = (() => {
-  const v = Number(process.env.NEXT_PUBLIC_REDEEM_FEE_USDT);
-  return Number.isFinite(v) && v >= 0 ? v : 5;
+// 收件地址可選的國家／地區（ISO 3166-1 alpha-2）：目標市場（擔保交易由賣家自己寄，不受金庫的寄法限制），加上任一金庫寄得到的地方。
+// 提貨表單只列卡所在金庫寄得到的（vaultCountries）
+const MARKETS = ["KR", "JP", "TW", "HK", "MO", "CN", "SG", "MY", "TH", "ID", "VN", "PH", "AU", "NZ", "US", "CA", "MX", "BR", "GB", "IE", "FR", "DE", "NL", "BE", "ES", "IT", "SE", "PL"];
+export const SHIP_COUNTRIES: readonly string[] = [...new Set([...MARKETS, ...VAULT_LIST.flatMap((v) => Object.keys(v.postage))])].sort();
+
+export const isShipCountry = (country: string) => SHIP_COUNTRIES.includes(country);
+
+// 這個金庫寄得到的國家
+export const vaultCountries = (vault: string): readonly string[] => (isVaultId(vault) ? Object.keys(VAULTS[vault].postage).sort() : []);
+
+// 從某金庫寄到某國的提貨運費（USD）：（郵資 + 包材）加上緩衝，換成美元後無條件進位到 REDEEM_FEE_STEP_USD（規則見 src/lib/policy.ts）。
+// 不認得的金庫、那個金庫不寄的地方回 null
+export function redeemFeeUsd(vault: string, country: string): number | null {
+  if (!isVaultId(vault)) return null;
+  const v = VAULTS[vault];
+  if (!Object.hasOwn(v.postage, country)) return null;
+  const usd = ((v.postage[country] + v.packing) * (1 + REDEEM_FEE_BUFFER)) / v.perUsd;
+  // 先去掉浮點誤差再進位，免得剛好落在一檔上的金額被多進一檔
+  return Math.ceil(Number((usd / REDEEM_FEE_STEP_USD).toFixed(6))) * REDEEM_FEE_STEP_USD;
+}
+
+// 兩個金庫所有可寄送地方裡最低和最高的運費，服務條款用
+export const REDEEM_FEE_RANGE = (() => {
+  const fees = VAULT_LIST.flatMap((v) => vaultCountries(v.id).map((c) => redeemFeeUsd(v.id, c)!));
+  return { min: Math.min(...fees), max: Math.max(...fees) };
 })();
-
-// 可以寄送的國家／地區（ISO 3166-1 alpha-2）
-export const SHIP_COUNTRIES = ["KR", "JP", "TW", "HK", "MO", "SG", "MY", "TH", "ID", "VN", "PH", "AU", "NZ", "US", "CA", "MX", "BR", "GB", "IE", "FR", "DE", "NL", "BE", "ES", "IT", "SE", "PL"] as const;
 
 export type ShippingAddress = {
   name: string;
@@ -45,7 +66,7 @@ export function parseAddress(raw: unknown): ShippingAddress | null {
     out[key] = s;
   }
   out.country = out.country.toUpperCase();
-  if (!(SHIP_COUNTRIES as readonly string[]).includes(out.country)) return null;
+  if (!isShipCountry(out.country)) return null;
   if (!/^[+\d][\d\s()-]{4,}$/.test(out.phone)) return null;
   return out;
 }

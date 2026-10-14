@@ -29,6 +29,8 @@ import { formatPrice } from "@/lib/fx";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 import { itemTitle } from "@/lib/item-title";
 import { putOnChain, setAuction, setDescription, setListing, useMyItems, type CollectorItem, requestVault } from "@/lib/items";
+import { VAULT_LIST, suggestVault, vaultOf, type Vault, type VaultId } from "@/lib/vaults";
+import type { ShippingAddress } from "@/lib/shipping";
 
 type Tab = "binder" | "orders" | "progress" | "wants";
 const TABS: Tab[] = ["binder", "orders", "progress", "wants"];
@@ -589,49 +591,113 @@ function ItemSheet({ item, onClose, onTakeOut }: { item: CollectorItem; onClose:
   );
 }
 
-// 寄進金庫：申請後下架，照提示把實物寄到金庫；鑑定為真後轉成金庫卡（金庫 NFT 鑄到綁定的錢包）
+// 寄進金庫：先選寄到哪個金庫（兩個地址都列出，按我上次的收件國家建議較近的），申請後下架，照提示把實物寄到那個金庫；
+// 鑑定為真後轉成金庫卡（金庫 NFT 鑄到綁定的錢包），之後提貨也從那個金庫寄出
 function VaultRequest({ item }: { item: CollectorItem }) {
   const t = useTranslations("Binder");
+  const tVault = useTranslations("Vaults");
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
-  const run = async (cancel: boolean) => {
+  const [picking, setPicking] = useState(false);
+  const [vault, setVault] = useState<VaultId>();
+  const [suggested, setSuggested] = useState<VaultId>();
+  useEffect(() => {
+    if (!picking) return;
+    let live = true;
+    (async () => {
+      // 上次填的收件國家；沒有就看瀏覽器語言帶的地區
+      let country: string | null = null;
+      try {
+        const res = await fetch("/api/account/address");
+        if (res.ok) country = ((await res.json()) as { address: ShippingAddress | null }).address?.country ?? null;
+      } catch {}
+      if (!country) {
+        try {
+          country = new Intl.Locale(navigator.language).maximize().region ?? null;
+        } catch {}
+      }
+      if (!live) return;
+      const s = suggestVault(country);
+      setSuggested(s);
+      setVault((v) => v ?? s);
+    })();
+    return () => {
+      live = false;
+    };
+  }, [picking]);
+  const run = async (target: VaultId | null) => {
     setBusy(true);
     setError(undefined);
     try {
-      await requestVault(item.id, cancel);
+      await requestVault(item.id, target);
+      setPicking(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "error");
     } finally {
       setBusy(false);
     }
   };
+  const addressOf = (v: Vault) => (v.address ? <p className="mt-1 whitespace-pre-line text-ink">{v.address}</p> : <p className="mt-1 text-ink-3">{t("vaultAddressPending")}</p>);
   if (item.vaultRequestedAt) {
-    const address = process.env.NEXT_PUBLIC_VAULT_ADDRESS;
+    const v = vaultOf(item.vaultTarget);
     return (
       <div className="rounded-xl bg-surface-2 p-3 text-xs leading-relaxed text-ink-2">
         <p className="font-semibold text-ink">{t("vaultRequested")}</p>
         <p className="mt-1">
           {t("vaultShipInstructions", {
             ref: `IDOLCA-${item.id.slice(0, 8).toUpperCase()}`,
+            vault: tVault(v.id),
           })}
         </p>
-        {address ? <p className="mt-2 whitespace-pre-line text-ink">{address}</p> : <p className="mt-2 text-ink-3">{t("vaultAddressPending")}</p>}
-        <button disabled={busy} onClick={() => run(true)} className="btn-secondary mt-2 rounded-full px-3 py-1 text-xs font-semibold disabled:opacity-50">
+        <div className="mt-2">{addressOf(v)}</div>
+        <button disabled={busy} onClick={() => run(null)} className="btn-secondary mt-2 rounded-full px-3 py-1 text-xs font-semibold disabled:opacity-50">
           {t("vaultCancel")}
         </button>
+        {error && <p className="mt-1 text-[11px] text-down">{t.has(`error_${error}`) ? t(`error_${error}`) : t("orderError")}</p>}
       </div>
     );
   }
   return (
     <div>
       <div className="flex items-center gap-2">
-        <button disabled={busy || !user?.walletAddress} onClick={() => run(false)} className="btn-secondary flex-1 rounded-full py-2.5 text-center text-sm font-semibold disabled:opacity-50">
-          {busy ? "…" : t("sendToVault")}
+        <button
+          disabled={busy || !user?.walletAddress}
+          onClick={() => setPicking((p) => !p)}
+          aria-expanded={picking}
+          className="btn-secondary flex-1 rounded-full py-2.5 text-center text-sm font-semibold disabled:opacity-50"
+        >
+          {t("sendToVault")}
         </button>
         <InfoTip text={t("vaultHint")} label={t("sendToVault")} align="end" />
       </div>
       {!user?.walletAddress && <p className="mt-1.5 text-[11px] leading-relaxed text-ink-3">{t("vaultNeedsWallet")}</p>}
+      {picking && (
+        <div className="mt-2 rounded-xl bg-surface-2 p-3 text-xs leading-relaxed text-ink-2">
+          <p>{t("vaultPick")}</p>
+          <div role="radiogroup" aria-label={t("vaultPickLabel")} className="mt-2 grid gap-2 sm:grid-cols-2">
+            {VAULT_LIST.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                role="radio"
+                aria-checked={vault === v.id}
+                onClick={() => setVault(v.id)}
+                className={`rounded-xl border bg-surface p-3 text-left transition ${vault === v.id ? "border-ink" : "border-line hover:border-line-strong"}`}
+              >
+                <span className="flex flex-wrap items-center gap-1.5 font-semibold text-ink">
+                  {tVault(v.id)}
+                  {suggested === v.id && <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-semibold text-accent-ink">{t("vaultSuggested")}</span>}
+                </span>
+                {addressOf(v)}
+              </button>
+            ))}
+          </div>
+          <button disabled={busy || !vault} onClick={() => vault && run(vault)} className="btn-primary mt-3 w-full rounded-full py-2 text-sm font-semibold disabled:opacity-50">
+            {busy ? "…" : vault ? t("vaultConfirm", { vault: tVault(vault) }) : t("sendToVault")}
+          </button>
+        </div>
+      )}
       {error && <p className="mt-1 text-[11px] text-down">{t.has(`error_${error}`) ? t(`error_${error}`) : t("orderError")}</p>}
     </div>
   );

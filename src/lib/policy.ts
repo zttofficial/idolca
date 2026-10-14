@@ -17,3 +17,7 @@ export const AUCTION_DAYS = [1, 3, 5, 7] as const;
 export const AUCTION_EXTEND_MINUTES = 5;
 // 用戶自己把收藏卡做成數位珍藏時收的鑄造費（USD，用 USDT 或 USDC 付）：平台代付 NFT 帳戶的押金和手續費（約 0.003 SOL），收這筆抵成本
 export const MINT_FEE_USD = 0.5;
+// 提貨運費 =（卡所在金庫寄到該國的郵資 + 包材）×（1 + REDEEM_FEE_BUFFER），按那個金庫的匯率換成美元，無條件進位到 REDEEM_FEE_STEP_USD 的倍數
+// （郵資表在 src/lib/rates/，計算在 src/lib/shipping.ts）。緩衝吸收匯率波動、燃油附加費和郵局調價，不是利潤
+export const REDEEM_FEE_BUFFER = 0.15;
+export const REDEEM_FEE_STEP_USD = 0.5;

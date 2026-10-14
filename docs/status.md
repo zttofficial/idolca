@@ -18,8 +18,10 @@
 | 市場（金庫卡、自由刊登兩條線） | `/market` | `src/components/market/MarketBrowser.tsx`、`src/lib/market.ts`、`src/lib/server/market-data.ts` |
 | 金庫卡買賣、掛單（Anchor 託管程序） | `/card/[id]` | `src/lib/server/vault-chain.ts`、`src/components/card/`、`onchain/` |
 | 鏈上紀錄、金庫卡拍賣的出價紀錄；時間軸元件和自由刊登的交易紀錄共用 | `/card/[id]` | `src/components/card/ActivityList.tsx`，`src/lib/server/history.ts`，`src/app/api/chain/history`、`src/app/api/chain/bids` |
-| 提貨（凍結、委託銷毀、付運費；後台出貨或取消） | `/card/[id]`、`/admin` | `RedeemDialog.tsx`、`vault-chain.ts`、`src/lib/shipping.ts` |
+| 金庫（溫哥華、重慶兩個；每張卡記所在金庫，入庫和寄進金庫時選） | `/vault`、`/card/[id]`、`/admin` | `src/lib/vaults.ts`，`src/components/vault/VaultTable.tsx` |
+| 提貨（凍結、委託銷毀、付按卡所在金庫和目的地計價的運費；後台出貨或取消） | `/card/[id]`、`/admin` | `RedeemDialog.tsx`、`vault-chain.ts`，`src/app/api/chain/vault/tx`、`confirm`，`src/lib/shipping.ts`（運費計算）、`src/lib/rates/`（兩個金庫的郵資表）、`policy.ts`（計價規則） |
 | 收件地址表單和顯示（提貨、擔保交易共用，預填上次的地址） | 提貨、購買、訂單、後台 | `src/components/shipping/AddressDialog.tsx`，`src/app/api/account/address`、`src/app/api/orders/[id]/address` |
+| 物流單號（擔保交易賣家寄出、提貨後台出貨共用；物流商清單、檢查碼、查詢連結、可更正） | 訂單、`/card/[id]`、`/admin` | `src/lib/tracking.ts`、`src/components/shipping/Tracking.tsx`、`src/lib/server/redemption-tracking.ts`，`src/app/api/orders/[id]/ship`、`tracking`，`src/app/api/admin/redemptions/[cardId]/ship`、`tracking`，`src/app/api/redemptions/[cardId]` |
 | 自由上鏈、自由刊登、擔保交易（買家的收件地址，7 天沒填自動退款；寄出期限）；刊登頁成交後仍保留（成交狀態、交易紀錄） | 收藏冊、`/listing/[id]` | `src/components/binder/AddCard.tsx`、`src/lib/server/items.ts`、`orders.ts`、`src/lib/escrow.ts`、`src/lib/policy.ts` |
 | 拍賣（兩條線：自由刊登進平台託管，金庫卡在鏈上）、上架時選一口價或拍賣 | `/listing/[id]`、`/card/[id]`、收藏冊 | `src/lib/server/auctions.ts`、`vault-chain.ts`，`src/lib/auction.ts`，`src/components/auction/`、`src/components/market/ListingControl.tsx` |
 | 寄進金庫、收藏卡轉金庫卡 | 收藏冊、`/admin` | `src/app/api/items/[id]/vault`、`src/app/api/admin/items/[id]/vault`、`VaultConvert.tsx` |
@@ -35,7 +37,7 @@
 | 專輯銷量榜 | `/charts` | `src/lib/server/circle-chart.ts` |
 | 後台（入庫、卡包、擔保訂單、提貨、假卡） | `/admin` | `src/components/admin/`、`src/app/api/admin/` |
 | 照片處理和浮水印 | — | `src/lib/server/media.ts`、`src/lib/crop-card.ts` |
-| 站內通知（拍賣、擔保訂單、金庫卡成交） | 頁首通知鈴 | `src/lib/server/notifications.ts`、`vault-notify.ts`，`src/components/notifications/NotificationBell.tsx`，`src/app/api/notifications` |
+| 站內通知（拍賣、擔保訂單、金庫卡成交、提貨寄出） | 頁首通知鈴 | `src/lib/server/notifications.ts`、`vault-notify.ts`，`src/components/notifications/NotificationBell.tsx`，`src/app/api/notifications` |
 | 每日排程（逾時訂單和提醒填地址、結標拍賣和退款、清地址、清過期會話、郵件連結和 90 天前的通知） | — | `src/app/api/cron/daily`、`vercel.json` |
 | SEO（標題、hreflang、站點地圖、分享圖、JSON-LD） | 全站 | `src/lib/seo.ts`、`src/app/sitemap.ts`、`robots.ts`、`opengraph-image.tsx` |
 | 下拉選單元件 | 全站 | `src/components/ui/Combobox.tsx`（可自由輸入的建議清單）、`Select.tsx`（選單，可帶搜尋） |
@@ -51,12 +53,12 @@
 |---|---|
 | `users`、`sessions`、`login_nonces`、`email_tokens` | 帳號（郵箱或錢包、錢包種類、信箱是否驗證、角色、年齡確認）、會話、錢包登入挑戰碼、郵件裡的驗證和重設密碼連結 |
 | `binder_entries`、`binder_wants`、`binder_layouts` | 收藏冊的標記、想要清單、擺法 |
-| `collector_items` | 自由上鏈的卡：資料、刊登價格、鑑定狀態、NFT 地址、寄進金庫申請 |
-| `vault_cards` | 金庫卡實物資料；持有人和掛單以鏈上為準 |
+| `collector_items` | 自由上鏈的卡：資料、刊登價格、鑑定狀態、NFT 地址、寄進金庫申請和選的金庫（`vault_target`） |
+| `vault_cards` | 金庫卡實物資料和所在金庫（`vault`）；持有人和掛單以鏈上為準 |
 | `packs`、`pack_pulls`、`pack_orders` | 卡包、每一抽的紀錄、開包訂單 |
-| `orders` | 自由刊登的擔保訂單（拍賣得標的記著 `auction_id`；買家的收件地址和填寫時間 `shipping_address`、`address_at`）；`orders`、`bids`、`pack_orders`、`redemptions` 都記著付款用的幣種（`coin`） |
+| `orders` | 自由刊登的擔保訂單（拍賣得標的記著 `auction_id`；買家的收件地址和填寫時間 `shipping_address`、`address_at`；賣家寄出時的物流單號 `tracking_carrier`、`tracking_number`）；`orders`、`bids`、`pack_orders`、`redemptions` 都記著付款用的幣種（`coin`） |
 | `auctions`、`bids` | 自由刊登的拍賣和每一口出價（付款、退款、是否被接受、拍賣進行中時的收件地址）；金庫卡的拍賣在鏈上 |
-| `redemptions` | 提貨申請和收件地址 |
+| `redemptions` | 提貨申請、收件地址和出貨時的物流單號 |
 | `notifications` | 站內通知（種類、卡名和金額、連結、已讀時間；`key` 去重） |
 | `media` | 照片（原圖和浮水印展示圖） |
 | `faucet_claims`、`rate_limits` | devnet 水龍頭領取紀錄、頻率限制計數 |
@@ -95,6 +97,7 @@
 ## 已知問題
 
 - **線上還沒設收藏錢包的 App ID**：部署時把 `NEXT_PUBLIC_PRIVY_APP_ID` 設到 Vercel 的 Production。
+- **線上還沒設金庫收件地址**：`NEXT_PUBLIC_VAULT_ADDRESS_YVR`、`NEXT_PUBLIC_VAULT_ADDRESS_CKG` 設到 Vercel 之前，寄進金庫的地址顯示「尚未公布」。
 - **刷卡加值只做了程式**：主網上線前要在 Privy 的 Funding 頁開 card onramps；目標市場的韓元、台幣、日圓等要完成 Meld 的 KYB。入金服務不支援測試網，devnet 上測不了。
 - **Privy 的 custom auth 要付費**：所以收藏錢包用驗證碼登入 Privy，換裝置或登入過期時多輸入一次驗證碼。開付費方案後可以改成我們發 JWT，免輸入。
 
@@ -111,7 +114,7 @@
 
 ## 還沒做
 
-- 提現和 KYC、Google 和 Apple 登入、換綁信箱、收藏錢包匯出私鑰（Privy 有 `useExportWallet`，還沒接）。
+- Google 和 Apple 登入、換綁信箱、收藏錢包匯出私鑰（Privy 有 `useExportWallet`，還沒接）。
 - 交易通知信：站內通知已有，暫不寄信（Resend 按量計費）。要寄時在 `notifications.ts` 的 `notify` 旁加寄信，用戶要能在帳號設定裡關掉。
 - 專輯代購代拆。
 - 主網部署，清單見 tech-stack.md「上線主網」。資金、定價、庫存和法務的待辦見 [business.md](business.md)。

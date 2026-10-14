@@ -12,10 +12,11 @@ import { parseGrade } from "@/lib/grading";
 import { matchTemplate } from "@/lib/server/items";
 import credits from "@/lib/sample-credits.json";
 import { sampleImage } from "@/lib/sample-image";
+import { isVaultId } from "@/lib/vaults";
 
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
-// 入庫：實物鑑定通過後建立金庫卡並鑄造 NFT。寄存人填郵箱或錢包地址，NFT 鑄到他綁定的錢包；
+// 入庫：實物鑑定通過後建立金庫卡並鑄造 NFT，記下卡放在哪個金庫（提貨從那裡寄出）。寄存人填郵箱或錢包地址，NFT 鑄到他綁定的錢包；
 // 不填就是平台自有庫存（例如卡包卡池），NFT 鑄給平台錢包
 export async function POST(request: Request) {
   const a = await requireAdmin();
@@ -28,10 +29,12 @@ export async function POST(request: Request) {
   const location = text(body.location, 40);
   const condition = text(body.condition, 300) || null;
   const rarity = body.rarity as Rarity;
+  const vault = body.vault;
   // 自家評級的鑑定編號就是這張卡的金庫編號，所以先取編號
   const serial = await nextSerial(a.db);
   const parsed = parseGrade(body, serial);
   if (!group || !member || !album || !version || !location) return fail("missing_fields");
+  if (!isVaultId(vault)) return fail("invalid_vault");
   if (!RARITY_LIST.includes(rarity)) return fail("invalid_rarity");
   if ("error" in parsed) return fail(parsed.error);
   const { grade } = parsed;
@@ -67,7 +70,7 @@ export async function POST(request: Request) {
   const intakeDate = new Date().toISOString().slice(0, 10);
   let minted: { asset: string; tx: string };
   try {
-    minted = await mintVaultNft(id, { serial, group, member, album, version, rarity, grade, location, intakeDate }, depositor?.wallet ?? null);
+    minted = await mintVaultNft(id, { serial, group, member, album, version, rarity, grade, vault, location, intakeDate }, depositor?.wallet ?? null);
   } catch (err) {
     console.error("vault mint failed", err);
     return fail("mint_failed", 502);
@@ -88,6 +91,7 @@ export async function POST(request: Request) {
       condition,
       imageFront: urls[0],
       imageBack: urls[1],
+      vault,
       location,
       intakeDate,
       asset: minted.asset,

@@ -61,8 +61,9 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
   const t = await getTranslations("Detail");
   const tCard = await getTranslations("Card");
   const tRarity = await getTranslations("Rarity");
+  const tVault = await getTranslations("Vaults");
 
-  // 這些都是鑄造時寫進 NFT Attributes 的資料
+  // 這些都是鑄造時寫進 NFT Attributes 的資料（存放的金庫：加這個屬性之前鑄的卡只記在資料庫）
   const attributes: [string, ReactNode][] = [
     [tCard("serial"), card.serial],
     [tCard("group"), card.group],
@@ -73,6 +74,7 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
     ...(card.grade ? [[tCard("grade"), <GradeValue key="grade" grade={card.grade} inHouseNote={tCard("inHouseGrade")} whatIs={tCard("whatIsIdg")} />] as [string, ReactNode]] : []),
     ...(card.condition ? [[tCard("condition"), card.condition] as [string, ReactNode]] : []),
     [tCard("intakeDate"), card.intakeDate],
+    [t("storedIn"), tVault(card.vault)],
     [t("custodyLocation"), card.location],
   ];
 

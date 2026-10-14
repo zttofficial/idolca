@@ -4,6 +4,7 @@ import { desc, eq, isNotNull, isNull } from "drizzle-orm";
 import type { Card, Rarity } from "@/lib/cards";
 import type { GraderId } from "@/lib/grading";
 import { GROUPS } from "@/lib/catalog";
+import { vaultOf } from "@/lib/vaults";
 import { CHAIN } from "@/lib/chain";
 import type { Db } from "./db";
 import { vaultCards } from "./schema";
@@ -31,6 +32,7 @@ export function toCard(r: VaultCardRow): Card {
     owner: r.burnedAt ? "" : CHAIN.platform,
     status: r.burnedAt ? "redeemed" : "vaulted",
     intakeDate: r.intakeDate,
+    vault: vaultOf(r.vault).id,
     location: r.location,
     image: r.imageFront ? { front: r.imageFront, back: r.imageBack ?? undefined } : undefined,
     redeemedAt: r.burnedAt?.toISOString(),

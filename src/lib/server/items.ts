@@ -6,6 +6,7 @@ import type { Db } from "./db";
 import { auctions, collectorItems, orders, users, type OrderStatus } from "./schema";
 import type { Listing, ListingDeal, ListingEvent } from "@/lib/items";
 import { auctionView, latestAuctions, recentAuction, type AuctionRow } from "./auctions";
+import { isVaultId } from "@/lib/vaults";
 
 export type ItemRow = typeof collectorItems.$inferSelect;
 
@@ -37,6 +38,7 @@ export function publicItem(r: ItemRow) {
     priceUsdt: r.priceCents === null ? null : r.priceCents / 100,
     listedAt: r.listedAt?.toISOString() ?? null,
     vaultRequestedAt: r.vaultRequestedAt?.toISOString() ?? null,
+    vaultTarget: isVaultId(r.vaultTarget) ? r.vaultTarget : null,
     createdAt: r.createdAt.toISOString(),
   };
 }

@@ -128,8 +128,9 @@ export const collectorItems = pgTable("collector_items", {
   // 自由刊登：有價格就是刊登中（USDT，存到分）
   priceCents: integer("price_cents"),
   listedAt: timestamp("listed_at", { withTimezone: true }),
-  // 寄進金庫：持有人申請的時間（申請後下架，等實物寄到）；鑑定為真後轉成的金庫卡，和銷毀這張收藏 NFT 的交易
+  // 寄進金庫：持有人申請的時間（申請後下架，等實物寄到）和選的金庫（src/lib/vaults.ts）；鑑定為真後轉成的金庫卡，和銷毀這張收藏 NFT 的交易
   vaultRequestedAt: timestamp("vault_requested_at", { withTimezone: true }),
+  vaultTarget: text("vault_target"),
   vaultCardId: text("vault_card_id"),
   vaultBurnTx: text("vault_burn_tx"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -155,7 +156,8 @@ export const vaultCards = pgTable("vault_cards", {
   // 入庫時拍的正反面，/api/media 的網址
   imageFront: text("image_front"),
   imageBack: text("image_back"),
-  // 倉位編號
+  // 所在的金庫（src/lib/vaults.ts 的 id），提貨從這裡寄出、運費按它算；倉位編號是金庫裡的位置
+  vault: text("vault").notNull().default("yvr"),
   location: text("location").notNull(),
   intakeDate: text("intake_date").notNull(),
   asset: text("asset").notNull().unique(),
@@ -260,6 +262,10 @@ export const orders = pgTable("orders", {
   // 賣家標記寄出時也要帶上看到的這個時間，買家剛改過地址就擋下。訂單結束 90 天後由排程清除
   shippingAddress: text("shipping_address"),
   addressAt: timestamp("address_at", { withTimezone: true }),
+  // 賣家標記寄出時填的物流單號和物流商（見 src/lib/tracking.ts；物流商 null 表示其他），寄出後到買家確認前賣家可以更正。
+  // 和收件地址一樣只給這筆訂單的買家、賣家和管理員看
+  trackingCarrier: text("tracking_carrier"),
+  trackingNumber: text("tracking_number"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -362,6 +368,9 @@ export const redemptions = pgTable("redemptions", {
   cancelTx: text("cancel_tx"),
   refundTx: text("refund_tx"),
   cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  // 後台出貨時填的物流單號和物流商（見 src/lib/tracking.ts），只給申請人和管理員看
+  trackingCarrier: text("tracking_carrier"),
+  trackingNumber: text("tracking_number"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -451,6 +460,7 @@ export const BOOTSTRAP_SQL = [
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS vault_requested_at timestamptz`,
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS vault_card_id text`,
   `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS vault_burn_tx text`,
+  `ALTER TABLE collector_items ADD COLUMN IF NOT EXISTS vault_target text`,
   `CREATE INDEX IF NOT EXISTS collector_items_listed_idx ON collector_items(listed_at) WHERE price_cents IS NOT NULL`,
   `CREATE TABLE IF NOT EXISTS binder_wants (
     user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -600,6 +610,8 @@ export const BOOTSTRAP_SQL = [
   `ALTER TABLE vault_cards ALTER COLUMN grade TYPE real`,
   `ALTER TABLE vault_cards ADD COLUMN IF NOT EXISTS grader text`,
   `ALTER TABLE vault_cards ADD COLUMN IF NOT EXISTS grade_cert text`,
+  // 分兩個金庫之前入庫的卡都在溫哥華
+  `ALTER TABLE vault_cards ADD COLUMN IF NOT EXISTS vault text NOT NULL DEFAULT 'yvr'`,
   // 早期的評級欄位只有分數、沒記是哪家機構評的，這種分數不顯示
   `UPDATE vault_cards SET grade = NULL WHERE grader IS NULL AND grade IS NOT NULL`,
   `CREATE TABLE IF NOT EXISTS packs (
@@ -638,6 +650,10 @@ export const BOOTSTRAP_SQL = [
   `ALTER TABLE pack_orders ADD COLUMN IF NOT EXISTS coin text NOT NULL DEFAULT 'usdt'`,
   `ALTER TABLE redemptions ADD COLUMN IF NOT EXISTS coin text NOT NULL DEFAULT 'usdt'`,
   `ALTER TABLE pack_orders ADD COLUMN IF NOT EXISTS pay_proof text`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_carrier text`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number text`,
+  `ALTER TABLE redemptions ADD COLUMN IF NOT EXISTS tracking_carrier text`,
+  `ALTER TABLE redemptions ADD COLUMN IF NOT EXISTS tracking_number text`,
   `UPDATE pack_orders SET status = 'legacy' WHERE pulls IS NOT NULL AND status = 'pending'`,
   `CREATE TABLE IF NOT EXISTS rate_limits (
     key text PRIMARY KEY,

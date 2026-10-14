@@ -1,11 +1,14 @@
 // 金庫與卡包：管理員入庫鑄卡 → 建卡包、放卡 → 買家開包（承諾—揭示抽卡、NFT 轉移）→ 卡池不夠時自動退款
-// → 抽完後公開種子、重算每一抽 → 回購回到卡池 → 提貨（地址、運費）→ 後台取消提貨退運費
+// → 抽完後公開種子、重算每一抽 → 回購回到卡池 → 提貨（地址、按卡所在金庫和目的地計價的運費）→ 後台取消提貨退運費
+// → 收藏卡寄進用戶選的金庫、後台轉成金庫卡
 // 用法：npm run test:e2e:vault
 import { createHash } from "node:crypto";
 import { PublicKey } from "@solana/web3.js";
 import { adminKey, api, check, conn, finish, login, mintSelf, must, newKey, photo, signSend, step } from "./lib.mjs";
 import { verifyDraw } from "../src/lib/pack-draw.ts";
 import { MINT_FEE_USD } from "../src/lib/policy.ts";
+import { SHIP_COUNTRIES, redeemFeeUsd, vaultCountries } from "../src/lib/shipping.ts";
+import { VAULT_IDS } from "../src/lib/vaults.ts";
 import chain from "../src/lib/chain/devnet.json" with { type: "json" };
 
 const PLATFORM = chain.platform;
@@ -21,12 +24,13 @@ check("non-admin blocked", (await api("GET", "/api/admin/packs", undefined, B)).
 check("anonymous blocked", (await api("GET", "/api/admin/orders")).status === 401);
 
 step("入庫");
-const intake = await api("POST", "/api/admin/vault", { photos: [await photo(300), await photo(120)], group: "ITZY", member: "Yuna", album: "BORN TO BE", version: "Fansign Event", rarity: "fansign", grader: "psa", gradeScore: 9, gradeCert: "E2E12345678", condition: "Sharp corners", location: "SEL-E2E-01" }, AD);
+const intake = await api("POST", "/api/admin/vault", { photos: [await photo(300), await photo(120)], group: "ITZY", member: "Yuna", album: "BORN TO BE", version: "Fansign Event", rarity: "fansign", grader: "psa", gradeScore: 9, gradeCert: "E2E12345678", condition: "Sharp corners", vault: "yvr", location: "E2E-01" }, AD);
 check("intake minted", intake.ok && Boolean(intake.json.mintTx), intake.json.card?.serial ?? JSON.stringify(intake.json));
 const fresh = intake.json.card;
 check("in vault list", (await must("GET", "/api/vault/cards")).cards.some((c) => c.id === fresh.id));
 const meta = (await api("GET", `/api/meta/card/${fresh.id}`)).json;
 check("metadata has grade", meta.attributes?.some((a) => a.trait_type === "Grade" && a.value === "PSA 9"), meta.name);
+check("intake records the vault", fresh.vault === "yvr" && meta.attributes?.some((a) => a.trait_type === "Vault" && a.value === "Vancouver"), fresh.vault);
 const regrade = await api("POST", `/api/admin/vault/${fresh.id}/grade`, { grader: "idolca", gradeScore: 10 }, AD);
 check("regraded in-house", regrade.ok && regrade.json.card?.grade?.grader === "idolca" && regrade.json.card.grade.cert === fresh.serial, JSON.stringify(regrade.json.card?.grade ?? regrade.json));
 const onchain = await import("@metaplex-foundation/mpl-core").then(async ({ fetchAsset }) => {
@@ -35,19 +39,22 @@ const onchain = await import("@metaplex-foundation/mpl-core").then(async ({ fetc
 });
 const attrs = Object.fromEntries((onchain.attributes?.attributeList ?? []).map((x) => [x.key, x.value]));
 check("on-chain grade replaced", attrs.grader === "IDG" && attrs.grade === "10" && attrs.grade_cert === fresh.serial && attrs.serial === fresh.serial, JSON.stringify(attrs));
+check("vault attribute kept on-chain", attrs.vault === "YVR", JSON.stringify(attrs));
 check("non-admin can't grade", (await api("POST", `/api/admin/vault/${fresh.id}/grade`, { grader: "idolca", gradeScore: 1 }, B)).status === 403);
-check("bad rarity refused", (await api("POST", "/api/admin/vault", { photos: [await photo(), await photo()], group: "x", member: "y", album: "z", version: "v", rarity: "nope", location: "a" }, AD)).status === 400);
+check("bad rarity refused", (await api("POST", "/api/admin/vault", { photos: [await photo(), await photo()], group: "x", member: "y", album: "z", version: "v", rarity: "nope", vault: "yvr", location: "a" }, AD)).status === 400);
+check("intake without a vault refused", (await api("POST", "/api/admin/vault", { photos: [await photo(), await photo()], group: "x", member: "y", album: "z", version: "v", rarity: "album", location: "a" }, AD)).json.error === "invalid_vault");
 
 step("建卡包、放卡");
 const packId = `e2e-${Date.now().toString(36)}`;
 const now = Date.now();
 await must("POST", "/api/admin/packs", { id: packId, name: "E2E Pack", priceUsdt: 20, startsAt: new Date(now - 60_000).toISOString(), endsAt: new Date(now + 86_400_000).toISOString(), palette: ["#ff6f93", "#e8285a"] }, AD);
 check("duplicate pack refused", (await api("POST", "/api/admin/packs", { id: packId, name: "x", priceUsdt: 1, startsAt: new Date(now).toISOString(), endsAt: new Date(now + 1000).toISOString(), palette: ["#000000", "#ffffff"] }, AD)).status === 409);
-// 卡池另外入庫兩張平台自有卡，測試不依賴現有庫存
+// 卡池另外入庫兩張平台自有卡（一張放重慶），測試不依賴現有庫存
 const others = [];
-for (const [member, hue] of [["Ryujin", 30], ["Lia", 90]]) {
-  others.push((await must("POST", "/api/admin/vault", { photos: [await photo(hue), await photo(hue + 180)], group: "ITZY", member, album: "BORN TO BE", version: "Album Ver.", rarity: "album", location: "SEL-E2E-02" }, AD)).card);
+for (const [member, hue, vault] of [["Ryujin", 30, "ckg"], ["Lia", 90, "yvr"]]) {
+  others.push((await must("POST", "/api/admin/vault", { photos: [await photo(hue), await photo(hue + 180)], group: "ITZY", member, album: "BORN TO BE", version: "Album Ver.", rarity: "album", vault, location: "E2E-02" }, AD)).card);
 }
+check("each card keeps its own vault", others[0].vault === "ckg" && others[1].vault === "yvr");
 const { assignable } = await must("GET", "/api/admin/packs", undefined, AD);
 check("new cards assignable", [fresh, ...others].every((c) => assignable.some((x) => x.id === c.id)), `${assignable.length} assignable`);
 await must("POST", `/api/admin/packs/${packId}/cards`, { cardId: fresh.id, tier: "SSR", valueUsdt: 10 }, AD);
@@ -100,39 +107,61 @@ check("double buyback refused", (await api("POST", "/api/packs/buyback", { cardI
 await must("DELETE", `/api/admin/packs/${packId}/cards`, { cardId: sell.cardId }, AD);
 check("removed from pool", !(await must("GET", `/api/packs/${packId}/pool`)).pack.pool.some((e) => e.id === sell.cardId));
 
-step("提貨：地址、運費、後台取消");
+step("提貨：地址、按卡所在金庫和目的地計價的運費、後台取消");
 const keep = first.pulls[1].cardId;
-const address = { name: "Kim Minji", phone: "+82 10 1234 5678", line1: "123 Teheran-ro", line2: "", city: "Seoul", region: "", postal: "06134", country: "KR" };
+// 抽到哪張是隨機的，運費和可寄的國家按這張卡所在的金庫算
+const keepVault = (await must("GET", "/api/vault/cards")).cards.find((c) => c.id === keep)?.vault;
+check("card records its vault", VAULT_IDS.includes(keepVault), keepVault);
+const ships = vaultCountries(keepVault);
+const home = ["KR", "JP", "TW"].find((c) => ships.includes(c)) ?? ships[0];
+const away = ["US", "GB", "AU"].find((c) => ships.includes(c) && redeemFeeUsd(keepVault, c) !== redeemFeeUsd(keepVault, home));
+const address = { name: "Kim Minji", phone: "+82 10 1234 5678", line1: "123 Teheran-ro", line2: "", city: "Seoul", region: "", postal: "06134", country: home };
+const usAddress = { ...address, line1: "1 Main St", city: "Los Angeles", region: "CA", postal: "90012", country: away };
 check("address required", (await api("POST", "/api/chain/vault/tx", { action: "redeem", cardId: keep }, B)).json.error === "invalid_address");
-const redeem = await must("POST", "/api/chain/vault/tx", { action: "redeem", cardId: keep, address }, B);
+const nowhere = await api("POST", "/api/chain/vault/tx", { action: "redeem", cardId: keep, address: { ...address, country: "KP" } }, B);
+check("no fee for a country we don't ship to", nowhere.json.error === "invalid_address");
+const unserved = SHIP_COUNTRIES.find((c) => !ships.includes(c));
+if (unserved) {
+  const refused = await api("POST", "/api/chain/vault/tx", { action: "redeem", cardId: keep, address: { ...address, country: unserved } }, B);
+  check("no redemption where the card's vault doesn't ship", refused.json.error === "not_shipped_here", `${keepVault} → ${unserved}`);
+}
+// 前端傳的金額一律忽略，運費由伺服器按收件國家算
+const redeem = await must("POST", "/api/chain/vault/tx", { action: "redeem", cardId: keep, address, feeUsdt: 0.01 }, B);
+check("fee priced by the card's vault and destination", redeem.feeUsdt === redeemFeeUsd(keepVault, home) && Boolean(away), `${keepVault}: ${home} ${redeem.feeUsdt} USDT, ${away} ${redeemFeeUsd(keepVault, away)} USDT`);
 const redeemSig = await signSend(redeem.tx, buyer.kp);
 await must("POST", "/api/chain/vault/confirm", { action: "redeem", cardId: keep, signature: redeemSig, address }, B);
 const req = (await must("GET", "/api/admin/redemptions", undefined, AD)).redemptions.find((r) => r.cardId === keep);
-check("redemption recorded with paid fee and address", req && req.feePaid === 1 && JSON.parse(req.shippingAddress).city === "Seoul", `fee ${redeem.feeUsdt} USDT`);
+const paidInFull = req && req.feePaid === 1 && req.feeCents === Math.round(redeem.feeUsdt * 100);
+check("redemption recorded with paid fee and address", paidInFull && JSON.parse(req.shippingAddress).city === "Seoul", `fee ${redeem.feeUsdt} USDT`);
 const cancel = await api("POST", `/api/admin/redemptions/${keep}/cancel`, undefined, AD);
-check("admin cancel refunds fee", cancel.ok && Boolean(cancel.json.cancelTx) && (redeem.feeUsdt === 0 || Boolean(cancel.json.refundTx)));
+check("admin cancel refunds fee", cancel.ok && Boolean(cancel.json.cancelTx) && Boolean(cancel.json.refundTx));
 const after = (await must("GET", "/api/chain/state")).cards[keep];
 check("card unfrozen and still the buyer's", after.owner === buyer.address && !after.redeeming);
+// 用第一個地址組交易（付那裡的運費），確認時改報另一國的地址：金額對不上，不算已付
 const again = await must("POST", "/api/chain/vault/tx", { action: "redeem", cardId: keep, address }, B);
 const againSig = await signSend(again.tx, buyer.kp);
-await must("POST", "/api/chain/vault/confirm", { action: "redeem", cardId: keep, signature: againSig, address }, B);
+await must("POST", "/api/chain/vault/confirm", { action: "redeem", cardId: keep, signature: againSig, address: usAddress }, B);
 check("can request redemption again after a cancel", (await must("GET", "/api/chain/state")).cards[keep].redeeming === true);
+const swapped = (await must("GET", "/api/admin/redemptions", undefined, AD)).redemptions.find((r) => r.cardId === keep);
+check("switching the country after paying leaves the fee unpaid", swapped && swapped.feePaid === 0 && swapped.feeCents === Math.round(redeemFeeUsd(keepVault, away) * 100));
 check("second cancel", (await api("POST", `/api/admin/redemptions/${keep}/cancel`, undefined, AD)).ok);
 
 step("收藏卡寄進金庫");
 // 這張卡持有人做成過數位珍藏，入庫時要銷毀原本的收藏 NFT
 const added = (await must("POST", "/api/items", { photos: [await photo(50), await photo(230)], group: "ITZY", member: "Yeji", album: "BORN TO BE", version: "Lucky Draw Round 1", source: "luckydraw", quantity: 1, priceUsdt: 9 }, B)).item;
 const minted = await mintSelf(added.id, buyer, B);
-const req2 = await api("POST", `/api/items/${minted.id}/vault`, undefined, B);
-check("request delists", req2.ok && req2.json.item.priceUsdt === null && Boolean(req2.json.item.vaultRequestedAt));
+check("request needs a vault", (await api("POST", `/api/items/${minted.id}/vault`, undefined, B)).json.error === "invalid_vault");
+const req2 = await api("POST", `/api/items/${minted.id}/vault`, { vault: "ckg" }, B);
+check("request delists and records the vault", req2.ok && req2.json.item.priceUsdt === null && Boolean(req2.json.item.vaultRequestedAt) && req2.json.item.vaultTarget === "ckg");
 check("relisting refused while requested", (await api("PATCH", `/api/items/${minted.id}`, { priceUsdt: 9 }, B)).json.error === "in_vault");
-check("other users can't request it", (await api("POST", `/api/items/${minted.id}/vault`, undefined, AD)).status === 409);
+check("other users can't request it", (await api("POST", `/api/items/${minted.id}/vault`, { vault: "yvr" }, AD)).status === 409);
 const adminItems = (await must("GET", "/api/admin/items", undefined, AD)).items;
 check("admin sees request first", adminItems[0]?.id === minted.id);
-const conv = await api("POST", `/api/admin/items/${minted.id}/vault`, { rarity: "luckydraw", grader: "brg", gradeScore: 8.5, gradeCert: "BRG-E2E-01", location: "SEL-E2E-04", condition: "Clean" }, AD);
+const conv = await api("POST", `/api/admin/items/${minted.id}/vault`, { rarity: "luckydraw", grader: "brg", gradeScore: 8.5, gradeCert: "BRG-E2E-01", location: "E2E-04", condition: "Clean" }, AD);
 check("converted to vault card", conv.ok && conv.json.card?.serial?.startsWith("IC-") && Boolean(conv.json.burnTx), conv.json.card?.serial ?? JSON.stringify(conv.json));
 const vc = conv.json.card;
 check("photos carried over", vc.image?.front === minted.photo && vc.image?.back === minted.photoBack);
+check("converted into the vault the owner chose", vc.vault === "ckg", vc.vault);
 check("vault NFT owned by the depositor", (await must("GET", "/api/chain/state")).cards[vc.id]?.owner === buyer.address);
 const old = await conn.getAccountInfo(new PublicKey(minted.asset));
 check("collector NFT burned", !old || old.data.length <= 1 || old.data[0] !== 1);
@@ -140,7 +169,7 @@ check("collector item gone from my items", !(await must("GET", "/api/items", und
 check("convert is idempotent", (await api("POST", `/api/admin/items/${minted.id}/vault`, {}, AD)).json.card?.id === vc.id);
 
 const returned = (await must("POST", "/api/items", { photos: [await photo(10), await photo(190)], group: "ITZY", member: "Lia", source: "album", quantity: 1 }, B)).item;
-await must("POST", `/api/items/${returned.id}/vault`, undefined, B);
+await must("POST", `/api/items/${returned.id}/vault`, { vault: "yvr" }, B);
 check("admin return clears request", (await api("DELETE", `/api/admin/items/${returned.id}/vault`, undefined, AD)).ok && !(await must("GET", "/api/items", undefined, B)).items.find((i) => i.id === returned.id).vaultRequestedAt);
 
 step("上鏈是可選的：用戶付鑄造費，網路費和押金由平台付");

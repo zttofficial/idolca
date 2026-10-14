@@ -41,7 +41,7 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/item
       verificationNote: body.note?.slice(0, 200) ?? null,
       verifiedAt: fake ? new Date() : null,
       fakeTx,
-      ...(fake ? { priceCents: null, listedAt: null, vaultRequestedAt: null } : {}),
+      ...(fake ? { priceCents: null, listedAt: null, vaultRequestedAt: null, vaultTarget: null } : {}),
     })
     .where(eq(collectorItems.id, id))
     .returning();

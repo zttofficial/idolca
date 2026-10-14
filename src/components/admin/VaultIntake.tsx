@@ -12,11 +12,34 @@ import { cropToCard } from "@/lib/crop-card";
 import { refreshVaultCards } from "@/lib/chain-client";
 import { solscanUrl } from "@/lib/solana/config";
 import { GRADERS } from "@/lib/grading";
+import { DEFAULT_VAULT, VAULT_LIST, type VaultId } from "@/lib/vaults";
 
 const unique = (xs: string[]) => [...new Set(xs)];
-const EMPTY = { group: "", member: "", album: "", version: "", rarity: "album" as Rarity, grader: "", gradeScore: "", gradeCert: "", condition: "", location: "", depositor: "" };
+const EMPTY = {
+  vault: DEFAULT_VAULT as VaultId,
+  group: "",
+  member: "",
+  album: "",
+  version: "",
+  rarity: "album" as Rarity,
+  grader: "",
+  gradeScore: "",
+  gradeCert: "",
+  condition: "",
+  location: "",
+  depositor: "",
+};
 
-// 入庫：實物鑑定通過後拍正反面、填卡片資料和倉位，建立金庫卡並鑄造 NFT。
+// 選金庫（直接入庫和收藏卡轉金庫卡共用）
+export function VaultSelect({ value, onChange, className }: { value: VaultId; onChange: (vault: VaultId) => void; className?: string }) {
+  const t = useTranslations("Admin");
+  const tVault = useTranslations("Vaults");
+  return (
+    <Select value={value} onChange={onChange} options={VAULT_LIST.map((v) => ({ value: v.id, label: `${v.code} · ${tVault(v.id)}` }))} ariaLabel={t("fieldVault")} className={className} />
+  );
+}
+
+// 入庫：實物鑑定通過後拍正反面、填卡片資料、所在的金庫和倉位，建立金庫卡並鑄造 NFT。
 // 寄存人留空就是平台自有庫存（之後可以放進卡包卡池）
 export default function VaultIntake() {
   const t = useTranslations("Admin");
@@ -62,7 +85,7 @@ export default function VaultIntake() {
       const data = (await res.json().catch(() => ({}))) as { card?: Card; mintTx?: string; error?: string };
       if (!res.ok || !data.card || !data.mintTx) throw new Error(data.error ?? String(res.status));
       setDone({ card: data.card, mintTx: data.mintTx });
-      setForm({ ...EMPTY, location: form.location });
+      setForm({ ...EMPTY, vault: form.vault, location: form.location });
       setPhotos([null, null]);
       refreshVaultCards();
     } catch (err) {
@@ -131,8 +154,12 @@ export default function VaultIntake() {
             </>
           )}
           <label className={label}>
+            {t("fieldVault")}
+            <VaultSelect value={form.vault} onChange={setValue("vault")} className={field} />
+          </label>
+          <label className={label}>
             {t("fieldLocation")}
-            <input required value={form.location} onChange={set("location")} placeholder="SEL-A03-12" className={field} />
+            <input required value={form.location} onChange={set("location")} placeholder="A03-12" className={field} />
           </label>
           <label className={label}>
             {t("fieldDepositor")}

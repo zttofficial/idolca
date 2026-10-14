@@ -68,10 +68,12 @@ export const check = (label, ok, extra = "") => {
 };
 // 擔保訂單用的收件地址（格式見 src/lib/shipping.ts）
 export const ADDRESS = { name: "Kim Minji", phone: "+82 10 1234 5678", line1: "123 Teheran-ro", line2: "", city: "Seoul", region: "", postal: "06134", country: "KR" };
-// 賣家標記寄出：帶上他看到的收件地址的填寫時間
-export async function ship(orderId, seller) {
+// 寄件的物流單號（格式見 src/lib/tracking.ts）：韓國郵政的國際郵件單號，檢查碼正確
+export const TRACKING = { carrier: "koreapost", number: "EE123456785KR" };
+// 賣家標記寄出：帶上物流單號和他看到的收件地址的填寫時間
+export async function ship(orderId, seller, tracking = TRACKING) {
   const o = (await must("GET", "/api/orders", undefined, seller)).orders.find((x) => x.id === orderId);
-  return must("POST", `/api/orders/${orderId}/ship`, { addressAt: o?.addressAt }, seller);
+  return must("POST", `/api/orders/${orderId}/ship`, { addressAt: o?.addressAt, tracking }, seller);
 }
 export const step = (s) => console.log(`\n▶ ${s}`);
 export function finish() {

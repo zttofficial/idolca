@@ -6,7 +6,7 @@ import { collectorItems, notifications, users, vaultCards } from "./schema";
 import { itemTitle } from "@/lib/item-title";
 import type { NotificationKind, NotificationParams, NotificationView } from "@/lib/notifications";
 
-// 站內通知：拍賣（有人出價、被超過、得標、成交、流拍）、擔保訂單（賣出、買家填好收件地址、提醒買家填地址、寄出、完成、退款、申訴）、金庫卡賣出。
+// 站內通知：拍賣（有人出價、被超過、得標、成交、流拍）、擔保訂單（賣出、買家填好收件地址、提醒買家填地址、寄出、更正單號、完成、退款、申訴）、金庫卡賣出、提貨寄出。
 // 在伺服器處理那件事的地方寫入（出價確認、結標、訂單狀態變更、金庫卡交易回報），寫入失敗只記日誌，不影響交易本身。
 // 同一件事用 key 去重：同一筆交易被回報兩次、排程重跑都不會重複通知
 

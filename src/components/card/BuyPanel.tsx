@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import RedeemDialog from "./RedeemDialog";
+import RedemptionStatus from "./RedemptionStatus";
 import type { ShippingAddress } from "@/lib/shipping";
 import { useTranslations } from "next-intl";
 import { GetWalletPrompt } from "@/components/auth/WalletSetup";
@@ -49,6 +50,8 @@ export default function BuyPanel({ card }: { card: Card }) {
       )}
 
       <div className="mt-5">{card.status !== "redeemed" && chain?.ready && live ? <ChainActions card={card} live={live} /> : <StaticActions card={card} />}</div>
+      {/* 已寄出的提貨：申請人看得到寄出日期和物流單號 */}
+      {(card.status === "redeemed" || live?.burned) && <RedemptionStatus cardId={card.id} />}
 
       <p className="mt-4 text-xs leading-relaxed text-ink-3">{t("settle")}</p>
       <ShareRow cardId={card.id} />
@@ -128,7 +131,7 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
             {t("requestRedeem")}
           </button>
         )}
-        {redeeming && <RedeemDialog busy={busy === "redeem"} onSubmit={(address) => run("redeem", undefined, address)} onClose={() => setRedeeming(false)} />}
+        {redeeming && <RedeemDialog vault={card.vault} busy={busy === "redeem"} onSubmit={(address) => run("redeem", undefined, address)} onClose={() => setRedeeming(false)} />}
       </div>
     );
   } else if (live.listing) {

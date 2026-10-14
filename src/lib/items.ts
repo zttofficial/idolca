@@ -5,6 +5,7 @@ import { useSyncExternalStore } from "react";
 
 import type { CardSource } from "./sources";
 import type { AuctionView } from "./auction";
+import type { VaultId } from "./vaults";
 import { signAndSend } from "./solana/wallets";
 import { track } from "./analytics";
 
@@ -39,8 +40,9 @@ export type CollectorItem = {
   verifiedAt: string | null;
   priceUsdt: number | null;
   listedAt: string | null;
-  // 已申請寄進金庫、等實物寄到
+  // 已申請寄進金庫、等實物寄到，和選的金庫
   vaultRequestedAt: string | null;
+  vaultTarget: VaultId | null;
   createdAt: string;
   // 拍賣中時的拍賣狀態（收藏冊只帶進行中的；刊登頁也帶剛結束的）
   auction?: ItemAuction | null;
@@ -154,9 +156,9 @@ export async function setAuction(id: string, input: { startUsd: number; reserveU
   return data.item;
 }
 
-// 申請寄進金庫（下架、等實物寄到），或取消申請
-export async function requestVault(id: string, cancel = false) {
-  const res = await fetch(`/api/items/${id}/vault`, { method: cancel ? "DELETE" : "POST" });
+// 申請寄進某個金庫（下架、等實物寄到）；不給金庫就是取消申請
+export async function requestVault(id: string, vault: VaultId | null) {
+  const res = await fetch(`/api/items/${id}/vault`, vault ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ vault }) } : { method: "DELETE" });
   const data = (await res.json()) as { item?: CollectorItem; error?: string };
   if (!data.item) throw new Error(data.error ?? "vault_failed");
   items = items.map((i) => (i.id === id ? data.item! : i));

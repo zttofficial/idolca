@@ -138,7 +138,7 @@ if (!(await must("GET", "/api/chain/state")).auctions) {
     return api("POST", "/api/chain/vault/confirm", { action: body.action, cardId: body.cardId, signature }, who);
   };
   const vaultAuction = async (cardId) => (await must("GET", "/api/chain/state")).cards[cardId]?.auction;
-  const { card } = await must("POST", "/api/admin/vault", { photos: [await photo(20), await photo(200)], group: "IVE", member: "Rei", album: "I've IVE", version: "Album Ver.", rarity: "album", location: "SEL-E2E-04", depositor: seller.address }, AD);
+  const { card } = await must("POST", "/api/admin/vault", { photos: [await photo(20), await photo(200)], group: "IVE", member: "Rei", album: "I've IVE", version: "Album Ver.", rarity: "album", vault: "yvr", location: "E2E-04", depositor: seller.address }, AD);
   check("seller owns the vault card", (await must("GET", "/api/chain/state")).cards[card.id]?.owner === seller.address);
   check("start auction", (await vaultTx(S, seller, { action: "auction", cardId: card.id, startUsd: 10, days: 1 })).ok);
   let va = await vaultAuction(card.id);
@@ -159,7 +159,7 @@ if (!(await must("GET", "/api/chain/state")).auctions) {
   check("vault seller notified of the bid", await notified(S, "bid_received", title));
   check("vault outbid bidder notified", await notified(B1, "outbid", title));
 
-  const { card: other } = await must("POST", "/api/admin/vault", { photos: [await photo(80), await photo(260)], group: "IVE", member: "Liz", album: "I've IVE", version: "Album Ver.", rarity: "album", location: "SEL-E2E-04", depositor: seller.address }, AD);
+  const { card: other } = await must("POST", "/api/admin/vault", { photos: [await photo(80), await photo(260)], group: "IVE", member: "Liz", album: "I've IVE", version: "Album Ver.", rarity: "album", vault: "yvr", location: "E2E-04", depositor: seller.address }, AD);
   await vaultTx(S, seller, { action: "auction", cardId: other.id, startUsd: 10, days: 1 });
   check("cancel before bids", (await vaultTx(S, seller, { action: "cancelAuction", cardId: other.id })).ok);
   const back = (await must("GET", "/api/chain/state")).cards[other.id];

@@ -18,6 +18,7 @@ const card = (serial: string): Card => ({
   owner: "",
   status: "vaulted",
   intakeDate: "2026-10-01",
+  vault: "yvr",
   location: "A",
 });
 const entry = (serial: string, tier: Tier, valueUsdt: number, remaining = 1): PoolEntry => ({ id: serial, card: card(serial), tier, valueUsdt, total: 1, remaining });

@@ -14,7 +14,7 @@ export default async function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      updated="2026-10-12"
+      updated="2026-10-14"
       note={locale === "en" ? undefined : "This policy is provided in English, and the English version governs."}
       intro="This policy explains what personal data Idolca collects, why, and how long we keep it. We collect only what the service needs and do not sell personal data or use it for advertising."
       sections={[
@@ -43,14 +43,14 @@ export default async function PrivacyPage() {
         {
           title: "How long we keep it",
           body: [
-            `Shipping addresses are deleted ${ADDRESS_RETENTION_DAYS} days after a redemption ships or an escrow order ends, or immediately if a redemption is cancelled. The address on an escrow order is shown only to that order's seller and to Idolca. Expired sessions are deleted daily. Account and order records are kept while your account is open and afterwards as long as tax and anti-money-laundering rules require.`,
+            `Shipping addresses and tracking numbers are deleted ${ADDRESS_RETENTION_DAYS} days after a redemption ships or an escrow order ends, or immediately if a redemption is cancelled. The address on an escrow order is shown only to that order's seller and to Idolca, and its tracking number only to that order's buyer, seller and Idolca. Expired sessions are deleted daily. Account and order records are kept while your account is open and afterwards as long as tax and anti-money-laundering rules require.`,
             "Unwatermarked originals of uploaded photos are kept for authentication; only watermarked versions are shown publicly.",
           ],
         },
         {
           title: "Who processes it",
           body: [
-            "Vercel hosts the site, Neon hosts the database and Resend delivers account emails such as email verification and password reset; PostHog, in its EU region, processes usage data. All four process data on our behalf under their data processing terms. Shipping carriers receive the recipient name, phone and address for the shipment, and when you buy a free listing, its seller receives them to ship the card. We do not share personal data with anyone else unless the law requires it.",
+            "Vercel hosts the site, Neon hosts the database and Resend delivers account emails such as email verification and password reset; PostHog, in its EU region, processes usage data. All four process data on our behalf under their data processing terms. Shipping carriers receive the recipient name, phone and address for the shipment. Our Chongqing vault is run by a warehouse partner in China, which receives the same details to ship cards stored there. When you buy a free listing, its seller receives them to ship the card. We do not share personal data with anyone else unless the law requires it.",
           ],
         },
         {

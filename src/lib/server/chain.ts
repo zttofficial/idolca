@@ -7,6 +7,7 @@ import { burn, create, fetchAsset, fetchCollection, mplCore, transfer, update, u
 import { CHAIN } from "@/lib/chain";
 import { CLUSTER } from "@/lib/solana/config";
 import { GRADERS, type Grade } from "@/lib/grading";
+import { VAULTS, type VaultId } from "@/lib/vaults";
 
 // 平台在鏈上的動作：鑄造收藏 NFT、把假卡寫進鏈上並凍結。平台金鑰只在伺服器上：
 // 線上放在 PLATFORM_SECRET_KEY（64 個數字的 JSON 陣列），本機也可以用 PLATFORM_KEYPAIR 指向金鑰檔
@@ -88,7 +89,18 @@ const gradeAttributes = (grade: Grade | null): [string, string][] =>
       ]
     : [];
 
-export type VaultAttributes = { serial: string; group: string; member: string; album: string; version: string; rarity: string; grade: Grade | null; location: string; intakeDate: string };
+export type VaultAttributes = {
+  serial: string;
+  group: string;
+  member: string;
+  album: string;
+  version: string;
+  rarity: string;
+  grade: Grade | null;
+  vault: VaultId;
+  location: string;
+  intakeDate: string;
+};
 
 // 實物入庫鑑定通過後鑄造金庫 NFT：持有人是寄存人的錢包，平台自有庫存（卡包卡池）鑄給平台錢包。
 // 屬性寫進 Attributes 插件，元數據指向 /api/meta/card/{id}
@@ -106,6 +118,7 @@ export async function mintVaultNft(cardId: string, card: VaultAttributes, owner:
     ["rarity", card.rarity],
     ...gradeAttributes(card.grade),
     ["location", card.location],
+    ["vault", VAULTS[card.vault].code],
     ["intake_date", card.intakeDate],
     ["custody", "vault"],
     ["verification", "authentic"],

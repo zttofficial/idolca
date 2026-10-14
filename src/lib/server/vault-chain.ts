@@ -441,7 +441,7 @@ export const MEMO_PROGRAM = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDL
 export const redeemMemo = (cardId: string) => `idolca:redeem:${cardId}`;
 
 // 申請提貨：持有人簽名，把銷毀權委託給平台，並以平台為凍結代理立即凍結（之後不能轉手或掛單）；
-// 同一筆交易把運費轉給平台（錢包裡哪種幣夠就用哪種），備註寫卡片 id，確認時對帳。插件的租金由平台付
+// 同一筆交易把運費（呼叫端按卡所在的金庫和收件國家用 redeemFeeUsd 算）轉給平台（錢包裡哪種幣夠就用哪種），備註寫卡片 id，確認時對帳。插件的租金由平台付
 export async function buildRedeemRequest(cardId: string, owner: PublicKey, feeUsdt: number) {
   const umi = platformUmi()!;
   const asset = await fetchAsset(umi, publicKey((await cardAsset(cardId)).toBase58()));

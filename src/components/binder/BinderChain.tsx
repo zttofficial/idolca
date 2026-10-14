@@ -8,7 +8,9 @@ import { postAction } from "@/lib/chain-client";
 import { solscanUrl } from "@/lib/solana/config";
 import { arcExplorerUrl } from "@/lib/arc";
 import AddressDialog, { AddressBlock } from "@/components/shipping/AddressDialog";
+import { TrackingBlock, TrackingDialog } from "@/components/shipping/Tracking";
 import type { ShippingAddress } from "@/lib/shipping";
+import type { Tracking } from "@/lib/tracking";
 
 type Order = {
   id: string;
@@ -34,6 +36,8 @@ type Order = {
   // 收件地址：只有這筆訂單的買家和賣家拿得到
   shippingAddress: ShippingAddress | null;
   addressAt: string | null;
+  // 賣家寄出時填的物流單號
+  tracking: Tracking | null;
 };
 
 const dateOf = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -41,13 +45,16 @@ const dateOf = (iso: string) => new Date(iso).toLocaleDateString(undefined, { mo
 // 擔保交易訂單：卡名和照片連到刊登頁（成交後網址仍有效）。賣家標記寄出，買家確認收貨（平台隨即放款、轉移 NFT）。
 // 賣家過了寄出期限沒寄，買家可以取消退款；買家收到有問題可以申訴，申訴中暫停自動放款。
 // 收件地址：已付款的訂單賣家看得到（可複製），買家寄出前可以補填或修改（拍賣得標的訂單在這裡補填）；
-// 沒有地址時賣家不能標記寄出，寄出期限也要等買家填好才開始算
+// 沒有地址時賣家不能標記寄出，寄出期限也要等買家填好才開始算。
+// 標記寄出要填物流單號，買賣雙方都看得到（可複製、可查詢）；寄出後到買家確認前賣家可以更正
 export function Orders() {
   const t = useTranslations("Binder");
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<{ id: string; code: string }>();
   const [addressing, setAddressing] = useState<Order>();
+  // 正在填單號的訂單：paid 是標記寄出，shipped 是更正單號
+  const [tracking, setTracking] = useState<Order>();
   const [disputing, setDisputing] = useState<string>();
   const [reason, setReason] = useState("");
   // 期限比較用的現在時間，讀訂單時更新
@@ -63,20 +70,24 @@ export function Orders() {
     load();
   }, [load]);
 
-  const act = async (id: string, step: "ship" | "receive" | "refund" | "dispute" | "address", body?: unknown) => {
+  const act = async (id: string, step: "ship" | "tracking" | "receive" | "refund" | "dispute" | "address", body?: unknown) => {
     setBusy(id);
     setError(undefined);
     try {
       await postAction(`/api/orders/${id}/${step}`, body);
       setDisputing(undefined);
       setAddressing(undefined);
+      setTracking(undefined);
       setReason("");
       await load();
     } catch (err) {
       const code = err instanceof Error ? err.message : "";
       setError({ id, code });
-      // 買家剛改了地址：重新讀訂單，讓賣家看到新地址再寄
-      if (code === "address_changed") await load();
+      // 買家剛改了地址：關掉單號彈窗、重新讀訂單，讓賣家看到新地址再寄
+      if (code === "address_changed") {
+        setTracking(undefined);
+        await load();
+      }
     } finally {
       setBusy(undefined);
     }
@@ -120,6 +131,7 @@ export function Orders() {
                 <p className="mt-0.5 text-[11px] text-notice-ink">{t(o.role === "seller" ? "awaitingAddress" : "addressNeeded", { date: dateOf(o.addressBy) })}</p>
               )}
               {o.status === "paid" && o.shippingAddress && <AddressBlock address={o.shippingAddress} className="mt-2 max-w-xs" />}
+              {o.tracking && <TrackingBlock tracking={o.tracking} className="mt-2 max-w-xs" />}
               {o.status === "shipped" && o.autoReleaseAt && <p className="mt-0.5 text-[11px] text-ink-3">{t("autoRelease", { date: dateOf(o.autoReleaseAt) })}</p>}
               {o.status === "disputed" && (
                 <p className="mt-0.5 text-[11px] text-notice-ink">
@@ -132,10 +144,19 @@ export function Orders() {
               <button
                 disabled={busy === o.id || !o.shippingAddress}
                 title={o.shippingAddress ? undefined : t("awaitingAddress")}
-                onClick={() => act(o.id, "ship", { addressAt: o.addressAt })}
+                onClick={() => setTracking(o)}
                 className="btn-primary rounded-full px-4 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t("markShipped")}
+              </button>
+            )}
+            {o.role === "seller" && o.status === "shipped" && (
+              <button
+                disabled={busy === o.id}
+                onClick={() => setTracking(o)}
+                className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold hover:bg-surface-2 disabled:opacity-50"
+              >
+                {t("editTracking")}
               </button>
             )}
             {o.role === "buyer" && o.status === "paid" && (
@@ -189,7 +210,7 @@ export function Orders() {
                 </button>
               </form>
             )}
-            {error?.id === o.id && <p className="w-full text-xs text-down">{t(error.code === "address_changed" ? "addressChanged" : "orderError")}</p>}
+            {error?.id === o.id && error.id !== tracking?.id && <p className="w-full text-xs text-down">{t(error.code === "address_changed" ? "addressChanged" : "orderError")}</p>}
           </li>
         ))}
       </ul>
@@ -202,6 +223,21 @@ export function Orders() {
           initial={addressing.shippingAddress}
           onSubmit={(address) => act(addressing.id, "address", { address })}
           onClose={() => setAddressing(undefined)}
+        />
+      )}
+      {tracking && (
+        <TrackingDialog
+          title={t(tracking.status === "paid" ? "markShipped" : "editTracking")}
+          body={t(tracking.status === "paid" ? "shipBody" : "editTrackingBody")}
+          submitLabel={t(tracking.status === "paid" ? "markShipped" : "saveTracking")}
+          busy={busy === tracking.id}
+          error={error?.id === tracking.id ? t("orderError") : undefined}
+          initial={tracking.tracking}
+          onSubmit={(value) => act(tracking.id, tracking.status === "paid" ? "ship" : "tracking", { addressAt: tracking.addressAt, tracking: value })}
+          onClose={() => {
+            setTracking(undefined);
+            setError(undefined);
+          }}
         />
       )}
     </>

@@ -1,7 +1,7 @@
 // 擔保交易：付款前要收件地址、賣家看得到地址而刊登頁看不到、買家改地址後賣家要重讀、逾時退款、申訴與後台退款、逾時自動放款、後台放款，以及每一步該收到的站內通知。
 // 網站要用縮短的期限啟動：ESCROW_SHIP_DAYS=0.0003 ESCROW_CONFIRM_DAYS=0.0003 CRON_SECRET=<同 E2E_CRON_SECRET> npm run dev
 // 用法：E2E_CRON_SECRET=testcron npm run test:e2e:escrow
-import { ADDRESS, BASE, adminKey, api, check, finish, login, mintSelf, must, newKey, photo, ship, signSend, sleep, step } from "./lib.mjs";
+import { ADDRESS, BASE, TRACKING, adminKey, api, check, finish, login, mintSelf, must, newKey, photo, ship, signSend, sleep, step } from "./lib.mjs";
 
 const CRON = process.env.E2E_CRON_SECRET ?? "testcron";
 const AD = await login(adminKey());
@@ -51,14 +51,26 @@ const b = await buy(itemB.id);
 const stale = (await order(b, S)).addressAt;
 await must("POST", `/api/orders/${b}/address`, { address: { ...ADDRESS, line2: "Apt 2" } }, B);
 check("seller notified of the new address", await notified(S, "order_address", "Escrow B"));
-check("ship with a stale address refused", (await api("POST", `/api/orders/${b}/ship`, { addressAt: stale }, S)).json.error === "address_changed");
+const seen = (await order(b, S)).addressAt;
+check("ship without a tracking number refused", (await api("POST", `/api/orders/${b}/ship`, { addressAt: seen }, S)).json.error === "invalid_tracking");
+const typo = { carrier: "koreapost", number: "EE123456784KR" };
+check("ship with a mistyped postal number refused", (await api("POST", `/api/orders/${b}/ship`, { addressAt: seen, tracking: typo }, S)).json.error === "invalid_tracking");
+check("ship with a stale address refused", (await api("POST", `/api/orders/${b}/ship`, { addressAt: stale, tracking: TRACKING }, S)).json.error === "address_changed");
 await ship(b, S);
-check("buyer notified of shipping", await notified(B, "order_shipped", "Escrow B"));
+check("buyer sees the tracking number", (await order(b)).tracking?.number === TRACKING.number);
+const shippedNote = (await must("GET", "/api/notifications", undefined, B)).items.find((n) => n.kind === "order_shipped" && n.params.card === "Escrow B");
+check("buyer notified of shipping with the tracking number", shippedNote?.params.tracking === TRACKING.number);
+check("buyer can't change the tracking number", (await api("POST", `/api/orders/${b}/tracking`, { tracking: { carrier: "cj", number: "689012345678" } }, B)).status === 409);
+await must("POST", `/api/orders/${b}/tracking`, { tracking: { carrier: "cj", number: "6890-1234-5678" } }, S);
+check("seller corrected the tracking number", (await order(b)).tracking?.number === "689012345678" && (await order(b)).tracking?.carrier === "cj");
+check("buyer notified of the correction", await notified(B, "order_tracking", "Escrow B"));
 check("dispute", (await api("POST", `/api/orders/${b}/dispute`, { reason: "Wrong member" }, B)).ok);
 check("seller notified of the dispute", await notified(S, "order_disputed", "Escrow B"));
 await sleep(30000);
 o = await order(b);
 check("dispute pauses auto-release", o.status === "disputed" && o.disputeReason === "Wrong member", o.status);
+check("tracking frozen once disputed", (await api("POST", `/api/orders/${b}/tracking`, { tracking: TRACKING }, S)).json.error === "not_shipped");
+check("admin sees the tracking number", (await must("GET", "/api/admin/orders", undefined, AD)).orders.find((x) => x.id === b)?.tracking?.number === "689012345678");
 check("admin needs login", (await api("POST", `/api/admin/orders/${b}/refund`)).status === 401);
 check("non-admin refused", (await api("POST", `/api/admin/orders/${b}/refund`, undefined, B)).status === 403);
 check("admin list puts dispute first", (await must("GET", "/api/admin/orders", undefined, AD)).orders[0]?.id === b);

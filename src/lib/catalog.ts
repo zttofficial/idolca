@@ -2,6 +2,7 @@
 // 團體、成員、專輯是真實資料；版本清單是示意的通用版本，正式版從官方資料和用戶投稿建立。
 
 import type { Card, Rarity } from "./cards";
+import { DEFAULT_VAULT } from "./vaults";
 
 export type Version = { label: string; rarity: Rarity };
 
@@ -129,6 +130,7 @@ export function templateCard(t: Template, vault?: Card[] | null): Card {
     owner: "",
     status: "vaulted",
     intakeDate: "",
+    vault: DEFAULT_VAULT,
     location: "",
   };
 }

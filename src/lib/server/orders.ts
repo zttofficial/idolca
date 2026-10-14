@@ -10,6 +10,7 @@ import { buildPayment, payout, transferCollectorNft, verifyPayment } from "./fun
 import { itemTitle } from "@/lib/item-title";
 import { addressDeadline as addressDeadlineFrom, needsAddressReminder, shipDeadline as deadlineFrom } from "@/lib/escrow";
 import { parseAddress, type ShippingAddress } from "@/lib/shipping";
+import { trackingOf, type Tracking } from "@/lib/tracking";
 import { itemCard, notify, type Notice } from "./notifications";
 
 // 自由刊登的擔保交易。貨款先進平台錢包，買家確認收貨後才放給賣家，NFT 同時由平台轉給買家。
@@ -21,12 +22,18 @@ const memoOf = (orderId: string) => `idolca:order:${orderId}`;
 
 // 訂單的通知都連到收藏冊的訂單頁
 const ORDERS_HREF = "/binder?tab=orders";
-// ref 預設是訂單編號（同一種通知每張訂單只發一次）；同一件事會發生多次時（買家改地址）另外帶上區分的 ref
-async function notifyOrder(db: Db, order: OrderRow, notices: { to: "buyer" | "seller"; kind: Notice["kind"]; price?: number; ref?: string }[]) {
+// ref 預設是訂單編號（同一種通知每張訂單只發一次）；同一件事會發生多次時（買家改地址、賣家更正單號）另外帶上區分的 ref
+async function notifyOrder(db: Db, order: OrderRow, notices: { to: "buyer" | "seller"; kind: Notice["kind"]; price?: number; tracking?: string; ref?: string }[]) {
   const { card } = await itemCard(db, order.itemId);
   await notify(
     db,
-    notices.map((n) => ({ userId: n.to === "buyer" ? order.buyerId : order.sellerId, kind: n.kind, params: { card, price: n.price }, href: ORDERS_HREF, ref: n.ref ?? order.id })),
+    notices.map((n) => ({
+      userId: n.to === "buyer" ? order.buyerId : order.sellerId,
+      kind: n.kind,
+      params: { card, price: n.price, tracking: n.tracking },
+      href: ORDERS_HREF,
+      ref: n.ref ?? order.id,
+    })),
   );
 }
 
@@ -137,14 +144,15 @@ export async function setOrderAddress(db: Db, buyerId: string, orderId: string, 
   return row ?? null;
 }
 
-// 賣家標記寄出：要有收件地址，並帶上他看到的那份地址的填寫時間；買家在這之後改過地址就擋下，讓賣家重新讀過
-export async function markShipped(db: Db, sellerId: string, orderId: string, addressAt: unknown) {
+// 賣家標記寄出：要有收件地址和物流單號（路由先用 parseTracking 驗過），並帶上他看到的那份地址的填寫時間；
+// 買家在這之後改過地址就擋下，讓賣家重新讀過。單號隨寄出通知帶給買家
+export async function markShipped(db: Db, sellerId: string, orderId: string, addressAt: unknown, tracking: Tracking) {
   const seen = typeof addressAt === "string" ? new Date(addressAt) : null;
   if (!seen || Number.isNaN(seen.getTime())) return { error: "no_address" as const };
   const now = new Date();
   const [row] = await db
     .update(orders)
-    .set({ status: "shipped", shippedAt: now, updatedAt: now })
+    .set({ status: "shipped", shippedAt: now, updatedAt: now, trackingCarrier: tracking.carrier, trackingNumber: tracking.number })
     .where(and(eq(orders.id, orderId), eq(orders.sellerId, sellerId), eq(orders.status, "paid"), isNotNull(orders.shippingAddress), eq(orders.addressAt, seen)))
     .returning();
   if (!row) {
@@ -155,7 +163,26 @@ export async function markShipped(db: Db, sellerId: string, orderId: string, add
     if (o?.status !== "paid") return { error: "not_paid" as const };
     return { error: o.shippingAddress ? ("address_changed" as const) : ("no_address" as const) };
   }
-  await notifyOrder(db, row, [{ to: "buyer", kind: "order_shipped" }]);
+  await notifyOrder(db, row, [{ to: "buyer", kind: "order_shipped", tracking: tracking.number }]);
+  return { ok: true as const };
+}
+
+// 賣家更正物流單號：寄出後到買家確認（或申訴）前都可以，改了就通知買家；單號沒變時不做事
+export async function updateTracking(db: Db, sellerId: string, orderId: string, tracking: Tracking) {
+  const [before] = await db
+    .select()
+    .from(orders)
+    .where(and(eq(orders.id, orderId), eq(orders.sellerId, sellerId)));
+  if (before?.status !== "shipped") return { error: "not_shipped" as const };
+  if (before.trackingCarrier === tracking.carrier && before.trackingNumber === tracking.number) return { ok: true as const };
+  const now = new Date();
+  const [row] = await db
+    .update(orders)
+    .set({ trackingCarrier: tracking.carrier, trackingNumber: tracking.number, updatedAt: now })
+    .where(and(eq(orders.id, orderId), eq(orders.sellerId, sellerId), eq(orders.status, "shipped")))
+    .returning();
+  if (!row) return { error: "not_shipped" as const };
+  await notifyOrder(db, row, [{ to: "buyer", kind: "order_tracking", tracking: tracking.number, ref: `${row.id}:${now.getTime()}` }]);
   return { ok: true as const };
 }
 
@@ -309,6 +336,8 @@ export type PublicOrder = {
   // 收件地址和填寫時間：只在訂單的買家、賣家和後台看得到（myOrders、adminOrders），刊登頁和公開接口不讀這兩欄
   shippingAddress: ShippingAddress | null;
   addressAt: string | null;
+  // 賣家寄出時填的物流單號，同樣只給買家、賣家和後台
+  tracking: Tracking | null;
   updatedAt: string;
 };
 
@@ -337,6 +366,7 @@ const toPublic = (o: OrderRow, item: typeof collectorItems.$inferSelect | null, 
   autoReleaseAt: releaseAt(o)?.toISOString() ?? null,
   shippingAddress: addressOf(o.shippingAddress),
   addressAt: o.shippingAddress ? (o.addressAt?.toISOString() ?? null) : null,
+  tracking: trackingOf(o.trackingCarrier, o.trackingNumber),
   updatedAt: o.updatedAt.toISOString(),
 });
 
@@ -361,11 +391,11 @@ export async function lastAddress(db: Db, userId: string): Promise<ShippingAddre
   return newer?.address ? parseAddress(JSON.parse(newer.address)) : null;
 }
 
-// 排程：清掉結束超過 cutoff 的訂單（完成、退款、取消）和沒付款就放棄的訂單上的收件地址
+// 排程：清掉結束超過 cutoff 的訂單（完成、退款、取消）和沒付款就放棄的訂單上的收件地址，物流單號一起清
 export async function purgeOrderAddresses(db: Db, cutoff: Date) {
   const rows = await db
     .update(orders)
-    .set({ shippingAddress: null })
+    .set({ shippingAddress: null, trackingCarrier: null, trackingNumber: null })
     .where(and(isNotNull(orders.shippingAddress), inArray(orders.status, ["completed", "refunded", "cancelled", "pending"]), lt(orders.updatedAt, cutoff)))
     .returning({ id: orders.id });
   return rows.length;

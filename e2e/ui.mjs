@@ -5,7 +5,9 @@
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { BASE, adminKey, api, check, finish, login, must, newKey, photo, signSend, sleep, step } from "./lib.mjs";
+import { BASE, TRACKING, adminKey, api, check, finish, login, must, newKey, photo, signSend, sleep, step } from "./lib.mjs";
+import { redeemFeeUsd, vaultCountries } from "../src/lib/shipping.ts";
+import { formatPrice } from "../src/lib/fx.ts";
 
 const OUT = process.env.E2E_OUT ?? ".data/e2e-shots";
 const CHROME = process.env.CHROME_PATH ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
@@ -16,14 +18,16 @@ const AD = await login(adminKey());
 const packId = `ui-${Date.now().toString(36)}`;
 await must("POST", "/api/admin/packs", { id: packId, name: "UI Test Pack", priceUsdt: 1.5, startsAt: new Date(Date.now() - 60_000).toISOString(), endsAt: new Date(Date.now() + 86_400_000).toISOString(), palette: ["#3a3a42", "#111114"] }, AD);
 for (const [i, member] of ["Yeji", "Chaeryeong"].entries()) {
-  const { card } = await must("POST", "/api/admin/vault", { photos: [await photo(i * 90), await photo(i * 90 + 180)], group: "ITZY", member, album: "BORN TO BE", version: "Album Ver.", rarity: "album", location: "SEL-E2E-03" }, AD);
+  const { card } = await must("POST", "/api/admin/vault", { photos: [await photo(i * 90), await photo(i * 90 + 180)], group: "ITZY", member, album: "BORN TO BE", version: "Album Ver.", rarity: "album", vault: "yvr", location: "E2E-03" }, AD);
   // 卡值壓在返還率上限內（單包期望價值 1 USD、售價 1.5 USD，約 67%），否則卡包會暫停販售
   await must("POST", `/api/admin/packs/${packId}/cards`, { cardId: card.id, tier: i ? "R" : "SR", valueUsdt: i ? 0.6 : 1.4 }, AD);
 }
 const seller = newKey();
 const S = await login(seller);
-// 要買的金庫卡由測試自己準備：入庫一張寄存在賣家錢包的卡，賣家用 5 USD 掛單（不靠 devnet 上剛好有便宜的卡）
-const vaultCard = (await must("POST", "/api/admin/vault", { photos: [await photo(200), await photo(20)], group: "ITZY", member: "Lia", album: "BORN TO BE", version: "Album Ver.", rarity: "album", location: "SEL-E2E-04", depositor: seller.address }, AD)).card;
+// 要買的金庫卡由測試自己準備：入庫一張放在溫哥華、寄存在賣家錢包的卡，賣家用 5 USD 掛單（不靠 devnet 上剛好有便宜的卡）
+const vaultCard = (await must("POST", "/api/admin/vault", { photos: [await photo(200), await photo(20)], group: "ITZY", member: "Lia", album: "BORN TO BE", version: "Album Ver.", rarity: "album", vault: "yvr", location: "E2E-04", depositor: seller.address }, AD)).card;
+// 提貨從溫哥華寄出，後台出貨填加拿大郵政的單號（檢查碼正確）
+const REDEEM_TRACKING = { carrier: "canadapost", number: "EE123456785CA" };
 const listTx = (await must("POST", "/api/chain/vault/tx", { action: "list", cardId: vaultCard.id, priceUsdt: 5 }, S)).tx;
 await must("POST", "/api/chain/vault/confirm", { action: "list", cardId: vaultCard.id, signature: await signSend(listTx, seller.kp) }, S);
 const item = (await must("POST", "/api/items", { photos: [await photo(40), await photo(260)], title: "UI test set", group: "ITZY", member: "Ryujin, Yuna", quantity: 2, source: "pob", priceUsdt: 8 }, S)).item;
@@ -96,6 +100,7 @@ await go(`/card/${cardId}`);
 check("buy", (await waitFor(has("Buy now for"), 60000)) && (await click("Buy now for")));
 check("pay with Solana", await clickWhenShown("Solana wallet"));
 check("bought", await waitFor(has("Bought. The digital collectible is in your wallet")));
+check("card page shows its vault", await waitFor(has("Vancouver vault")));
 await shot("2-card-bought");
 
 step("掛單、取消");
@@ -115,9 +120,14 @@ for (const [field, value] of [["name", "Kim Minji"], ["tel", "+82 10 1234 5678"]
 // 國家是自訂的下拉選單：打開後點選項
 await evaluate(`document.querySelector('[role=dialog] button[aria-haspopup=listbox]').click()`);
 await sleep(300);
+// 國家只列這張卡所在的金庫（溫哥華）寄得到的：泰國不在 Tracked Packet 的服務範圍內
+check("only the vault's countries listed", await evaluate(`[...document.querySelectorAll('[role=option]')].length === ${vaultCountries("yvr").length} && ![...document.querySelectorAll('[role=option]')].some((o) => o.textContent.includes('Thailand'))`));
 check("country picked", await evaluate(`(() => { const o = [...document.querySelectorAll('[role=option]')].find((o) => o.textContent.includes('Korea')); if (!o) return false; o.click(); return true; })()`));
+// 運費按卡所在的金庫和目的地計價：選好國家後，說明和送出按鈕都顯示從溫哥華寄到韓國的運費
+const krFee = formatPrice(redeemFeeUsd("yvr", "KR"), 2);
+check("fee shown for the vault and country", await waitFor(`${has(`from the Vancouver vault to South Korea: ${krFee}`)} && ${has(`Pay ${krFee} and sign`)}`), krFee);
 await shot("3-redeem-form");
-check("submit redeem", await click("Confirm and sign"));
+check("submit redeem", await click(`Pay ${krFee} and sign`));
 check("redeeming", await waitFor(has("Redemption requested. View the transaction")));
 await shot("4-card-redeeming");
 
@@ -130,7 +140,7 @@ check("continue to payment", await click("Continue to payment"));
 check("pay with Solana", await clickWhenShown("Solana wallet"));
 check("paid", await waitFor(has("Paid into escrow")));
 const orders = (await must("GET", "/api/orders", undefined, S)).orders;
-await must("POST", `/api/orders/${orders[0].id}/ship`, { addressAt: orders[0].addressAt }, S);
+await must("POST", `/api/orders/${orders[0].id}/ship`, { addressAt: orders[0].addressAt, tracking: TRACKING }, S);
 await go("/binder?tab=orders");
 check("confirm received", await click("Confirm received"));
 check("completed", await waitFor(has("Completed")));
@@ -178,12 +188,19 @@ await sleep(3000);
 await shot("8-binder");
 
 step("後台出貨");
-const ship = await api("POST", `/api/admin/redemptions/${cardId}/ship`, undefined, AD);
+check("ship needs a tracking number", (await api("POST", `/api/admin/redemptions/${cardId}/ship`, undefined, AD)).json.error === "invalid_tracking");
+const ship = await api("POST", `/api/admin/redemptions/${cardId}/ship`, { tracking: REDEEM_TRACKING }, AD);
 check("shipped and burned", ship.ok && Boolean(ship.json.shipTx), ship.json.shipTx ?? JSON.stringify(ship.json));
+check("others can't see the tracking number", (await must("GET", `/api/redemptions/${cardId}`, undefined, S)).redemption === null);
+// 申請人在卡片頁看到寄出日期和物流單號，通知裡也帶著單號
+await go(`/card/${cardId}`);
+check("holder sees the tracking number", await waitFor(has(REDEEM_TRACKING.number)));
+check("holder notified with the tracking number", await evaluate(`fetch('/api/notifications').then((r) => r.json()).then((d) => d.items.some((n) => n.kind === "redeem_shipped" && n.params.tracking === ${JSON.stringify(REDEEM_TRACKING.number)}))`));
+await shot("9-card-shipped");
 await send("Network.setCookie", { name: AD.split("=")[0], value: AD.split("=")[1], url: BASE });
 await go("/admin");
 await sleep(3000);
-await shot("9-admin");
+await shot("10-admin");
 
 console.log(`\nscreenshots in ${OUT}`);
 ws.close();
