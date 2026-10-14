@@ -5,13 +5,16 @@ import { useTranslations } from "next-intl";
 import { formatPrice } from "@/lib/fx";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 
-type ChainEvent = { type: "mint" | "list" | "sale" | "cancel" | "redeem" | "burn" | "transfer"; date: string; signature: string; priceUsdt?: number; from?: string; to?: string };
+type ChainEvent = { type: "mint" | "list" | "sale" | "cancel" | "auction" | "unsold" | "cancelAuction" | "redeem" | "burn" | "transfer"; date: string; signature: string; priceUsdt?: number; from?: string; to?: string };
 
 const DOT: Record<ChainEvent["type"], string> = {
   mint: "bg-accent",
   list: "bg-ink-3",
   sale: "bg-up",
   cancel: "bg-line-strong",
+  auction: "bg-accent",
+  unsold: "bg-line-strong",
+  cancelAuction: "bg-line-strong",
   redeem: "bg-notice-ink",
   burn: "bg-down",
   transfer: "bg-ink-3",

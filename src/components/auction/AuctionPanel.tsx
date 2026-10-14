@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { CURRENCY, formatPrice } from "@/lib/fx";
 import { AUCTION_EXTEND_MINUTES, type AuctionView } from "@/lib/auction";
 import { ESCROW_SHIP_DAYS } from "@/lib/policy";
+import { shortAddress, solscanUrl } from "@/lib/solana/config";
 import Price from "@/components/web3/Price";
 import InfoTip from "@/components/ui/InfoTip";
 import PaymentPicker, { type PayRun } from "@/components/pay/PaymentPicker";
@@ -40,7 +41,8 @@ export function TimeLeft({ endsAt, className }: { endsAt: string; className?: st
 }
 
 export type AuctionMe = { seller: boolean; leading: boolean; refunding: boolean };
-export type BidHistoryEntry = { bidder: string; amountUsd: number; at: string; mine: boolean };
+// 自由刊登的出價者用代號（bidder 是 1、2…）；金庫卡的出價在鏈上，直接列錢包地址（wallet）和出價交易（tx）
+export type BidHistoryEntry = { bidder: string; amountUsd: number; at: string; mine: boolean; wallet?: string; tx?: string };
 
 export default function AuctionPanel({
   view,
@@ -53,7 +55,7 @@ export default function AuctionPanel({
   view: AuctionView;
   // 看的人自己的狀態；未登入時為 null
   me: AuctionMe | null;
-  // 出價紀錄（自由刊登有；金庫卡的出價紀錄在鏈上）
+  // 出價紀錄，新的在前
   history?: BidHistoryEntry[];
   // 出價：給定金額回傳付款方式面板要用的動作；arcUnavailableNote 是不能用 Arc 時的說明
   bid: { run: (amountUsd: number) => PayRun; arcUnavailableNote?: string } | null;
@@ -99,7 +101,7 @@ export default function AuctionPanel({
 
       {me?.seller && (
         <p className="mt-4 rounded-xl bg-surface-2 px-4 py-3 text-sm text-ink-2">
-          {t(!ended ? "sellerLive" : outcome === "sold" ? `sellerSold_${view.lane}` : `sellerEnded_${outcome}`, { days: ESCROW_SHIP_DAYS })}
+          {t(!ended ? (view.bidCount > 0 ? "sellerLive_bids" : "sellerLive") : outcome === "sold" ? `sellerSold_${view.lane}` : `sellerEnded_${outcome}`, { days: ESCROW_SHIP_DAYS })}
         </p>
       )}
       {!me?.seller && me?.leading && (
@@ -172,14 +174,22 @@ export default function AuctionPanel({
       {history && history.length > 0 && (
         <div className="mt-5 border-t border-line pt-4">
           <h3 className="text-sm font-semibold">{t("history")}</h3>
+          {view.lane === "vault" && <p className="mt-1 text-xs text-ink-3">{t("historyOnChain")}</p>}
           <ul className="mt-2 space-y-1.5 text-sm">
             {history.map((h, i) => (
-              <li key={`${h.at}-${i}`} className="flex items-center justify-between gap-3">
-                <span className={h.mine ? "font-semibold text-accent-ink" : "text-ink-2"}>{h.mine ? t("bidderYou") : t("bidder", { n: h.bidder })}</span>
+              <li key={h.tx ?? `${h.at}-${i}`} className="flex items-center justify-between gap-3">
+                <span className={`${h.mine ? "font-semibold text-accent-ink" : "text-ink-2"} ${h.wallet && !h.mine ? "font-mono text-xs" : ""}`}>
+                  {h.mine ? t("bidderYou") : h.wallet ? shortAddress(h.wallet) : t("bidder", { n: h.bidder })}
+                </span>
                 <span className="ml-auto tabular-nums">{formatPrice(h.amountUsd)}</span>
                 <time className="w-24 text-right text-xs text-ink-3" dateTime={h.at}>
                   {new Date(h.at).toLocaleString(locale, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                 </time>
+                {h.tx && (
+                  <a href={solscanUrl("tx", h.tx)} target="_blank" rel="noreferrer" aria-label={t("viewTx")} className="text-xs text-accent-ink hover:underline">
+                    ↗
+                  </a>
+                )}
               </li>
             ))}
           </ul>

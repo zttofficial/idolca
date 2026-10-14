@@ -8,6 +8,7 @@ import { collectorItems, orders, users, type OrderStatus, type PayRail } from ".
 import { arcPaymentRequest, arcPayout, settleArcPayment } from "./arc-pay";
 import { buildPayment, payout, transferCollectorNft, verifyPayment } from "./funds";
 import { itemTitle } from "@/lib/item-title";
+import { itemCard, notify, type Notice } from "./notifications";
 
 // 自由刊登的擔保交易。貨款先進平台錢包，買家確認收貨後才放給賣家，NFT 同時由平台轉給買家。
 // 買家可以在 Solana 或 Arc 上付款（見 packs.ts），退款退回原來的通道；放款給賣家目前一律在 Solana 上，
@@ -15,6 +16,16 @@ import { itemTitle } from "@/lib/item-title";
 // 平台抽成和金庫卡一樣是 2.5%
 export { FEE_BPS };
 const memoOf = (orderId: string) => `idolca:order:${orderId}`;
+
+// 訂單的通知都連到收藏冊的訂單頁
+const ORDERS_HREF = "/binder?tab=orders";
+async function notifyOrder(db: Db, order: OrderRow, notices: { to: "buyer" | "seller"; kind: Notice["kind"]; price?: number }[]) {
+  const { card } = await itemCard(db, order.itemId);
+  await notify(
+    db,
+    notices.map((n) => ({ userId: n.to === "buyer" ? order.buyerId : order.sellerId, kind: n.kind, params: { card, price: n.price }, href: ORDERS_HREF, ref: order.id })),
+  );
+}
 
 export type OrderRow = typeof orders.$inferSelect;
 
@@ -86,6 +97,7 @@ export async function confirmOrderPayment(db: Db, buyerId: string, orderId: stri
   }
   const now = new Date();
   await db.update(orders).set({ status: "paid", payTx: signature, paidAt: now, updatedAt: now }).where(eq(orders.id, orderId));
+  await notifyOrder(db, order, [{ to: "seller", kind: "order_paid", price: order.priceCents / 100 }]);
   return { ok: true as const, payTx: signature };
 }
 
@@ -96,6 +108,7 @@ export async function markShipped(db: Db, sellerId: string, orderId: string) {
     .set({ status: "shipped", shippedAt: now, updatedAt: now })
     .where(and(eq(orders.id, orderId), eq(orders.sellerId, sellerId), eq(orders.status, "paid")))
     .returning();
+  if (row) await notifyOrder(db, row, [{ to: "buyer", kind: "order_shipped" }]);
   return row ?? null;
 }
 
@@ -125,6 +138,10 @@ export async function refundOrder(db: Db, orderId: string, from: OrderStatus[] =
     throw err;
   }
   await db.update(orders).set({ status: "refunded", refundTx, updatedAt: new Date() }).where(eq(orders.id, orderId));
+  await notifyOrder(db, order, [
+    { to: "buyer", kind: "order_refunded", price: order.priceCents / 100 },
+    { to: "seller", kind: "order_refunded_seller" },
+  ]);
   if (order.auctionId) return { ok: true as const, refundTx };
   await db
     .update(collectorItems)
@@ -149,6 +166,7 @@ export async function releaseOrder(db: Db, orderId: string, from: OrderStatus[] 
       .set({ status: "completed", transferTx, payoutTx, payoutHeld: payoutTx ? 0 : 1, updatedAt: new Date() })
       .where(eq(orders.id, orderId));
     if (item) await db.update(collectorItems).set({ userId: order.buyerId, ownerAddress: transferTx ? order.buyerWallet : item.ownerAddress }).where(eq(collectorItems.id, item.id));
+    await notifyOrder(db, order, [{ to: "seller", kind: payoutTx ? "order_completed" : "order_completed_held", price: (order.priceCents - order.feeCents) / 100 }]);
     return { ok: true as const, transferTx, payoutTx };
   } catch (err) {
     await unlock(db, before);
@@ -179,6 +197,7 @@ export async function disputeOrder(db: Db, buyerId: string, orderId: string, rea
     .set({ status: "disputed", disputeReason: reason.trim().slice(0, 500) || null, updatedAt: new Date() })
     .where(and(eq(orders.id, orderId), eq(orders.buyerId, buyerId), eq(orders.status, "shipped")))
     .returning();
+  if (row) await notifyOrder(db, row, [{ to: "seller", kind: "order_disputed" }]);
   return row ?? null;
 }
 

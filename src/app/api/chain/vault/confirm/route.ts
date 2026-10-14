@@ -1,11 +1,14 @@
+import { after } from "next/server";
 import { redemptions } from "@/lib/server/schema";
 import { fail, requireWalletUser } from "@/lib/server/require-user";
 import { confirmSignature, invalidateVaultState, redeemMemo, vaultState } from "@/lib/server/vault-chain";
 import { verifyPayment } from "@/lib/server/funds";
+import { notifyVaultTx } from "@/lib/server/vault-notify";
 import { REDEEM_FEE_USDT, parseAddress } from "@/lib/shipping";
 import { PublicKey } from "@solana/web3.js";
 
-// 錢包送出交易後回報簽名：等確認、刷新鏈上狀態；提貨申請另外記一筆，平台出貨時用
+// 錢包送出交易後回報簽名：等確認、刷新鏈上狀態；提貨申請另外記一筆，平台出貨時用。
+// 回應後讀這筆交易的事件發通知（出價、成交）
 export async function POST(request: Request) {
   const a = await requireWalletUser();
   if ("error" in a) return a.error;
@@ -17,6 +20,7 @@ export async function POST(request: Request) {
     return fail(err instanceof Error ? err.message : "tx_failed");
   }
   invalidateVaultState();
+  after(() => notifyVaultTx(a.db, body.signature!).catch((err) => console.error("vault notify failed", err)));
   const state = (await vaultState())[body.cardId];
   // 只有凍結中的 NFT 的持有人能登記提貨，別人拿到簽名也改不了收件地址
   if (body.action === "redeem" && state?.redeeming && state.owner === a.wallet) {

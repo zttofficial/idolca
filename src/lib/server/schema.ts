@@ -365,6 +365,21 @@ export const faucetClaims = pgTable("faucet_claims", {
   claimedAt: timestamp("claimed_at", { withTimezone: true }).notNull(),
 });
 
+// 站內通知（見 notifications.ts）。kind 決定顯示的文字，params 是 JSON（卡名、金額），href 是點下去要去的頁面；
+// key 防止同一件事重複通知（同一筆交易被回報兩次、排程重跑）
+export const notifications = pgTable("notifications", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  params: text("params").notNull(),
+  href: text("href").notNull(),
+  key: text("key").notNull().unique(),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // 頻率限制的計數（見 rate-limit.ts）
 export const rateLimits = pgTable("rate_limits", {
   key: text("key").primaryKey(),
@@ -619,6 +634,17 @@ export const BOOTSTRAP_SQL = [
     window_start timestamptz NOT NULL,
     count integer NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS notifications (
+    id text PRIMARY KEY,
+    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind text NOT NULL,
+    params text NOT NULL,
+    href text NOT NULL,
+    key text NOT NULL UNIQUE,
+    read_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications(user_id, created_at DESC)`,
   `CREATE TABLE IF NOT EXISTS media (
     id text PRIMARY KEY,
     owner_id text REFERENCES users(id) ON DELETE CASCADE,

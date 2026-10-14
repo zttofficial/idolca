@@ -1,4 +1,5 @@
-// 自由刊登的拍賣：出價鎖款、被超過退款、結標轉成擔保訂單、保底價流拍、賣家取消、截止後才付款的出價、假卡作廢拍賣。
+// 自由刊登的拍賣：出價鎖款、被超過退款、結標轉成擔保訂單、保底價流拍、賣家取消、截止後才付款的出價、假卡作廢拍賣；
+// 金庫卡拍賣的出價紀錄；每一步該收到的站內通知。
 // 網站要用縮短的時間啟動（拍賣選 1 天時實際只有 AUCTION_DAY_SECONDS 秒）：
 //   PGLITE_DIR=.data/pglite-e2e AUCTION_DAY_SECONDS=25 AUCTION_BID_WINDOW_SECONDS=6 AUCTION_EXTEND_SECONDS=4 npm run dev
 // 用法：npm run test:e2e:auction
@@ -36,6 +37,9 @@ async function until(label, test) {
   return false;
 }
 const waitEnd = async (a) => sleep(Math.max(0, Date.parse(a.endsAt) - Date.now()) + 7000);
+// 站內通知：某人有沒有收到某張卡的某種通知。金庫卡的通知在回應後才寫入，要等一下
+const notes = async (who) => must("GET", "/api/notifications", undefined, who);
+const notified = (who, kind, card) => until(kind, async () => (await notes(who)).items.some((n) => n.kind === kind && n.params.card === card));
 
 step("A. 出價鎖款、被超過退款、結標轉成擔保訂單");
 const itemA = await addItem("Auction A");
@@ -54,15 +58,25 @@ check("cancel refused after bids", (await api("DELETE", `/api/items/${itemA.id}/
 a = await auction(a.id, B1);
 check("history with aliases", a.history.length === 2 && a.history[0].amountUsd === 11 && a.history[1].mine && !a.history[0].mine, JSON.stringify(a.history));
 check("outbid bidder refunded", await until("refund", async () => (await usd(B1)) === b1Start));
+check("seller notified of the bid", await notified(S, "bid_received", "Auction A"));
+check("outbid bidder notified", await notified(B1, "outbid", "Auction A"));
+check("leader not told they were outbid", !(await notes(B2)).items.some((n) => n.kind === "outbid"));
+const unread = (await notes(S)).unread;
+await must("POST", "/api/notifications/read", undefined, S);
+check("mark all read", unread >= 2 && (await notes(S)).unread === 0, String(unread));
 await waitEnd(a);
 check("settled as sold", await until("sold", async () => (await auction(a.id, B2)).status === "sold"));
 a = await auction(a.id, B2);
 check("winner sees the win", a.me?.leading === true, JSON.stringify(a.me));
 const orderA = (await must("GET", "/api/orders", undefined, B2)).orders.find((o) => o.itemId === itemA.id);
 check("winning bid became a paid escrow order", orderA?.auction && orderA.status === "paid" && orderA.priceUsdt === 11 && orderA.feeUsdt === 0.44, JSON.stringify(orderA));
+check("winner notified", await notified(B2, "auction_won_free", "Auction A"));
+check("seller notified of the sale", await notified(S, "auction_sold_free", "Auction A"));
 await must("POST", `/api/orders/${orderA.id}/ship`, undefined, S);
+check("buyer notified of shipping", await notified(B2, "order_shipped", "Auction A"));
 const received = await must("POST", `/api/orders/${orderA.id}/receive`, undefined, B2);
 check("seller paid after receipt", Boolean(received.payoutTx));
+check("seller notified of the payout", await notified(S, "order_completed", "Auction A"));
 
 step("B. 沒達到保底價就流拍，出價全額退回");
 const itemB = await addItem("Auction B");
@@ -74,6 +88,8 @@ check("reserve not met shown", b.hasReserve && !b.reserveMet && b.highUsd === 20
 await waitEnd(b);
 check("settled as unsold", await until("unsold", async () => (await auction(b.id)).status === "unsold"));
 check("high bid refunded", await until("refund", async () => (await usd(B1)) === b1Before));
+check("seller notified: no sale", await notified(S, "auction_unsold", "Auction B"));
+check("high bidder notified: no sale", await notified(B1, "auction_lost", "Auction B"));
 const backB = (await must("GET", "/api/items", undefined, S)).items.find((i) => i.id === itemB.id);
 check("card back in the binder, unlisted", backB && backB.auction === null && backB.priceUsdt === null);
 
@@ -102,6 +118,7 @@ const b2Before = await usd(B2);
 check("bid placed", (await bid(e.id, bidder2, B2, 10)).ok);
 await must("PATCH", `/api/admin/items/${itemE.id}`, { verification: "fake", note: "e2e" }, AD);
 check("auction cancelled", (await auction(e.id)).status === "cancelled");
+check("bidder notified of the void", await notified(B2, "auction_lost", "Auction E"));
 check("bid refunded", await until("refund", async () => (await usd(B2)) === b2Before));
 
 step("F. 金庫卡的鏈上拍賣：開拍、出價鎖款、被超過時同一筆交易退回、有人出價後不能取消");
@@ -131,6 +148,11 @@ if (!(await must("GET", "/api/chain/state")).auctions) {
   va = await vaultAuction(card.id);
   check("leader and next minimum", va?.highBidder === bidder2.address && va.highUsd === 11 && va.minNextUsd === 12 && va.bidCount === 2, JSON.stringify(va));
   check("cancel refused after bids", (await api("POST", "/api/chain/vault/tx", { action: "cancelAuction", cardId: card.id }, S)).json.error === "has_bids");
+  const history = (await must("GET", `/api/chain/bids/${card.id}?count=2`)).bids;
+  check("on-chain bid history", history.length === 2 && history[0].bidder === bidder2.address && history[0].amountUsd === 11 && history[1].bidder === bidder1.address && history.every((h) => h.signature), JSON.stringify(history));
+  const title = "IVE Rei Album Ver.";
+  check("vault seller notified of the bid", await notified(S, "bid_received", title));
+  check("vault outbid bidder notified", await notified(B1, "outbid", title));
 
   const { card: other } = await must("POST", "/api/admin/vault", { photos: [await photo(80), await photo(260)], group: "IVE", member: "Liz", album: "I've IVE", version: "Album Ver.", rarity: "album", location: "SEL-E2E-04", depositor: seller.address }, AD);
   await vaultTx(S, seller, { action: "auction", cardId: other.id, startUsd: 10, days: 1 });

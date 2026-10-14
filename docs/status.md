@@ -17,7 +17,7 @@
 | 結算代幣（USDT、USDC）、平台代付手續費和帳戶租金 | 所有付款 | `src/lib/coins.ts`，`src/lib/server/vault-chain.ts` 的 `forUser`、`pickCoin`，`funds.ts` |
 | 市場（金庫卡、自由刊登兩條線） | `/market` | `src/components/market/MarketBrowser.tsx`、`src/lib/market.ts`、`src/lib/server/market-data.ts` |
 | 金庫卡買賣、掛單（Anchor 託管程序） | `/card/[id]` | `src/lib/server/vault-chain.ts`、`src/components/card/`、`onchain/` |
-| 鏈上紀錄 | `/card/[id]` | `src/lib/server/history.ts` |
+| 鏈上紀錄、金庫卡拍賣的出價紀錄 | `/card/[id]` | `src/lib/server/history.ts`，`src/app/api/chain/history`、`src/app/api/chain/bids` |
 | 提貨（凍結、委託銷毀、付運費；後台出貨或取消） | `/card/[id]`、`/admin` | `RedeemDialog.tsx`、`vault-chain.ts`、`src/lib/shipping.ts` |
 | 自由上鏈、自由刊登、擔保交易 | 收藏冊、`/listing/[id]` | `src/components/binder/AddCard.tsx`、`src/lib/server/items.ts`、`orders.ts`、`src/lib/policy.ts` |
 | 拍賣（兩條線：自由刊登進平台託管，金庫卡在鏈上）、上架時選一口價或拍賣 | `/listing/[id]`、`/card/[id]`、收藏冊 | `src/lib/server/auctions.ts`、`vault-chain.ts`，`src/lib/auction.ts`，`src/components/auction/`、`src/components/market/ListingControl.tsx` |
@@ -33,7 +33,8 @@
 | 專輯銷量榜 | `/charts` | `src/lib/server/circle-chart.ts` |
 | 後台（入庫、卡包、擔保訂單、提貨、假卡） | `/admin` | `src/components/admin/`、`src/app/api/admin/` |
 | 照片處理和浮水印 | — | `src/lib/server/media.ts`、`src/lib/crop-card.ts` |
-| 每日排程（逾時訂單、結標拍賣和退款、清地址、清過期會話和郵件連結） | — | `src/app/api/cron/daily`、`vercel.json` |
+| 站內通知（拍賣、擔保訂單、金庫卡成交） | 頁首通知鈴 | `src/lib/server/notifications.ts`、`vault-notify.ts`，`src/components/notifications/NotificationBell.tsx`，`src/app/api/notifications` |
+| 每日排程（逾時訂單、結標拍賣和退款、清地址、清過期會話、郵件連結和 90 天前的通知） | — | `src/app/api/cron/daily`、`vercel.json` |
 | SEO（標題、hreflang、站點地圖、分享圖、JSON-LD） | 全站 | `src/lib/seo.ts`、`src/app/sitemap.ts`、`robots.ts`、`opengraph-image.tsx` |
 | 下拉選單元件 | 全站 | `src/components/ui/Combobox.tsx`（可自由輸入的建議清單）、`Select.tsx`（選單，可帶搜尋） |
 | 多語言（8 種） | 全站 | `messages/*.json` |
@@ -54,6 +55,7 @@
 | `orders` | 自由刊登的擔保訂單（拍賣得標的記著 `auction_id`）；`orders`、`bids`、`pack_orders`、`redemptions` 都記著付款用的幣種（`coin`） |
 | `auctions`、`bids` | 自由刊登的拍賣和每一口出價（付款、退款、是否被接受）；金庫卡的拍賣在鏈上 |
 | `redemptions` | 提貨申請和收件地址 |
+| `notifications` | 站內通知（種類、卡名和金額、連結、已讀時間；`key` 去重） |
 | `media` | 照片（原圖和浮水印展示圖） |
 | `faucet_claims`、`rate_limits` | devnet 水龍頭領取紀錄、頻率限制計數 |
 
@@ -108,6 +110,6 @@
 ## 還沒做
 
 - 提現和 KYC、Google 和 Apple 登入、換綁信箱、收藏錢包匯出私鑰（Privy 有 `useExportWallet`，還沒接）。
-- 交易通知信（成交、出價被超過、寄出、待確認收貨）：寄信模組已有，還沒接上訂單和拍賣。
+- 交易通知信：站內通知已有，暫不寄信（Resend 按量計費）。要寄時在 `notifications.ts` 的 `notify` 旁加寄信，用戶要能在帳號設定裡關掉。
 - 專輯代購代拆。
 - 主網部署，清單見 tech-stack.md「上線主網」。資金、定價、庫存和法務的待辦見 [business.md](business.md)。

@@ -3,6 +3,7 @@ import { Link, getPathname } from "@/i18n/navigation";
 import LocaleSwitcher from "./LocaleSwitcher";
 import Wordmark from "@/components/brand/Wordmark";
 import AccountButton from "@/components/auth/AccountButton";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import MobileNav from "./MobileNav";
 
 export default function Navbar() {
@@ -46,6 +47,7 @@ export default function Navbar() {
             />
           </form>
           <LocaleSwitcher />
+          <NotificationBell />
           <AccountButton />
           <MobileNav links={links} searchAction={searchAction} />
         </div>

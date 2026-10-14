@@ -11,6 +11,7 @@ import idl from "@/lib/chain/idl/idolca_market.json";
 import type { IdolcaMarket } from "@/lib/chain/idl/idolca_market";
 import { SERVER_RPC, platformSecret, platformUmi } from "./chain";
 import { getDb } from "./db";
+import { notify, usersByWallet, vaultCard, type Notice } from "./notifications";
 import { getVaultRow, markBurned, vaultRows } from "./vault-cards";
 import { minNextBid, type AuctionView } from "@/lib/auction";
 import { COINS, COIN_DECIMALS, coinMints, type Coin } from "@/lib/coins";
@@ -390,6 +391,29 @@ async function settleVaultAuction(cardId: string, a: VaultAuction) {
   return signature;
 }
 
+// 結標後通知：有人出價且達到保底價是成交（得標者、賣家），否則流拍（賣家；沒達到保底價的最高出價者款項退回）。
+// 以卡和截止時間去重，不同實例重複結標也只通知一次
+async function notifySettled(cardId: string, a: VaultAuction) {
+  const db = await getDb();
+  if (!db) return;
+  const { card, href } = await vaultCard(db, cardId);
+  const ids = await usersByWallet(db, [a.seller, a.highBidder ?? ""]);
+  const seller = ids.get(a.seller);
+  const high = a.highBidder ? ids.get(a.highBidder) : undefined;
+  const ref = `${cardId}:${a.endsAt}`;
+  const price = a.highUsd ?? undefined;
+  const sold = a.highBidder !== null && a.reserveMet;
+  const notices: Notice[] = [];
+  if (sold) {
+    if (high) notices.push({ userId: high, kind: "auction_won_vault", params: { card, price }, href, ref });
+    if (seller) notices.push({ userId: seller, kind: "auction_sold_vault", params: { card, price }, href, ref });
+  } else {
+    if (seller) notices.push({ userId: seller, kind: "auction_unsold", params: { card }, href, ref });
+    if (high) notices.push({ userId: high, kind: "auction_lost", params: { card }, href, ref });
+  }
+  await notify(db, notices);
+}
+
 // 結標所有已截止的金庫卡拍賣。同一個伺服器實例裡同一張卡不會同時送兩次；
 // 不同實例重複送出時，第二筆會因為拍賣帳戶已關閉而失敗，不影響結果
 const settling = new Set<string>();
@@ -402,6 +426,7 @@ export async function settleEndedVaultAuctions() {
     try {
       await settleVaultAuction(id, s.auction!);
       done++;
+      await notifySettled(id, s.auction!).catch((err) => console.error("notify vault auction failed", id, err));
     } catch (err) {
       console.error("settle vault auction failed", id, err);
     } finally {

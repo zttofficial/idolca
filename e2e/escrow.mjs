@@ -1,4 +1,4 @@
-// 擔保交易：逾時退款、申訴與後台退款、逾時自動放款、後台放款。
+// 擔保交易：逾時退款、申訴與後台退款、逾時自動放款、後台放款，以及每一步該收到的站內通知。
 // 網站要用縮短的期限啟動：ESCROW_SHIP_DAYS=0.0003 ESCROW_CONFIRM_DAYS=0.0003 CRON_SECRET=<同 E2E_CRON_SECRET> npm run dev
 // 用法：E2E_CRON_SECRET=testcron npm run test:e2e:escrow
 import { adminKey, api, check, finish, login, mintSelf, must, newKey, photo, signSend, sleep, step } from "./lib.mjs";
@@ -20,12 +20,15 @@ const buy = async (itemId) => {
 };
 const order = async (id, who = B) => (await must("GET", "/api/orders", undefined, who)).orders.find((o) => o.id === id);
 const listing = async (itemId) => (await must("GET", "/api/items", undefined, S)).items.find((i) => i.id === itemId);
+// 某人有沒有收到某張卡的某種站內通知
+const notified = async (who, kind, card) => (await must("GET", "/api/notifications", undefined, who)).items.some((n) => n.kind === kind && n.params.card === card);
 
 step("A. 賣家逾時未寄 → 買家取消退款");
 const itemA = await list("Escrow A");
 const a = await buy(itemA.id);
 let o = await order(a);
 check("paid with shipBy", o.status === "paid" && Boolean(o.shipBy), o.shipBy);
+check("seller notified of the sale", await notified(S, "order_paid", "Escrow A"));
 const early = await api("POST", `/api/orders/${a}/refund`, undefined, B);
 check("too early refused", early.status === 409 && early.json.error === "too_early");
 await sleep(Math.max(0, Date.parse(o.shipBy) - Date.now()) + 1500);
@@ -35,12 +38,16 @@ check("double refund refused", (await api("POST", `/api/orders/${a}/refund`, und
 o = await order(a);
 check("refunded", o.status === "refunded" && o.refundTx === r.json.refundTx);
 check("relisted", (await listing(itemA.id))?.priceUsdt === 3);
+check("buyer notified of the refund", await notified(B, "order_refunded", "Escrow A"));
+check("seller notified of the refund", await notified(S, "order_refunded_seller", "Escrow A"));
 
 step("B. 寄出 → 申訴 → 後台退款");
 const itemB = await list("Escrow B");
 const b = await buy(itemB.id);
 await must("POST", `/api/orders/${b}/ship`, undefined, S);
+check("buyer notified of shipping", await notified(B, "order_shipped", "Escrow B"));
 check("dispute", (await api("POST", `/api/orders/${b}/dispute`, { reason: "Wrong member" }, B)).ok);
+check("seller notified of the dispute", await notified(S, "order_disputed", "Escrow B"));
 await sleep(30000);
 o = await order(b);
 check("dispute pauses auto-release", o.status === "disputed" && o.disputeReason === "Wrong member", o.status);
@@ -64,6 +71,7 @@ const cron = await api("GET", "/api/cron/daily", undefined, undefined, { authori
 check("cron released", cron.ok && cron.json.released >= 1, JSON.stringify(cron.json));
 o = await order(c, S);
 check("completed with payout and transfer", o.status === "completed" && Boolean(o.payoutTx) && Boolean(o.transferTx));
+check("seller notified of the payout", await notified(S, "order_completed", "Escrow C"));
 
 step("D. 申訴 → 後台放款");
 const itemD = await list("Escrow D");

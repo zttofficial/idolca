@@ -8,6 +8,7 @@ import { auctions, bids, collectorItems, orders, type PayRail } from "./schema";
 import { arcPaymentRequest, arcPayout, settleArcPayment } from "./arc-pay";
 import { buildPayment, payout, verifyPayment } from "./funds";
 import { MAX_PRICE, priceToCents } from "./items";
+import { itemCard, notify } from "./notifications";
 import { AUCTION_DAYS, AUCTION_EXTEND_MINUTES, AUCTION_FEE_BPS, AUCTION_MIN_START, auctionFeeCents, minNextBid, type AuctionView } from "@/lib/auction";
 
 // 自由刊登的拍賣。每口出價都先付全額進平台錢包（Solana 或 Arc），被超過就退回，得標者早就付了錢，不會棄標；
@@ -111,7 +112,14 @@ export async function voidAuction(db: Db, itemId: string) {
     q.update(auctions).set({ status: "cancelled", updatedAt: new Date() }).where(eq(auctions.id, a.id)),
     q.update(bids).set({ status: "outbid" }).where(and(eq(bids.auctionId, a.id), eq(bids.status, "leading"))),
   ]);
+  const high = await bidderOf(db, a.highBidId);
+  if (high) {
+    const { card, href } = await itemCard(db, itemId);
+    await notify(db, [{ userId: high, kind: "auction_lost", params: { card }, href, ref: a.id }]);
+  }
 }
+
+const bidderOf = async (db: Db, bidId: string | null) => (bidId ? ((await db.select({ id: bids.bidderId }).from(bids).where(eq(bids.id, bidId)))[0]?.id ?? null) : null);
 
 // 建立出價：檢查金額和身分，回傳付款內容（Solana 付款交易，或 Arc 上要簽的 USDC 授權）。付款確認後才算出價
 export async function createBid(db: Db, bidderId: string, wallet: string, auctionId: string, amountUsd: unknown, rail: PayRail) {
@@ -183,6 +191,14 @@ export async function confirmBid(db: Db, bidderId: string, bidId: string, paymen
       ...(a.highBidId ? [q.update(bids).set({ status: "outbid" }).where(and(eq(bids.id, a.highBidId), eq(bids.status, "leading")))] : []),
       q.update(bids).set({ status: "leading", acceptedAt: new Date(now) }).where(eq(bids.id, bid.id)),
     ]);
+    // 賣家：有人出價；前一位最高出價者：被超過、款項退回
+    const { card, href } = await itemCard(db, a.itemId);
+    const prev = await bidderOf(db, a.highBidId);
+    const price = bid.amountCents / 100;
+    await notify(db, [
+      { userId: a.sellerId, kind: "bid_received", params: { card, price }, href, ref: bid.id },
+      ...(prev && prev !== bid.bidderId ? [{ userId: prev, kind: "outbid" as const, params: { card, price }, href, ref: a.highBidId! }] : []),
+    ]);
     return { ok: true as const, payTx: signature, auction: auctionView(won) };
   }
   return reject(db, bid, "outbid_meanwhile");
@@ -242,6 +258,22 @@ async function settleOne(db: Db, a: AuctionRow) {
     await atomic(db, (q) => [
       q.update(auctions).set({ status: "unsold", updatedAt: now }).where(unchanged),
       ...(high ? [q.update(bids).set({ status: "outbid" }).where(and(eq(bids.id, high.id), eq(bids.status, "leading")))] : []),
+    ]);
+  }
+  // 截止時間在這期間被新出價延後時不會結標，按結標後的狀態通知
+  const [after] = await db.select({ status: auctions.status }).from(auctions).where(eq(auctions.id, a.id));
+  const { card, href } = await itemCard(db, a.itemId);
+  const ordersHref = "/binder?tab=orders";
+  const price = a.highCents === null ? undefined : a.highCents / 100;
+  if (after?.status === "sold" && high) {
+    await notify(db, [
+      { userId: high.bidderId, kind: "auction_won_free", params: { card, price }, href: ordersHref, ref: a.id },
+      { userId: a.sellerId, kind: "auction_sold_free", params: { card, price }, href: ordersHref, ref: a.id },
+    ]);
+  } else if (after?.status === "unsold") {
+    await notify(db, [
+      { userId: a.sellerId, kind: "auction_unsold", params: { card }, href, ref: a.id },
+      ...(high ? [{ userId: high.bidderId, kind: "auction_lost" as const, params: { card }, href, ref: a.id }] : []),
     ]);
   }
 }

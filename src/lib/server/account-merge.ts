@@ -4,7 +4,7 @@ import { atomic, type Db } from "./db";
 
 // 把只靠錢包登入建出來的帳號併進郵箱帳號。用戶先用錢包登入過（自動建了一個沒有郵箱的帳號），
 // 後來用郵箱帳號綁同一個錢包時呼叫；呼叫前要先驗過錢包簽名，證明兩個帳號是同一個人。
-// 舊帳號的卡、訂單、拍賣、出價、照片、收藏冊都轉到郵箱帳號，然後刪掉舊帳號，錢包記到郵箱帳號上。
+// 舊帳號的卡、訂單、拍賣、出價、照片、收藏冊、通知都轉到郵箱帳號，然後刪掉舊帳號，錢包記到郵箱帳號上。
 // 收藏冊兩邊都標了同一款卡時，張數取大的，照片和 NFT 地址優先用郵箱帳號的
 export async function mergeWalletAccount(db: Db, fromId: string, intoId: string, wallet: string, walletKind: "external" | "privy") {
   await atomic(db, (q) => [
@@ -28,6 +28,7 @@ export async function mergeWalletAccount(db: Db, fromId: string, intoId: string,
     q.execute(sql`UPDATE pack_orders SET user_id = ${intoId} WHERE user_id = ${fromId}`),
     q.execute(sql`UPDATE redemptions SET user_id = ${intoId} WHERE user_id = ${fromId}`),
     q.execute(sql`UPDATE vault_cards SET depositor_id = ${intoId} WHERE depositor_id = ${fromId}`),
+    q.execute(sql`UPDATE notifications SET user_id = ${intoId} WHERE user_id = ${fromId}`),
     // 管理員身分和年齡確認不因合併丟失
     q.execute(sql`
       UPDATE users t SET role = CASE WHEN f.role = 'admin' THEN 'admin' ELSE t.role END, age_confirmed_at = COALESCE(t.age_confirmed_at, f.age_confirmed_at)
