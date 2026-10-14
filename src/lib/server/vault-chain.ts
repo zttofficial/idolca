@@ -95,6 +95,14 @@ export const invalidateVaultState = () => {
   stateCache = null;
 };
 
+// RPC 一次最多讀 100 個帳戶，金庫卡超過 100 張時分批讀，結果按原順序接起來
+const RPC_BATCH = 100;
+async function inBatches<K, V>(keys: K[], read: (batch: K[]) => Promise<V[]>) {
+  const out: V[] = [];
+  for (let i = 0; i < keys.length; i += RPC_BATCH) out.push(...(await read(keys.slice(i, i + RPC_BATCH))));
+  return out;
+}
+
 async function readVaultState() {
   const umi = platformUmi();
   const db = await getDb();
@@ -104,9 +112,9 @@ async function readVaultState() {
   const ids = rows.map((r) => r.id);
   const assets = rows.map((r) => new PublicKey(r.asset));
   const [existing, listings, auctionAccounts] = await Promise.all([
-    connection.getMultipleAccountsInfo(assets),
-    connection.getMultipleAccountsInfo(assets.map(listingPda)),
-    connection.getMultipleAccountsInfo(assets.map(auctionPda)),
+    inBatches(assets, (k) => connection.getMultipleAccountsInfo(k)),
+    inBatches(assets.map(listingPda), (k) => connection.getMultipleAccountsInfo(k)),
+    inBatches(assets.map(auctionPda), (k) => connection.getMultipleAccountsInfo(k)),
   ]);
   // Core 銷毀資產後會留一個 1 位元組的墓碑帳戶，第一個位元組不是 AssetV1（1）就當作已銷毀。
   // 帳戶讀不到（剛鑄造、節點還沒同步）不算銷毀
@@ -121,7 +129,7 @@ async function readVaultState() {
       .catch(() => {});
   }
   const live = assets.filter((_, i) => alive[i]);
-  const parsed = live.length ? await fetchAllAssetV1(umi, live.map((a) => publicKey(a.toBase58()))) : [];
+  const parsed = await inBatches(live, (k) => fetchAllAssetV1(umi, k.map((a) => publicKey(a.toBase58()))));
   const byAddress = new Map(parsed.map((a) => [a.publicKey.toString(), a]));
   const out: Record<string, VaultCardState> = {};
   ids.forEach((id, i) => {
