@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SITE_URL, jsonLd, pageMetadata } from "@/lib/seo";
+import { SITE_URL, jsonLd, localePath, pageMetadata } from "@/lib/seo";
 import { Suspense, type ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -15,6 +15,8 @@ import { Link } from "@/i18n/navigation";
 import { CHAIN } from "@/lib/chain";
 import { getDb } from "@/lib/server/db";
 import { getVaultRow, toCard } from "@/lib/server/vault-cards";
+import { marketReady, vaultState } from "@/lib/server/vault-chain";
+import type { Card } from "@/lib/cards";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 import { gradeLabel, gradeLookupUrl, isInHouse, type Grade } from "@/lib/grading";
 
@@ -80,20 +82,9 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={jsonLd({
-          "@context": "https://schema.org",
-          "@type": "Product",
-          name: `${card.group} ${card.member} ${card.version} photocard`,
-          sku: card.serial,
-          category: "K-pop photocard",
-          brand: { "@type": "Brand", name: card.group },
-          description: `${card.group} ${card.member} · ${card.album} · ${card.version}`,
-          ...(card.image ? { image: `${SITE_URL}${card.image.front}` } : {}),
-          ...(card.grade ? { additionalProperty: [{ "@type": "PropertyValue", name: "Grade", value: gradeLabel(card.grade) }] } : {}),
-        })}
-      />
+      <Suspense fallback={null}>
+        <ProductJsonLd card={card} />
+      </Suspense>
       <Breadcrumb
         items={[
           { label: t("breadcrumbMarket"), href: "/market" },
@@ -152,6 +143,33 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
         </div>
       </div>
     </>
+  );
+}
+
+// 商品結構化資料：Google 要求 Product 帶 offers，所以只有鏈上真的有掛單時才輸出；未掛單、拍賣中（出價不是售價）、已提貨的卡不標成商品
+async function ProductJsonLd({ card }: { card: Card }) {
+  if (card.status === "redeemed" || !marketReady()) return null;
+  const live = await vaultState()
+    .then((s) => s[card.id])
+    .catch(() => undefined);
+  if (!live?.listing || live.auction || live.burned) return null;
+  const url = `${SITE_URL}${localePath(await getLocale(), `/card/${card.id}`)}`;
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={jsonLd({
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: `${card.group} ${card.member} ${card.version} photocard`,
+        sku: card.serial,
+        category: "K-pop photocard",
+        brand: { "@type": "Brand", name: card.group },
+        description: `${card.group} ${card.member} · ${card.album} · ${card.version}`,
+        ...(card.image ? { image: `${SITE_URL}${card.image.front}` } : {}),
+        ...(card.grade ? { additionalProperty: [{ "@type": "PropertyValue", name: "Grade", value: gradeLabel(card.grade) }] } : {}),
+        offers: { "@type": "Offer", url, price: live.listing.priceUsdt.toFixed(2), priceCurrency: "USD", availability: "https://schema.org/InStock" },
+      })}
+    />
   );
 }
 
