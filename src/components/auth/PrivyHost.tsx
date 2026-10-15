@@ -7,7 +7,7 @@ import { useCreateWallet, useStandardWallets } from "@privy-io/react-auth/solana
 import { createSolanaRpc, createSolanaRpcSubscriptions } from "@solana/kit";
 import type { Wallet, WalletEventsWindow, WindowRegisterWalletEvent, WindowRegisterWalletEventCallback } from "@wallet-standard/base";
 import { PRIVY_APP_ID, provideBridge } from "@/lib/privy/bridge";
-import { RPC_URL, WALLET_CHAIN } from "@/lib/solana/config";
+import { RPC_WS_URL, WALLET_CHAIN, rpcUrl } from "@/lib/solana/config";
 import Dialog from "@/components/ui/Dialog";
 
 // 收藏錢包的 Privy 端：只在 PrivyMount 掛上時載入。登入 Privy 用它的郵箱驗證碼（帶入用戶在 Idolca 驗證過的信箱，
@@ -22,7 +22,7 @@ export default function PrivyHost() {
         appearance: { walletChainType: "solana-only", theme: "light", accentColor: "#e8285a" },
         // 付款前網站的付款面板已經讓用戶確認過金額，不再跳 Privy 自己的簽名確認視窗
         embeddedWallets: { solana: { createOnLogin: "off" }, ethereum: { createOnLogin: "off" }, showWalletUIs: false },
-        solana: { rpcs: { [WALLET_CHAIN]: { rpc: createSolanaRpc(RPC_URL), rpcSubscriptions: createSolanaRpcSubscriptions(RPC_URL.replace(/^http/, "ws")) } } },
+        solana: { rpcs: { [WALLET_CHAIN]: { rpc: createSolanaRpc(rpcUrl()), rpcSubscriptions: createSolanaRpcSubscriptions(RPC_WS_URL) } } },
       }}
     >
       <Bridge />

@@ -13,8 +13,11 @@ const DEFAULT_RPC: Record<Cluster, string> = {
   devnet: "https://api.devnet.solana.com",
 };
 
-// 瀏覽器端用的 RPC。生產環境換成 Helius 等服務商提供的、按網域限制來源的端點
-export const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || DEFAULT_RPC[CLUSTER];
+// 瀏覽器端的 RPC 一律走我們自己的 /api/rpc：伺服器帶著 SOLANA_RPC_URL 的 key 轉發（見 src/lib/rpc-proxy.ts），key 不出現在網頁裡。
+// 要完整網址（Privy 的 RPC 客戶端不收相對路徑），所以只能在瀏覽器裡算
+export const rpcUrl = () => (typeof window === "undefined" ? DEFAULT_RPC[CLUSTER] : new URL("/api/rpc", window.location.origin).href);
+// WebSocket 訂閱轉發不了，直接連官方公共端點：只用來等交易確認，不帶 key，用量很小
+export const RPC_WS_URL = DEFAULT_RPC[CLUSTER].replace(/^http/, "ws");
 
 // Wallet Standard 的鏈標識，錢包簽名和發送交易時用
 export const WALLET_CHAIN = CLUSTER === "mainnet-beta" ? "solana:mainnet" : "solana:devnet";

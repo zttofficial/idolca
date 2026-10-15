@@ -33,7 +33,7 @@ K-pop 小卡的鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Sola
 | 計價與結算 | 標 **USD**；Solana 上 **USDT 和 USDC** 都收（SPL、6 位小數、1:1），Arc 上收 USDC | 前台只標 USD、不換算當地貨幣（見「首頁」）。付款時錢包裡哪種夠就用哪種，兩種都夠時用餘額多的，都不夠時直接回「餘額不足」，不讓錢包簽注定失敗的交易（`src/lib/coins.ts`、`vault-chain.ts` 的 `pickCoin`）。退款和放款用原來付的那種；Arc 付款的訂單在 Solana 上用 USDC 放款。主網用 Tether 的 USDT 和 Circle 的 USDC，devnet 兩種都用平台自鑄的測試幣 |
 | 鏈上程序 | Anchor 1.x（Rust） | 自寫一個最小的託管程序：賣家掛單時 NFT 轉進以資產地址為種子的 PDA，買家付款後原子交換，平台抽成在同一筆交易內扣除；拍賣時 NFT 和出價都鎖在拍賣帳戶裡，結標時一次交換（見「拍賣」）。只接受平台集合的資產和 Config 登記的 USDT、USDC（`set_mints` 可以換），抽成上限 10%。價格以美元計，買家用哪種付都行，賣家收到買家付的那種。建立帳戶的指令都有獨立的 `payer` 付租金並記在帳戶上（`rent_payer`），關閉時租金退回它 |
 | 手續費和帳戶租金 | 平台錢包代付 | 用戶簽的每筆交易都由平台錢包當手續費付款人並先簽名，託管程序和 Core 的帳戶租金也由平台付，用戶錢包只要有穩定幣，不用準備 SOL（`vault-chain.ts` 的 `forUser`）。組好交易先模擬，會失敗的不交給錢包，因為失敗的交易照樣扣手續費；組金庫卡交易每個帳號每小時最多 60 次，防止反覆掛單、取消消耗平台的 SOL |
-| 鏈上數據讀取 | Solana RPC（`SOLANA_RPC_URL`） | 金庫卡清單在資料庫，持有人、掛單、凍結狀態按清單批量讀鏈（`getMultipleAccounts`，RPC 一次最多 100 個帳戶，超過就分批）；主網換付費 RPC，避免公共節點限流 |
+| 鏈上數據讀取 | Solana RPC（`SOLANA_RPC_URL`） | 金庫卡清單在資料庫，持有人、掛單、凍結狀態按清單批量讀鏈（`getMultipleAccounts`，RPC 一次最多 100 個帳戶，超過就分批）。用 RPC 服務商（現在是 Helius）的端點，免費方案起步，用量大了再升級；key 只在伺服器 |
 | 抽卡隨機數 | 承諾—揭示（HMAC-SHA256） | 不依賴第三方 VRF：開賣前公開種子的雜湊，每抽的隨機數由種子和買家錢包產生的付款簽名決定，結束後公開種子，任何人都能重算（見「盲盒卡包」） |
 
 ### 鏈上流程
@@ -266,12 +266,14 @@ K-pop 小卡的鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Sola
 1. 準備一個新的平台錢包（熱錢包，放代付手續費和帳戶租金的 SOL，以及 USDT、USDC 的週轉資金），和一個冷錢包當抽成收款錢包。
 2. 用 `anchor deploy` 把託管程序部署到主網（程序升級權限之後轉給多簽）。
 3. `NEXT_PUBLIC_SOLANA_CLUSTER=mainnet-beta` 下執行 `npm run chain:setup`（建兩個集合）和 `TREASURY_ADDRESS=<冷錢包> npm run chain:setup-market`（以官方 USDT 和 USDC 初始化託管程序，按 `policy.ts` 寫入抽成和拍賣設定），地址寫進 `src/lib/chain/mainnet-beta.json` 並提交。
-4. Vercel 上建一個新的 Neon 資料庫，設 `NEXT_PUBLIC_SOLANA_CLUSTER=mainnet-beta`、`PLATFORM_SECRET_KEY`、`SOLANA_RPC_URL`（付費 RPC）、`NEXT_PUBLIC_SITE_URL`、`ADMIN_WALLETS`、`CRON_SECRET`、`NEXT_PUBLIC_CONTACT_EMAIL`、`NEXT_PUBLIC_VAULT_ADDRESS_YVR`、`NEXT_PUBLIC_VAULT_ADDRESS_CKG`、`PACKS_BLOCKED_COUNTRIES`。
+4. Vercel 上建一個新的 Neon 資料庫，設 `NEXT_PUBLIC_SOLANA_CLUSTER=mainnet-beta`、`PLATFORM_SECRET_KEY`、`SOLANA_RPC_URL`（RPC 服務商的主網端點，免費方案起步）、`NEXT_PUBLIC_SITE_URL`、`ADMIN_WALLETS`、`CRON_SECRET`、`NEXT_PUBLIC_CONTACT_EMAIL`、`NEXT_PUBLIC_VAULT_ADDRESS_YVR`、`NEXT_PUBLIC_VAULT_ADDRESS_CKG`、`PACKS_BLOCKED_COUNTRIES`。
 5. 管理員登入後台，實物入庫、建立卡包。
 
 營運上的待辦（法務、開放地區、物流契約、資金管理）見 [business.md](business.md)。
 
 ## 錢包交易流程
+
+瀏覽器不直接連 RPC 服務商：網頁要讀鏈或代送交易時打網站自己的 `/api/rpc`，伺服器帶著 `SOLANA_RPC_URL` 的 key 轉發（`src/app/api/rpc/route.ts`）。只放行錢包用得到的方法（送交易、模擬交易、取區塊、查交易狀態、查餘額和帳戶等，白名單在 `src/lib/rpc-proxy.ts`），掃全鏈、讀整個區塊這類耗額度的方法拒絕；一次最多 10 個請求、64KB，每個 IP 每分鐘 120 次。Privy 收藏錢包等交易確認的 WebSocket 訂閱轉發不了，直接連官方公共端點，不帶 key。
 
 所有需要用戶簽名的動作都是同一個模式：伺服器組好交易（手續費付款人是平台錢包，平台先簽）→ 瀏覽器錢包用 Wallet Standard 的 `solana:signAndSendTransaction` 補上自己的簽名送出 → 伺服器等交易確認、更新狀態。交易編號是第一個簽名，也就是平台的，前端直接從交易裡讀，不用錢包回傳的簽名。前端不載入 Anchor，也不接觸平台金鑰。
 

@@ -4,7 +4,8 @@
   const SEED = Uint8Array.from(__SEED__);
   const PUBKEY = Uint8Array.from(__PUBKEY__);
   const ADDRESS = "__ADDRESS__";
-  const RPC = "https://api.devnet.solana.com";
+  // 和網站一樣走自己的 /api/rpc 轉發（伺服器帶 key 轉給 SOLANA_RPC_URL），不直接打官方公共端點，避免被按 IP 限流
+  const RPC = "/api/rpc";
   const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
   const b58 = (bytes) => {
     let n = 0n;

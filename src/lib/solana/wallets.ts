@@ -17,7 +17,7 @@ import {
 import { getBase58Decoder } from "@solana/kit";
 import type { AuthUser } from "@/components/auth/AuthContext";
 import { privyAccount, requestPrivy } from "@/lib/privy/bridge";
-import { RPC_URL, WALLET_CHAIN } from "./config";
+import { WALLET_CHAIN, rpcUrl } from "./config";
 
 type ConnectFeature = { "standard:connect": { connect: (input?: { silent?: boolean }) => Promise<{ accounts: readonly WalletAccount[] }> } };
 
@@ -163,7 +163,7 @@ export async function signAndSend(txBase64: string, address: string): Promise<st
     }
     const [out] = await (wallet.features as unknown as SolanaSignTransactionFeature)[SolanaSignTransaction].signTransaction({ account, chain: WALLET_CHAIN, transaction });
     const res = (await (
-      await fetch(RPC_URL, {
+      await fetch(rpcUrl(), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "sendTransaction", params: [btoa(String.fromCharCode(...out.signedTransaction)), { encoding: "base64" }] }),
