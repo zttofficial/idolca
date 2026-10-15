@@ -75,7 +75,8 @@
 | 收藏錢包 | Privy 應用 `cmv7f33v0005i0gl28se4t7nm`，`NEXT_PUBLIC_PRIVY_APP_ID`（還沒設到 Vercel，見已知問題） | `.env.local` 同一個 App ID（Privy 的 Allowed origins 加了 `http://localhost:3000`） | 同左，`test:e2e:privy` 用 Privy 的測試帳號 |
 | 管理員 | `ADMIN_WALLETS` 目前是測試錢包 `5ftP1ayDW7EpPmTXBjdC1dvuoRbdqfEKDX4tRWnFCBZu` | `.env.local` 的 `ADMIN_WALLETS`，金鑰 `.data/admin-test-devnet.json` | 同左 |
 
-- 線上已設的變數：資料庫、`PLATFORM_SECRET_KEY`、`ADMIN_WALLETS`、`CRON_SECRET`（Production 和 Preview）；Arc 主網的 `NEXT_PUBLIC_ARC_NETWORK`、`ARC_PLATFORM_KEY`、`ARC_PAY_ADMIN_ONLY`，以及只有 Production 的 Resend `RESEND_API_KEY`、`NEXT_PUBLIC_SITE_URL`（`https://idolca.trade`）和 PostHog 的 `NEXT_PUBLIC_POSTHOG_KEY`。全部變數見 `.env.example`。
+- 線上已設的變數：資料庫、`PLATFORM_SECRET_KEY`、`ADMIN_WALLETS`、`CRON_SECRET`（Production 和 Preview）；Production 的 `SOLANA_RPC_URL`（Helius devnet）；Arc 主網的 `NEXT_PUBLIC_ARC_NETWORK`、`ARC_PLATFORM_KEY`、`ARC_PAY_ADMIN_ONLY`，以及只有 Production 的 Resend `RESEND_API_KEY`、`NEXT_PUBLIC_SITE_URL`（`https://idolca.trade`）和 PostHog 的 `NEXT_PUBLIC_POSTHOG_KEY`。全部變數見 `.env.example`。
+- Solana RPC 用 Helius devnet，伺服器、瀏覽器和端到端測試在本機共用一把 key（`.env.local` 的 `SOLANA_RPC_URL`、`NEXT_PUBLIC_SOLANA_RPC_URL`、`E2E_RPC_URL`；端到端腳本不讀 `.env.local`，跑的時候要把 `E2E_RPC_URL` 帶進環境）。線上只設伺服器的 `SOLANA_RPC_URL`：瀏覽器變數會打包進網頁，Helius 免費方案又不能限定來源網域，所以線上瀏覽器端用公共端點。公共端點按用戶 IP 限流，devnet 上一般用戶碰不到；主網前改成伺服器轉發（見「還沒做」）。
 - Vercel CLI 在 `C:/Software/VercelCLI/node_modules/.bin/vercel`，已登入並連結專案。每次部署的專屬網址有 Vercel 登入保護，對外只用 idolca.trade。
 - 網域 `idolca.trade` 接在 Vercel 專案上，`www.idolca.trade` 308 轉到主網域。`idolca.vercel.app` 上的頁面由 `src/proxy.ts` 308 轉到主網域，接口不轉：早期鑄造的 NFT 元數據網址（`/api/meta/...`）寫在鏈上，指向它。預覽部署回應 `X-Robots-Tag: noindex`。
 - 改 `next.config.ts` 或執行環境相關的設定，本機跑過不算數：Vercel 和本機的 Node 載入行為不同，要在部署後馬上檢查鏈上接口。出事先 `vercel rollback`；回滾後新的部署不會自動上線，修好後要 `vercel promote`。
@@ -118,4 +119,5 @@
 - Google 和 Apple 登入、換綁信箱、收藏錢包匯出私鑰（Privy 有 `useExportWallet`，還沒接）。
 - 交易通知信：站內通知已有，暫不寄信（Resend 按量計費）。要寄時在 `notifications.ts` 的 `notify` 旁加寄信，用戶要能在帳號設定裡關掉。
 - 專輯代購代拆。
+- 瀏覽器端的 RPC 改走伺服器轉發（例如 `/api/rpc`）：伺服器帶著 key 轉給付費 RPC，只放行送交易、查狀態、取區塊這幾個網頁用得到的方法，按 IP 限流，key 不出現在網頁裡。Vercel 不能轉發 WebSocket，Privy 等交易確認的訂閱改成輪詢或繼續連公共端點。主網前要做。
 - 主網部署，清單見 tech-stack.md「上線主網」。資金、定價、庫存和法務的待辦見 [business.md](business.md)。
