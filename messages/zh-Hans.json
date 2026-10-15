@@ -408,7 +408,7 @@
     "tab_orders": "订单",
     "searchPlaceholder": "搜索团体、成员、专辑、版本、标题或编号",
     "vaultCardsNeedWallet": "在账号菜单里绑定钱包后，买到和盲盒抽到的金库卡会自动放进卡册。",
-    "ordersEmpty": "还没有担保交易订单。",
+    "ordersEmpty": "还没有订单。",
     "orderRole_buyer": "买入",
     "orderRole_seller": "卖出",
     "orderStatus_paid": "已付款，待寄出",
@@ -492,6 +492,9 @@
     "filterListed": "在售中 {count}",
     "listedEmpty": "目前没有在售中的卡。",
     "orderFromAuction": "拍卖",
+    "orderFromVault": "金库卡",
+    "tradeNet": "实收 {amount}",
+    "txTrade": "成交交易",
     "error_in_auction": "这张卡正在拍卖。第一次出价之前可以取消拍卖。",
     "itemSold": "这张卡已经卖出：{status}",
     "goToOrders": "到订单页处理 →"

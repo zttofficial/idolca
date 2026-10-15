@@ -408,7 +408,7 @@
     "tab_orders": "訂單",
     "searchPlaceholder": "搜尋團體、成員、專輯、版本、標題或編號",
     "vaultCardsNeedWallet": "在帳號選單裡綁定錢包後，買到和盲盒抽到的金庫卡會自動放進卡冊。",
-    "ordersEmpty": "還沒有擔保交易訂單。",
+    "ordersEmpty": "還沒有訂單。",
     "orderRole_buyer": "買入",
     "orderRole_seller": "賣出",
     "orderStatus_paid": "已付款，待寄出",
@@ -492,6 +492,9 @@
     "filterListed": "在售中 {count}",
     "listedEmpty": "目前沒有在售中的卡。",
     "orderFromAuction": "拍賣",
+    "orderFromVault": "金庫卡",
+    "tradeNet": "實收 {amount}",
+    "txTrade": "成交交易",
     "error_in_auction": "這張卡正在拍賣。第一口出價之前可以取消拍賣。",
     "itemSold": "這張卡已經賣出：{status}",
     "goToOrders": "到訂單頁處理 →"

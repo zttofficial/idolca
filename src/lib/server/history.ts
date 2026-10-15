@@ -185,3 +185,44 @@ export async function marketTxEvents(signature: string): Promise<TxEvent[]> {
     return [];
   });
 }
+
+// 託管程序在 until 之後的每一筆成交（一口價的 Sold、有得標者的 AuctionSettled），舊的在前。
+// newest 是處理到的最新簽名，下次從它之後讀；節點還沒收錄的交易停在它前面，下次再讀
+export type MarketTrade = { signature: string; asset: string; kind: "buy" | "auction"; seller: string; buyer: string; paymentMint: string; priceUsdt: number; feeUsdt: number; at: Date };
+const SIG_PAGE = 1000;
+
+export async function marketTradesSince(until: string | null): Promise<{ trades: MarketTrade[]; newest: string | null }> {
+  const sigs = [];
+  for (let before: string | undefined; ;) {
+    const page = await withRetry(() => connection.getSignaturesForAddress(PROGRAM_ID, { limit: SIG_PAGE, before, until: until ?? undefined }));
+    sigs.push(...page);
+    if (page.length < SIG_PAGE) break;
+    before = page[page.length - 1].signature;
+  }
+  sigs.reverse();
+  const trades: MarketTrade[] = [];
+  let newest = until;
+  for (let i = 0; i < sigs.length; i += PAGE) {
+    const chunk = sigs.slice(i, i + PAGE);
+    const ok = chunk.filter((s) => !s.err).map((s) => s.signature);
+    const bySig = ok.length ? await withRetry(() => transactions(ok)) : new Map();
+    for (const s of chunk) {
+      if (s.err) {
+        newest = s.signature;
+        continue;
+      }
+      const tx = bySig.get(s.signature);
+      if (!tx) return { trades, newest };
+      const at = new Date((s.blockTime ?? 0) * 1000);
+      for (const e of marketEvents(tx.meta?.logMessages ?? [])) {
+        if (e.name !== "Sold" && e.name !== "AuctionSettled") continue;
+        const base = { signature: s.signature, asset: addr(e.data.asset), seller: addr(e.data.seller), priceUsdt: price(e.data.price), feeUsdt: price(e.data.fee), at };
+        if (e.name === "Sold") trades.push({ ...base, kind: "buy", buyer: addr(e.data.buyer), paymentMint: addr(e.data.payment_mint) });
+        if (e.name === "AuctionSettled" && e.data.winner)
+          trades.push({ ...base, kind: "auction", buyer: addr(e.data.winner), paymentMint: e.data.payment_mint ? addr(e.data.payment_mint) : "" });
+      }
+      newest = s.signature;
+    }
+  }
+  return { trades, newest };
+}

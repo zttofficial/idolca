@@ -408,7 +408,7 @@
     "tab_orders": "Đơn hàng",
     "searchPlaceholder": "Tìm nhóm, thành viên, album, phiên bản, tiêu đề hoặc số sê-ri",
     "vaultCardsNeedWallet": "Liên kết ví trong menu tài khoản, thẻ kho bạn mua hoặc mở được từ Mystery Pack sẽ tự vào album.",
-    "ordersEmpty": "Chưa có đơn ký quỹ nào.",
+    "ordersEmpty": "Chưa có đơn nào.",
     "orderRole_buyer": "Đã mua",
     "orderRole_seller": "Đã bán",
     "orderStatus_paid": "Đã thanh toán, chờ gửi",
@@ -492,6 +492,9 @@
     "filterListed": "Đang bán {count}",
     "listedEmpty": "Hiện không có thẻ nào đang bán.",
     "orderFromAuction": "Đấu giá",
+    "orderFromVault": "Thẻ kho",
+    "tradeNet": "Bạn nhận {amount}",
+    "txTrade": "Giao dịch",
     "error_in_auction": "Thẻ này đang được đấu giá. Bạn có thể hủy cho đến lượt trả giá đầu tiên.",
     "itemSold": "Thẻ này đã bán: {status}",
     "goToOrders": "Đến trang đơn hàng →"

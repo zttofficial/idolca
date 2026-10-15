@@ -408,7 +408,7 @@
     "tab_orders": "注文",
     "searchPlaceholder": "グループ・メンバー・アルバム・バージョン・タイトル・シリアルで検索",
     "vaultCardsNeedWallet": "アカウントメニューでウォレットを連携すると、購入したりミステリーパックで当てたりした金庫カードが自動でバインダーに入ります。",
-    "ordersEmpty": "エスクロー注文はまだありません。",
+    "ordersEmpty": "注文はまだありません。",
     "orderRole_buyer": "購入",
     "orderRole_seller": "販売",
     "orderStatus_paid": "支払い済み・発送待ち",
@@ -492,6 +492,9 @@
     "filterListed": "販売中 {count}",
     "listedEmpty": "販売中のカードはありません。",
     "orderFromAuction": "オークション",
+    "orderFromVault": "金庫カード",
+    "tradeNet": "受取額 {amount}",
+    "txTrade": "取引",
     "error_in_auction": "このカードはオークション中です。最初の入札までは取り消せます。",
     "itemSold": "このカードは売れました：{status}",
     "goToOrders": "注文ページへ →"

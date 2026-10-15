@@ -408,7 +408,7 @@
     "tab_orders": "Orders",
     "searchPlaceholder": "Search group, member, album, version, title or serial",
     "vaultCardsNeedWallet": "Link a wallet from the account menu and the vault cards you buy or pull from Mystery Packs go straight into your binder.",
-    "ordersEmpty": "No escrow orders yet.",
+    "ordersEmpty": "No orders yet.",
     "orderRole_buyer": "Bought",
     "orderRole_seller": "Sold",
     "orderStatus_paid": "Paid, waiting for shipment",
@@ -492,6 +492,9 @@
     "filterListed": "For sale {count}",
     "listedEmpty": "Nothing is for sale right now.",
     "orderFromAuction": "Auction",
+    "orderFromVault": "Vault card",
+    "tradeNet": "{amount} to you",
+    "txTrade": "Trade",
     "error_in_auction": "This card is in an auction. You can cancel it until the first bid.",
     "itemSold": "This card is sold: {status}",
     "goToOrders": "Go to my orders →"

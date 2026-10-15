@@ -408,7 +408,7 @@
     "tab_orders": "คำสั่งซื้อ",
     "searchPlaceholder": "ค้นหาวง เมมเบอร์ อัลบั้ม เวอร์ชัน ชื่อ หรือหมายเลข",
     "vaultCardsNeedWallet": "ผูกวอลเล็ตในเมนูบัญชี แล้วการ์ดในคลังที่ซื้อหรือได้จากมิสทีรีแพ็กจะเข้าแฟ้มให้อัตโนมัติ",
-    "ordersEmpty": "ยังไม่มีคำสั่งซื้อแบบเอสโครว์",
+    "ordersEmpty": "ยังไม่มีคำสั่งซื้อ",
     "orderRole_buyer": "ซื้อ",
     "orderRole_seller": "ขาย",
     "orderStatus_paid": "ชำระแล้ว รอจัดส่ง",
@@ -492,6 +492,9 @@
     "filterListed": "กำลังขาย {count}",
     "listedEmpty": "ยังไม่มีการ์ดที่กำลังขาย",
     "orderFromAuction": "ประมูล",
+    "orderFromVault": "การ์ดในคลัง",
+    "tradeNet": "ได้รับ {amount}",
+    "txTrade": "ธุรกรรม",
     "error_in_auction": "การ์ดใบนี้กำลังประมูล ยกเลิกได้จนกว่าจะมีคนเสนอราคาครั้งแรก",
     "itemSold": "การ์ดใบนี้ขายแล้ว: {status}",
     "goToOrders": "ไปที่คำสั่งซื้อ →"

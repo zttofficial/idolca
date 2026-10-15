@@ -1,6 +1,6 @@
 # 實施現況
 
-截至 2026-10-14。功能規則和選型理由見 [tech-stack.md](tech-stack.md)，用到的第三方服務和帳號見 [services.md](services.md)，這裡記已經做出來的東西在哪、環境怎麼配、開發要守的約定和還沒做的事。
+截至 2026-10-15。功能規則和選型理由見 [tech-stack.md](tech-stack.md)，用到的第三方服務和帳號見 [services.md](services.md)，這裡記已經做出來的東西在哪、環境怎麼配、開發要守的約定和還沒做的事。
 
 ## 總覽
 
@@ -31,7 +31,7 @@
 | Arc 收款通道（USDC 授權轉帳、平台代送、退款） | 開卡包、擔保交易 | `src/lib/arc.ts`、`src/lib/server/arc-pay.ts`、`src/lib/evm/arc-wallet.ts` |
 | 評級（IDG 自家評級和第三方評級） | `/card/[id]`、`/admin`、介紹頁 `/grading` | `src/lib/grading.ts`、`src/components/admin/VaultGrade.tsx`、`src/app/api/admin/vault/[id]/grade` |
 | 盲盒卡包（承諾—揭示抽卡、即時回購；`PACKS_BLOCKED_COUNTRIES` 的地區不賣，預設比利時、荷蘭） | `/packs`、`/packs/[id]` | `src/lib/server/packs.ts`、`pack-pool.ts`、`region.ts`，`src/lib/pack-draw.ts`、`src/lib/packs.ts`，`src/components/packs/PackOpener.tsx` |
-| 收藏冊（卡冊、搜尋和團體 → 成員篩選、整理、同步） | `/binder` | `BinderView.tsx`、`BinderBook.tsx`、`BinderArranger.tsx`、`BinderChain.tsx`（訂單），`src/lib/binder.ts`、`binder-layout.ts`、`binder-filter.ts`，`src/app/api/binder` |
+| 收藏冊（卡冊、搜尋和團體 → 成員篩選、整理、同步；訂單頁籤列擔保訂單和金庫卡成交） | `/binder` | `BinderView.tsx`、`BinderBook.tsx`、`BinderArranger.tsx`、`BinderChain.tsx`（訂單），`src/lib/server/vault-trades.ts`（金庫卡成交從鏈上同步），`src/lib/binder.ts`、`binder-layout.ts`、`binder-filter.ts`，`src/app/api/binder` |
 | 卡片篩選元件（搜尋框、團體 → 成員；市場用側欄，收藏冊用上方可收起的面板），市場和收藏冊共用 | `/market`、`/binder` | `src/components/market/CardFilters.tsx`、`src/lib/facets.ts` |
 | 圖鑑 | `/catalog`、`/catalog/[group]` | `src/lib/catalog.ts` |
 | 團體名錄（表單的團體、成員建議；按照片檔名預填名稱、團體、成員） | 上鏈、入庫表單 | `src/lib/kpop-groups.ts` |
@@ -63,6 +63,7 @@
 | `orders` | 自由刊登的擔保訂單（拍賣得標的記著 `auction_id`；買家的收件地址和填寫時間 `shipping_address`、`address_at`；賣家寄出時的物流單號 `tracking_carrier`、`tracking_number`）；`orders`、`bids`、`pack_orders`、`redemptions` 都記著付款用的幣種（`coin`） |
 | `auctions`、`bids` | 自由刊登的拍賣和每一口出價（付款、退款、是否被接受、拍賣進行中時的收件地址）；金庫卡的拍賣在鏈上 |
 | `redemptions` | 提貨申請、收件地址、運費和加拿大境內另收的 GST/HST（`fee_cents`、`tax_cents`）、出貨時的物流單號 |
+| `vault_trades`、`chain_cursors` | 金庫卡在鏈上的成交（一口價、拍賣得標；買賣雙方的錢包、成交價、手續費），從託管程序同步；同步讀到的最新簽名 |
 | `notifications` | 站內通知（種類、卡名和金額、連結、已讀時間；`key` 去重） |
 | `media` | 照片（原圖和浮水印展示圖） |
 | `faucet_claims`、`rate_limits` | devnet 水龍頭領取紀錄、頻率限制計數 |

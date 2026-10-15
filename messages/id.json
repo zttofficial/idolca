@@ -408,7 +408,7 @@
     "tab_orders": "Pesanan",
     "searchPlaceholder": "Cari grup, member, album, versi, judul, atau nomor seri",
     "vaultCardsNeedWallet": "Tautkan dompet di menu akun, dan kartu vault yang kamu beli atau dapat dari Mystery Pack otomatis masuk ke binder.",
-    "ordersEmpty": "Belum ada pesanan escrow.",
+    "ordersEmpty": "Belum ada pesanan.",
     "orderRole_buyer": "Dibeli",
     "orderRole_seller": "Dijual",
     "orderStatus_paid": "Dibayar, menunggu pengiriman",
@@ -492,6 +492,9 @@
     "filterListed": "Dijual {count}",
     "listedEmpty": "Belum ada kartu yang dijual.",
     "orderFromAuction": "Lelang",
+    "orderFromVault": "Kartu vault",
+    "tradeNet": "Kamu terima {amount}",
+    "txTrade": "Transaksi",
     "error_in_auction": "Kartu ini sedang dilelang. Kamu bisa membatalkannya sampai ada tawaran pertama.",
     "itemSold": "Kartu ini sudah terjual: {status}",
     "goToOrders": "Buka pesanan saya →"

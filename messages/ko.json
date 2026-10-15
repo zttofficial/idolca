@@ -408,7 +408,7 @@
     "tab_orders": "주문",
     "searchPlaceholder": "그룹, 멤버, 앨범, 버전, 제목, 일련번호 검색",
     "vaultCardsNeedWallet": "계정 메뉴에서 지갑을 연결하면 구매하거나 미스터리 팩에서 뽑은 금고 카드가 바인더에 자동으로 들어가요.",
-    "ordersEmpty": "아직 안전결제 주문이 없어요.",
+    "ordersEmpty": "아직 주문이 없어요.",
     "orderRole_buyer": "구매",
     "orderRole_seller": "판매",
     "orderStatus_paid": "결제 완료, 발송 대기",
@@ -492,6 +492,9 @@
     "filterListed": "판매 중 {count}",
     "listedEmpty": "판매 중인 카드가 없어요.",
     "orderFromAuction": "경매",
+    "orderFromVault": "금고 카드",
+    "tradeNet": "정산 금액 {amount}",
+    "txTrade": "거래 내역",
     "error_in_auction": "이 카드는 경매 중이에요. 첫 입찰 전까지는 경매를 취소할 수 있어요.",
     "itemSold": "이 카드는 판매됐어요: {status}",
     "goToOrders": "주문 페이지로 →"

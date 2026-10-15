@@ -398,6 +398,29 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// 金庫卡在鏈上的成交（一口價和拍賣得標），從託管程序的交易同步而來（見 vault-trades.ts），訂單頁列出。
+// 買賣雙方記錢包地址：成交時對方可能還沒有帳號
+export const vaultTrades = pgTable("vault_trades", {
+  signature: text("signature").primaryKey(),
+  cardId: text("card_id")
+    .notNull()
+    .references(() => vaultCards.id, { onDelete: "cascade" }),
+  kind: text("kind").$type<"buy" | "auction">().notNull(),
+  seller: text("seller").notNull(),
+  buyer: text("buyer").notNull(),
+  coin: text("coin").$type<Coin>().notNull().default("usdt"),
+  priceCents: integer("price_cents").notNull(),
+  feeCents: integer("fee_cents").notNull(),
+  tradedAt: timestamp("traded_at", { withTimezone: true }).notNull(),
+});
+
+// 從鏈上同步時讀到的最新簽名，下次從它之後讀
+export const chainCursors = pgTable("chain_cursors", {
+  key: text("key").primaryKey(),
+  signature: text("signature").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // 頻率限制的計數（見 rate-limit.ts）
 export const rateLimits = pgTable("rate_limits", {
   key: text("key").primaryKey(),
@@ -674,6 +697,24 @@ export const BOOTSTRAP_SQL = [
     created_at timestamptz NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications(user_id, created_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS vault_trades (
+    signature text PRIMARY KEY,
+    card_id text NOT NULL REFERENCES vault_cards(id) ON DELETE CASCADE,
+    kind text NOT NULL,
+    seller text NOT NULL,
+    buyer text NOT NULL,
+    coin text NOT NULL DEFAULT 'usdt',
+    price_cents integer NOT NULL,
+    fee_cents integer NOT NULL,
+    traded_at timestamptz NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS vault_trades_seller_idx ON vault_trades(seller)`,
+  `CREATE INDEX IF NOT EXISTS vault_trades_buyer_idx ON vault_trades(buyer)`,
+  `CREATE TABLE IF NOT EXISTS chain_cursors (
+    key text PRIMARY KEY,
+    signature text NOT NULL,
+    updated_at timestamptz NOT NULL DEFAULT now()
+  )`,
   `CREATE TABLE IF NOT EXISTS media (
     id text PRIMARY KEY,
     owner_id text REFERENCES users(id) ON DELETE CASCADE,
