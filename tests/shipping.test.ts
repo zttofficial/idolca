@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { REDEEM_FEE_RANGE, SHIP_COUNTRIES, formatAddress, parseAddress, redeemFeeUsd, vaultCountries } from "@/lib/shipping";
+import { CA_PROVINCES, REDEEM_FEE_RANGE, SHIP_COUNTRIES, formatAddress, parseAddress, redeemCharge, redeemFeeUsd, redeemTaxRate, vaultCountries } from "@/lib/shipping";
+import { CA_GST_HST } from "@/lib/rates/ca-tax";
 import { REDEEM_FEE_BUFFER, REDEEM_FEE_STEP_USD } from "@/lib/policy";
 import { VAULTS, VAULT_IDS, suggestVault, vaultOf } from "@/lib/vaults";
 
@@ -57,13 +58,59 @@ describe("redeemFeeUsd", () => {
   });
 });
 
+describe("GST/HST on redemption shipping", () => {
+  it("has a CRA rate for every province and territory, and nothing else", () => {
+    expect(Object.keys(CA_PROVINCES).sort()).toEqual(["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"]);
+    expect(Object.keys(CA_GST_HST).sort()).toEqual(Object.keys(CA_PROVINCES).sort());
+    // CRA 稅率表 2025-04-01 起：HST 省份
+    expect(CA_GST_HST.ON).toBe(0.13);
+    expect(CA_GST_HST.NS).toBe(0.14);
+    for (const p of ["NB", "NL", "PE"]) expect(CA_GST_HST[p], p).toBe(0.15);
+    // 其他只收 GST，不加省稅
+    for (const p of ["AB", "BC", "MB", "NT", "NU", "QC", "SK", "YT"]) expect(CA_GST_HST[p], p).toBe(0.05);
+  });
+
+  it("taxes only Vancouver shipments within Canada", () => {
+    for (const p of Object.keys(CA_PROVINCES)) expect(redeemTaxRate("yvr", "CA", p), p).toBe(CA_GST_HST[p]);
+    for (const country of vaultCountries("yvr").filter((c) => c !== "CA")) expect(redeemTaxRate("yvr", country, "ON"), country).toBe(0);
+    for (const country of vaultCountries("ckg")) expect(redeemTaxRate("ckg", country, "ON"), country).toBe(0);
+    expect(redeemCharge("ckg", { country: "CA", region: "ON" })).toMatchObject({ taxCents: 0, totalCents: redeemCharge("ckg", { country: "CA", region: "ON" })!.feeCents });
+    expect(redeemCharge("yvr", { country: "US", region: "CA" })).toEqual({ feeCents: 900, taxCents: 0, totalCents: 900, taxRate: 0 });
+  });
+
+  it("can't price a Canadian shipment from Vancouver without a valid province", () => {
+    expect(redeemTaxRate("yvr", "CA", "")).toBeNull();
+    expect(redeemTaxRate("yvr", "CA", "XX")).toBeNull();
+    expect(redeemTaxRate("yvr", "CA", "constructor")).toBeNull();
+    expect(redeemTaxRate("sel", "CA", "ON")).toBeNull();
+    expect(redeemCharge("yvr", { country: "CA", region: "" })).toBeNull();
+    expect(redeemCharge("yvr", { country: "TH", region: "" })).toBeNull();
+  });
+
+  it("rounds the tax to the cent, half up, and adds it to the fee", () => {
+    // 溫哥華寄加拿大運費 13.5：× 5% = 0.675 → 0.68，× 13% = 1.755 → 1.76，× 14% = 1.89，× 15% = 2.025 → 2.03
+    expect(redeemCharge("yvr", { country: "CA", region: "BC" })).toEqual({ feeCents: 1350, taxCents: 68, totalCents: 1418, taxRate: 0.05 });
+    expect(redeemCharge("yvr", { country: "CA", region: "ON" })).toEqual({ feeCents: 1350, taxCents: 176, totalCents: 1526, taxRate: 0.13 });
+    expect(redeemCharge("yvr", { country: "CA", region: "NS" })).toEqual({ feeCents: 1350, taxCents: 189, totalCents: 1539, taxRate: 0.14 });
+    expect(redeemCharge("yvr", { country: "CA", region: "PE" })).toEqual({ feeCents: 1350, taxCents: 203, totalCents: 1553, taxRate: 0.15 });
+    for (const p of Object.keys(CA_PROVINCES)) {
+      const c = redeemCharge("yvr", { country: "CA", region: p })!;
+      expect(c.feeCents, p).toBe(Math.round(redeemFeeUsd("yvr", "CA")! * 100));
+      expect(Math.abs(c.taxCents - c.feeCents * CA_GST_HST[p]), p).toBeLessThanOrEqual(0.5);
+      expect(c.totalCents, p).toBe(c.feeCents + c.taxCents);
+    }
+  });
+});
+
 describe("vaults", () => {
-  it("suggests the vault closer to the sender", () => {
+  it("suggests Vancouver only for North America and Chongqing everywhere else", () => {
     expect(suggestVault("US")).toBe("yvr");
     expect(suggestVault("CA")).toBe("yvr");
+    expect(suggestVault("MX")).toBe("yvr");
+    expect(suggestVault("GB")).toBe("ckg");
+    expect(suggestVault("BR")).toBe("ckg");
     expect(suggestVault("TW")).toBe("ckg");
-    expect(suggestVault("CN")).toBe("ckg");
-    expect(suggestVault(null)).toBe("yvr");
+    expect(suggestVault(null)).toBe("ckg");
   });
 
   it("treats unknown stored values as the default vault", () => {
@@ -90,6 +137,17 @@ describe("parseAddress", () => {
   it("rejects countries we don't ship to and malformed phones", () => {
     expect(parseAddress({ ...valid, country: "KP" })).toBeNull();
     expect(parseAddress({ ...valid, phone: "call me" })).toBeNull();
+  });
+
+  it("requires a Canadian province or territory code from the list", () => {
+    const ca = { ...valid, city: "Toronto", postal: "M5V 2T6", country: "CA" };
+    expect(parseAddress({ ...ca, region: "" })).toBeNull();
+    expect(parseAddress({ ...ca, region: "Ontario" })).toBeNull();
+    expect(parseAddress({ ...ca, region: "XX" })).toBeNull();
+    expect(parseAddress({ ...ca, region: "on" })).toMatchObject({ country: "CA", region: "ON" });
+    // 別的國家的州、省照舊選填、自由輸入
+    expect(parseAddress({ ...valid, country: "US", region: "" })).not.toBeNull();
+    expect(parseAddress({ ...valid, country: "US", region: "California" })).toMatchObject({ region: "California" });
   });
 
   it("rejects fields over their length limit", () => {

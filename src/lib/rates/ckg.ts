@@ -1,3 +1,5 @@
+import type { RateSource } from "./source";
+
 // 重慶金庫（CKG）的寄件價目：寄一張卡（卡套加硬殼卡套裝氣泡袋，實重和體積重都在 100g 內）到各地的郵資，人民幣。
 // 計價規則和換算見 src/lib/shipping.ts；郵局調價或匯率變動時改這個檔。
 //
@@ -55,3 +57,14 @@ export const CKG_PACKING_CNY = 0.06 + 0.16 + 0.05;
 // 人民幣兌美元：中國外匯交易中心受權公布的 2026-10-14 人民幣匯率中間價 USD/CNY
 // （https://www.chinamoney.com.cn/r/cms/www/chinamoney/data/fx/ccpr.json）
 export const CNY_PER_USD = 6.7249;
+
+// 運費表頁列出的報價來源和查詢日期，和上面註解裡的網址一致；改價目時一起改
+export const CKG_QUOTED_ON = "2026-10-14";
+export const CKG_SOURCES: readonly RateSource[] = [
+  { kind: "postage", name: "China Post 中国邮政 · ePacket / e-EMS quote from Chongqing", url: "https://my.ems.com.cn/pcp-web/f/pcp/indexController/toquoteindex" },
+  { kind: "postage", name: "Yunda 韵达快递 · freight inquiry from Chongqing", url: "https://web.yundaex.com/FreightInquiry" },
+  { kind: "packing", name: "1688 · card sleeves", url: "https://detail.1688.com/offer/732322858230.html" },
+  { kind: "packing", name: "1688 · 35pt toploaders", url: "https://detail.1688.com/offer/635432448979.html" },
+  { kind: "packing", name: "1688 · bubble mailers", url: "https://detail.1688.com/offer/558935322669.html" },
+  { kind: "fx", name: "CFETS 中国外汇交易中心 · USD/CNY central parity", url: "https://www.chinamoney.com.cn/r/cms/www/chinamoney/data/fx/ccpr.json" },
+];

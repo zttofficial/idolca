@@ -48,8 +48,8 @@ export default async function TermsPage() {
         {
           title: "Redemption",
           body: [
-            `Holders can redeem a vault card to have the physical card shipped. Redemption freezes the NFT and charges a shipping fee in the same transaction. The fee is priced by the vault the card is stored in and the destination: it covers postage from that vault and packing plus a margin for exchange-rate, fuel-surcharge and postal price changes, currently ${REDEEM_FEE_RANGE.min} to ${REDEEM_FEE_RANGE.max} ${CURRENCY}, and the redemption form shows the exact amount before you confirm. When we ship, the NFT is burned and the card leaves the vault.`,
-            "We ship by tracked mail to the countries and regions the card's vault serves, which the redemption form lists. If we cannot ship to the address you give, we cancel the redemption, unfreeze the NFT and refund the shipping fee. Risk passes to you when the carrier delivers the card.",
+            `Holders can redeem a vault card to have the physical card shipped. Redemption freezes the NFT and charges a shipping fee in the same transaction. The fee is priced by the vault the card is stored in and the destination: it covers postage from that vault and packing plus a margin for exchange-rate, fuel-surcharge and postal price changes, currently ${REDEEM_FEE_RANGE.min} to ${REDEEM_FEE_RANGE.max} ${CURRENCY}. Shipments within Canada also carry GST/HST at the rate of the destination province or territory, charged in the same transaction. The redemption form shows the exact fee and tax before you confirm, and the full rate table for every vault and destination is on the [Shipping rates](/shipping) page. When we ship, the NFT is burned and the card leaves the vault.`,
+            "We ship by tracked mail to the countries and regions the card's vault serves, which the redemption form lists. If we cannot ship to the address you give, we cancel the redemption, unfreeze the NFT and refund the shipping fee and any tax charged on it. Risk passes to you when the carrier delivers the card.",
           ],
         },
         {

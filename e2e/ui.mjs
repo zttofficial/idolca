@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { BASE, TRACKING, adminKey, api, check, finish, login, must, newKey, photo, signSend, sleep, step } from "./lib.mjs";
-import { redeemFeeUsd, vaultCountries } from "../src/lib/shipping.ts";
+import { redeemCharge, redeemFeeUsd, vaultCountries } from "../src/lib/shipping.ts";
 import { formatPrice } from "../src/lib/fx.ts";
 
 const OUT = process.env.E2E_OUT ?? ".data/e2e-shots";
@@ -117,12 +117,32 @@ step("申請提貨");
 check("open redeem form", await click("Request redemption"));
 await sleep(500);
 for (const [field, value] of [["name", "Kim Minji"], ["tel", "+82 10 1234 5678"], ["address-line1", "123 Teheran-ro"], ["address-level2", "Seoul"], ["postal-code", "06134"]]) await fill(`[role=dialog] [autocomplete="${field}"]`, value);
-// 國家是自訂的下拉選單：打開後點選項
-await evaluate(`document.querySelector('[role=dialog] button[aria-haspopup=listbox]').click()`);
-await sleep(300);
+// 國家、加拿大的省份是自訂的下拉選單：按欄位名稱找到選單，打開後點選項
+const openSelect = async (label) => {
+  await evaluate(`[...document.querySelectorAll('[role=dialog] label')].find((l) => l.textContent.startsWith(${JSON.stringify(label)}))?.querySelector('button[aria-haspopup=listbox]')?.click()`);
+  await sleep(300);
+};
+const pickOption = (text) =>
+  evaluate(
+    `(() => { const o = [...document.querySelectorAll('[role=option]')].find((o) => o.textContent.includes(${JSON.stringify(text)})); if (!o) return false; o.click(); return true; })()`,
+  );
+await openSelect("Country / region");
 // 國家只列這張卡所在的金庫（溫哥華）寄得到的：泰國不在 Tracked Packet 的服務範圍內
 check("only the vault's countries listed", await evaluate(`[...document.querySelectorAll('[role=option]')].length === ${vaultCountries("yvr").length} && ![...document.querySelectorAll('[role=option]')].some((o) => o.textContent.includes('Thailand'))`));
-check("country picked", await evaluate(`(() => { const o = [...document.querySelectorAll('[role=option]')].find((o) => o.textContent.includes('Korea')); if (!o) return false; o.click(); return true; })()`));
+// 寄加拿大境內：省份必填，選好前說明稅額待定、不能送出；選安大略後分兩行顯示運費和 GST/HST，按鈕顯示總額
+check("Canada picked", await pickOption("Canada"));
+check("tax waits for the province", await waitFor(`${has("Choose the province to see the tax")} && ${has("Confirm and sign")}`, 10000));
+await openSelect("Province / territory");
+check("province picked", await pickOption("Ontario (ON)"));
+const onCharge = redeemCharge("yvr", { country: "CA", region: "ON" });
+const onTax = formatPrice(onCharge.taxCents / 100, 2);
+const onTotal = formatPrice(onCharge.totalCents / 100, 2);
+const onShown = await waitFor(`${has(`GST/HST for Ontario (13%): ${onTax}`)} && ${has(`Pay ${onTotal} and sign`)}`, 10000);
+check("GST/HST shown on its own line with the total on the button", onShown, `${onTax} → ${onTotal}`);
+check("link to the shipping rates", await evaluate(`Boolean(document.querySelector('[role=dialog] a[href$="/shipping"]'))`));
+await shot("3-redeem-form-canada");
+await openSelect("Country / region");
+check("country picked", await pickOption("Korea"));
 // 運費按卡所在的金庫和目的地計價：選好國家後，說明和送出按鈕都顯示從溫哥華寄到韓國的運費
 const krFee = formatPrice(redeemFeeUsd("yvr", "KR"), 2);
 check("fee shown for the vault and country", await waitFor(`${has(`from the Vancouver vault to South Korea: ${krFee}`)} && ${has(`Pay ${krFee} and sign`)}`), krFee);

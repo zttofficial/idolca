@@ -4,7 +4,7 @@ import { fail, requireWalletUser } from "@/lib/server/require-user";
 import { confirmSignature, invalidateVaultState, redeemMemo, vaultState } from "@/lib/server/vault-chain";
 import { verifyPayment } from "@/lib/server/funds";
 import { notifyVaultTx } from "@/lib/server/vault-notify";
-import { parseAddress, redeemFeeUsd } from "@/lib/shipping";
+import { parseAddress, redeemCharge } from "@/lib/shipping";
 import { getVaultRow } from "@/lib/server/vault-cards";
 import { PublicKey } from "@solana/web3.js";
 
@@ -25,12 +25,13 @@ export async function POST(request: Request) {
   const state = (await vaultState())[body.cardId];
   // 只有凍結中的 NFT 的持有人能登記提貨，別人拿到簽名也改不了收件地址
   if (body.action === "redeem" && state?.redeeming && state.owner === a.wallet) {
-    // 運費和凍結在同一筆交易裡：按卡所在的金庫（從資料庫讀）和這次回報的收件國家重算運費，鏈上付的金額要剛好等於它才標記已付
-    // （組交易時用的是另一個國家、金額對不上，或那個金庫不寄這裡，就當沒付）；沒付的申請後台看得到，不會寄出，只能取消
+    // 運費、稅和凍結在同一筆交易裡：按卡所在的金庫（從資料庫讀）和這次回報的收件國家、省份重算（和組交易用同一個 redeemCharge），
+    // 鏈上付的金額要剛好等於運費加稅才標記已付（組交易時用的是另一個國家或省份、金額對不上，或那個金庫不寄這裡，就當沒付）；
+    // 沒付的申請後台看得到，不會寄出，只能取消
     const address = parseAddress(body.address);
     const card = await getVaultRow(a.db, body.cardId);
-    const fee = address && card ? redeemFeeUsd(card.vault, address.country) : null;
-    const coin = fee ? await verifyPayment(body.signature, new PublicKey(a.wallet), fee, redeemMemo(body.cardId)) : null;
+    const charge = address && card ? redeemCharge(card.vault, address) : null;
+    const coin = charge ? await verifyPayment(body.signature, new PublicKey(a.wallet), charge.totalCents / 100, redeemMemo(body.cardId)) : null;
     const feePaid = coin !== null;
     const row = {
       cardId: body.cardId,
@@ -41,7 +42,8 @@ export async function POST(request: Request) {
       trackingCarrier: null,
       trackingNumber: null,
       shippingAddress: address ? JSON.stringify(address) : null,
-      feeCents: Math.round((fee ?? 0) * 100),
+      feeCents: charge?.feeCents ?? 0,
+      taxCents: charge?.taxCents ?? 0,
       feePaid: feePaid ? 1 : 0,
       coin: coin ?? ("usdt" as const),
       shippedAt: null,

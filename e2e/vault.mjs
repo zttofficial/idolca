@@ -7,7 +7,7 @@ import { PublicKey } from "@solana/web3.js";
 import { adminKey, api, check, conn, finish, login, mintSelf, must, newKey, photo, signSend, step } from "./lib.mjs";
 import { verifyDraw } from "../src/lib/pack-draw.ts";
 import { MINT_FEE_USD } from "../src/lib/policy.ts";
-import { SHIP_COUNTRIES, redeemFeeUsd, vaultCountries } from "../src/lib/shipping.ts";
+import { SHIP_COUNTRIES, redeemCharge, redeemFeeUsd, vaultCountries } from "../src/lib/shipping.ts";
 import { VAULT_IDS } from "../src/lib/vaults.ts";
 import chain from "../src/lib/chain/devnet.json" with { type: "json" };
 
@@ -107,7 +107,7 @@ check("double buyback refused", (await api("POST", "/api/packs/buyback", { cardI
 await must("DELETE", `/api/admin/packs/${packId}/cards`, { cardId: sell.cardId }, AD);
 check("removed from pool", !(await must("GET", `/api/packs/${packId}/pool`)).pack.pool.some((e) => e.id === sell.cardId));
 
-step("提貨：地址、按卡所在金庫和目的地計價的運費、後台取消");
+step("提貨：地址、按卡所在金庫和目的地計價的運費、加拿大境內的 GST/HST、後台取消");
 const keep = first.pulls[1].cardId;
 // 抽到哪張是隨機的，運費和可寄的國家按這張卡所在的金庫算
 const keepVault = (await must("GET", "/api/vault/cards")).cards.find((c) => c.id === keep)?.vault;
@@ -145,6 +145,24 @@ check("can request redemption again after a cancel", (await must("GET", "/api/ch
 const swapped = (await must("GET", "/api/admin/redemptions", undefined, AD)).redemptions.find((r) => r.cardId === keep);
 check("switching the country after paying leaves the fee unpaid", swapped && swapped.feePaid === 0 && swapped.feeCents === Math.round(redeemFeeUsd(keepVault, away) * 100));
 check("second cancel", (await api("POST", `/api/admin/redemptions/${keep}/cancel`, undefined, AD)).ok);
+// 寄加拿大：省份必填、要是清單裡的代碼；溫哥華的卡另收收件省份的 GST/HST，重慶的卡不收。運費和稅分開記，付的是總額，取消時一起退
+const caAddress = { ...address, line1: "1 Yonge St", city: "Toronto", region: "ON", postal: "M5E 1E5", country: "CA" };
+const redeemTo = (to) => api("POST", "/api/chain/vault/tx", { action: "redeem", cardId: keep, address: to }, B);
+check("Canadian address needs a province", (await redeemTo({ ...caAddress, region: "" })).json.error === "invalid_address");
+check("Canadian province must be a listed code", (await redeemTo({ ...caAddress, region: "Ontario" })).json.error === "invalid_address");
+const caCharge = redeemCharge(keepVault, caAddress);
+const caRedeem = await must("POST", "/api/chain/vault/tx", { action: "redeem", cardId: keep, address: caAddress, feeUsdt: 0.01, taxUsdt: 0 }, B);
+const cents = (usd) => Math.round(usd * 100);
+const caPriced = cents(caRedeem.feeUsdt) === caCharge.feeCents && cents(caRedeem.taxUsdt) === caCharge.taxCents && cents(caRedeem.totalUsdt) === caCharge.totalCents;
+const caTaxed = (keepVault === "yvr") === caCharge.taxCents > 0;
+check("GST/HST only from the Vancouver vault, priced by province", caPriced && caTaxed, `${keepVault}: ${caRedeem.feeUsdt} + ${caRedeem.taxUsdt} USDT`);
+const caSig = await signSend(caRedeem.tx, buyer.kp);
+await must("POST", "/api/chain/vault/confirm", { action: "redeem", cardId: keep, signature: caSig, address: caAddress }, B);
+const caReq = (await must("GET", "/api/admin/redemptions", undefined, AD)).redemptions.find((r) => r.cardId === keep);
+const caRecorded = caReq && caReq.feePaid === 1 && caReq.feeCents === caCharge.feeCents && caReq.taxCents === caCharge.taxCents;
+check("fee and tax recorded separately and paid in full", caRecorded, `${caReq?.feeCents} + ${caReq?.taxCents}`);
+const caCancel = await api("POST", `/api/admin/redemptions/${keep}/cancel`, undefined, AD);
+check("cancel refunds fee and tax", caCancel.ok && Boolean(caCancel.json.refundTx));
 
 step("收藏卡寄進金庫");
 // 這張卡持有人做成過數位珍藏，入庫時要銷毀原本的收藏 NFT

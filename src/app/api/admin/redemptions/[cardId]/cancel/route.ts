@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/server/admin";
 import { cancelRedemption, vaultState } from "@/lib/server/vault-chain";
 import { payout } from "@/lib/server/funds";
 
-// 取消提貨（例如地址寄不到、持有人要求）：解凍並交還委託，已付的運費退回持有人
+// 取消提貨（例如地址寄不到、持有人要求）：解凍並交還委託，已付的運費和稅退回持有人
 export async function POST(_request: Request, ctx: RouteContext<"/api/admin/redemptions/[cardId]/cancel">) {
   const a = await requireAdmin();
   if (a.error) return a.error;
@@ -17,7 +17,8 @@ export async function POST(_request: Request, ctx: RouteContext<"/api/admin/rede
   if (!req || !(await vaultState())[cardId]?.redeeming) return Response.json({ error: "not_redeeming" }, { status: 409 });
   try {
     const cancelTx = await cancelRedemption(cardId);
-    const refundTx = req.feePaid && req.feeCents > 0 ? await payout(new PublicKey(req.wallet), req.feeCents / 100, req.coin) : null;
+    const paidCents = req.feeCents + req.taxCents;
+    const refundTx = req.feePaid && paidCents > 0 ? await payout(new PublicKey(req.wallet), paidCents / 100, req.coin) : null;
     await a.db.update(redemptions).set({ cancelTx, refundTx, cancelledAt: new Date(), shippingAddress: null }).where(eq(redemptions.cardId, cardId));
     return Response.json({ cancelTx, refundTx });
   } catch (err) {

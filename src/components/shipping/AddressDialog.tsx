@@ -1,20 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import Dialog from "@/components/ui/Dialog";
 import Select from "@/components/ui/Select";
 import CopyButton from "@/components/ui/CopyButton";
-import { EMPTY_ADDRESS, SHIP_COUNTRIES, formatAddress, parseAddress, type ShippingAddress } from "@/lib/shipping";
+import { CA_PROVINCES, EMPTY_ADDRESS, SHIP_COUNTRIES, formatAddress, parseAddress, type ShippingAddress } from "@/lib/shipping";
 
 const DRAFT_KEY = "idolca:shipping-address";
 const isEmpty = (a: ShippingAddress) => Object.values(a).every((v) => !v);
 
 // 收件地址表單（金庫卡提貨、擔保交易的一口價購買和訂單補填共用）。欄位和驗證見 src/lib/shipping.ts。
 // 沒給 initial 時預填我上一次填過的地址：先問伺服器（擔保訂單或提貨，取較新的），沒有再用這個瀏覽器存的。
-// note 和 submitLabel 可以傳函式，隨正在填的地址變（提貨用它按國家即時顯示運費）。
-// countries 限定可選的國家（提貨只列卡所在金庫寄得到的）；預填的地址不在裡面時不能送出，由 note 說明
-type ByAddress = string | ((address: ShippingAddress) => string);
+// note 和 submitLabel 可以傳函式，隨正在填的地址變（提貨用它按國家和省份即時顯示運費和稅）。
+// countries 限定可選的國家（提貨只列卡所在金庫寄得到的）；預填的地址不在裡面時不能送出，由 note 說明。
+// 國家是加拿大時省份必填，從 CA_PROVINCES 選（GST/HST 按它算，伺服器的 parseAddress 同樣把關）
+type ByAddress<T = string> = T | ((address: ShippingAddress) => T);
 
 export default function AddressDialog({
   title,
@@ -30,7 +31,7 @@ export default function AddressDialog({
 }: {
   title: string;
   body: string;
-  note?: ByAddress;
+  note?: ByAddress<ReactNode>;
   submitLabel: ByAddress;
   busyLabel?: string;
   busy?: boolean;
@@ -71,8 +72,11 @@ export default function AddressDialog({
   }, [locale, allowed]);
   const parsed = parseAddress(a);
   const valid = parsed && allowed.includes(parsed.country) ? parsed : null;
-  const byAddress = (v: ByAddress | undefined) => (typeof v === "function" ? v(a) : v);
+  const byAddress = <T,>(v: ByAddress<T> | undefined) => (typeof v === "function" ? (v as (address: ShippingAddress) => T)(a) : v);
+  const provinces = useMemo(() => Object.entries(CA_PROVINCES).map(([code, name]) => ({ value: code, label: `${name} (${code})` })), []);
   const noteText = byAddress(note);
+  // 換進或換出加拿大時清掉州／省：加拿大的省份是清單裡的代碼，別的國家是自由輸入
+  const setCountry = (country: string) => setA((x) => ({ ...x, country, region: (x.country === "CA") === (country === "CA") ? x.region : "" }));
   const set = (k: keyof ShippingAddress) => (e: { target: { value: string } }) => setA((x) => ({ ...x, [k]: e.target.value }));
   const field = "mt-1 w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-ink";
   const label = "block text-xs text-ink-3";
@@ -112,20 +116,27 @@ export default function AddressDialog({
             {t("addrCity")}
             <input required autoComplete="address-level2" value={a.city} onChange={set("city")} className={field} />
           </label>
-          <label className={label}>
-            {t("addrRegion")}
-            <input autoComplete="address-level1" value={a.region} onChange={set("region")} className={field} />
-          </label>
+          {a.country === "CA" ? (
+            <label className={label}>
+              {t("addrProvince")}
+              <Select required searchable value={a.region.toUpperCase()} onChange={(region) => setA((x) => ({ ...x, region }))} options={provinces} className={field} />
+            </label>
+          ) : (
+            <label className={label}>
+              {t("addrRegion")}
+              <input autoComplete="address-level1" value={a.region} onChange={set("region")} className={field} />
+            </label>
+          )}
           <label className={label}>
             {t("addrPostal")}
             <input autoComplete="postal-code" value={a.postal} onChange={set("postal")} className={field} />
           </label>
           <label className={label}>
             {t("addrCountry")}
-            <Select required searchable value={a.country} onChange={(country) => setA((x) => ({ ...x, country }))} options={countries.map((c) => ({ value: c.code, label: c.name }))} className={field} />
+            <Select required searchable value={a.country} onChange={setCountry} options={countries.map((c) => ({ value: c.code, label: c.name }))} className={field} />
           </label>
         </div>
-        {noteText && <p className="mt-5 rounded-xl bg-surface-2 px-4 py-3 text-xs leading-relaxed text-ink-2">{noteText}</p>}
+        {noteText && <div className="mt-5 rounded-xl bg-surface-2 px-4 py-3 text-xs leading-relaxed text-ink-2">{noteText}</div>}
         <div className="mt-5 flex justify-end gap-3">
           <button type="button" onClick={onClose} className="rounded-full border border-line px-5 py-2 text-sm hover:bg-surface-2">
             {t("cancel")}

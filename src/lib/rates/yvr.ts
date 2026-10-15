@@ -1,3 +1,5 @@
+import type { RateSource } from "./source";
+
 // 溫哥華金庫（YVR）的寄件價目：寄一張卡（卡套加硬殼卡套裝氣泡袋，實重和體積重都在 100g 內）到各地的郵資，加幣。
 // 計價規則和換算見 src/lib/shipping.ts；郵局調價、燃油附加費或匯率變動時改這個檔。
 //
@@ -62,3 +64,21 @@ export const YVR_PACKING_CAD = 19.95 / 100 + 130 / 500;
 
 // 加幣兌美元：加拿大央行 2026-10-14 的 USD/CAD 日均匯率（https://www.bankofcanada.ca/valet/observations/FXUSDCAD/json）
 export const CAD_PER_USD = 1.4263;
+
+// 運費表頁列出的報價來源和查詢日期，和上面註解裡的網址一致；改價目時一起改
+export const YVR_QUOTED_ON = "2026-10-14";
+export const YVR_SOURCES: readonly RateSource[] = [
+  { kind: "postage", name: "Canada Post · Solutions for Small Business prices (2026-09-07)", url: "https://www.canadapost-postescanada.ca/cpc/doc/en/support/prices/business-prices.pdf" },
+  {
+    kind: "surcharge",
+    name: "Canada Post · fuel surcharges (2026-10-12 to 10-18)",
+    url: "https://www.canadapost-postescanada.ca/cpc/en/support/kb/company-policies/rates-taxes-surcharges/fuel-surcharges-on-mail-and-parcels.page",
+  },
+  { kind: "packing", name: "401 Games · Ultra Pro toploaders & sleeves", url: "https://store.401games.ca/products/ultra-pro-toploader-100ct-regular-toploader-card-sleeves" },
+  {
+    kind: "packing",
+    name: "Uline Canada · S-8059 bubble mailers",
+    url: "https://www.uline.ca/Product/Detail/S-8059/Self-Seal-Bubble-Mailers/Uline-Bubble-Lined-Polyolefin-Mailers-000-4-x-8",
+  },
+  { kind: "fx", name: "Bank of Canada · USD/CAD daily rate", url: "https://www.bankofcanada.ca/valet/observations/FXUSDCAD/json" },
+];

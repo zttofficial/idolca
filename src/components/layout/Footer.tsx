@@ -19,7 +19,7 @@ export default function Footer() {
         ))}
       </nav>
       <p>{t(CLUSTER === "devnet" ? "textDevnet" : "textMainnet")}</p>
-      <nav className="mt-2 flex justify-center gap-4">
+      <nav className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-2 px-4">
         <Link href="/terms" className="hover:text-ink">
           {t("terms")}
         </Link>
@@ -28,6 +28,9 @@ export default function Footer() {
         </Link>
         <Link href="/grading" className="hover:text-ink">
           {t("grading")}
+        </Link>
+        <Link href="/shipping" className="hover:text-ink">
+          {t("shipping")}
         </Link>
         <Link href="/credits" className="hover:text-ink">
           {t("credits")}

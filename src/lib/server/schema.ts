@@ -359,8 +359,10 @@ export const redemptions = pgTable("redemptions", {
   shipTx: text("ship_tx"),
   // 收件地址 JSON（見 src/lib/shipping.ts）
   shippingAddress: text("shipping_address"),
+  // 運費（不含稅）和另收的 GST/HST（加拿大境內的提貨才有，見 src/lib/shipping.ts 的 redeemCharge），分開記方便報稅；申請交易付的是兩者的和
   feeCents: integer("fee_cents").notNull().default(0),
-  // 運費已在申請交易裡對帳成功
+  taxCents: integer("tax_cents").notNull().default(0),
+  // 運費和稅已在申請交易裡對帳成功
   feePaid: integer("fee_paid").notNull().default(0),
   // 運費用哪種結算代幣付的，取消提貨退運費時用同一種
   coin: text("coin").$type<Coin>().notNull().default("usdt"),
@@ -654,6 +656,7 @@ export const BOOTSTRAP_SQL = [
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number text`,
   `ALTER TABLE redemptions ADD COLUMN IF NOT EXISTS tracking_carrier text`,
   `ALTER TABLE redemptions ADD COLUMN IF NOT EXISTS tracking_number text`,
+  `ALTER TABLE redemptions ADD COLUMN IF NOT EXISTS tax_cents integer NOT NULL DEFAULT 0`,
   `UPDATE pack_orders SET status = 'legacy' WHERE pulls IS NOT NULL AND status = 'pending'`,
   `CREATE TABLE IF NOT EXISTS rate_limits (
     key text PRIMARY KEY,

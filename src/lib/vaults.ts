@@ -29,7 +29,7 @@ export type Vault = {
   // 收件地址（寄進金庫用），環境變數名稱和值；NEXT_PUBLIC_ 變數在構建時寫進頁面，所以要寫成字面的 process.env.X
   addressEnv: string;
   address: string | undefined;
-  // 建議寄到這個金庫的收件國家（離得近、寄費低）
+  // 寄進金庫時建議寄到這裡的收件國家；不在任何一邊清單裡的都建議重慶（見 suggestVault）
   near: readonly string[];
 };
 
@@ -47,8 +47,8 @@ export const VAULTS: Record<VaultId, Vault> = {
     packing: YVR_PACKING_CAD,
     addressEnv: "NEXT_PUBLIC_VAULT_ADDRESS_YVR",
     address: process.env.NEXT_PUBLIC_VAULT_ADDRESS_YVR,
-    // 美洲和歐洲
-    near: ["CA", "US", "MX", "BR", "GB", "IE", "FR", "DE", "NL", "BE", "ES", "IT", "SE", "PL"],
+    // 只有北美：賣家寄國內件或北美件就能入庫
+    near: ["CA", "US", "MX"],
   },
   ckg: {
     id: "ckg",
@@ -63,8 +63,8 @@ export const VAULTS: Record<VaultId, Vault> = {
     packing: CKG_PACKING_CNY,
     addressEnv: "NEXT_PUBLIC_VAULT_ADDRESS_CKG",
     address: process.env.NEXT_PUBLIC_VAULT_ADDRESS_CKG,
-    // 亞洲和大洋洲
-    near: ["CN", "HK", "MO", "TW", "KR", "JP", "SG", "MY", "TH", "ID", "VN", "PH", "AU", "NZ"],
+    // 北美以外都建議寄這裡（suggestVault 的預設）：重慶寄到任何地方的提貨運費都比溫哥華低
+    near: [],
   },
 };
 
@@ -75,5 +75,5 @@ export const isVaultId = (v: unknown): v is VaultId => typeof v === "string" && 
 // 資料庫裡的值轉成金庫；不認得的（理論上不會有）當成預設金庫
 export const vaultOf = (v: string | null | undefined): Vault => VAULTS[isVaultId(v) ? v : DEFAULT_VAULT];
 
-// 按收件國家建議寄到哪個金庫；不在任何一邊的建議清單裡就用預設金庫
-export const suggestVault = (country: string | null | undefined): VaultId => VAULT_LIST.find((v) => country && v.near.includes(country))?.id ?? DEFAULT_VAULT;
+// 按收件國家建議寄到哪個金庫：北美建議溫哥華，其他地區（包括還不知道國家時）一律建議重慶
+export const suggestVault = (country: string | null | undefined): VaultId => VAULT_LIST.find((v) => country && v.near.includes(country))?.id ?? "ckg";

@@ -28,7 +28,9 @@ type Redemption = {
   requestTx: string;
   shipTx: string | null;
   shippingAddress: string | null;
+  // 運費（不含稅）和加拿大境內另收的 GST/HST
   feeCents: number;
+  taxCents: number;
   feePaid: number;
   cancelTx: string | null;
   refundTx: string | null;
@@ -227,6 +229,7 @@ export default function AdminConsole() {
                       {tx(t("cancelTx"), r.cancelTx)}
                       {tx(t("refundTx"), r.refundTx)}
                       {r.feeCents > 0 && <span className={r.feePaid ? "text-up" : "text-down"}>{t(r.feePaid ? "feePaid" : "feeUnpaid", { fee: formatPrice(r.feeCents / 100, 2) })}</span>}
+                      {r.taxCents > 0 && <span className={r.feePaid ? "text-up" : "text-down"}>{t("taxAmount", { tax: formatPrice(r.taxCents / 100, 2) })}</span>}
                     </p>
                     {address && !shipped && <AddressBlock address={address} className="mt-2 max-w-xs" />}
                     {tracking && <TrackingBlock tracking={tracking} className="mt-2 max-w-xs" />}

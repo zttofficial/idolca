@@ -2,11 +2,11 @@ import { PublicKey } from "@solana/web3.js";
 import { allow, tooMany } from "@/lib/server/rate-limit";
 import { chainError, fail, requireWalletUser } from "@/lib/server/require-user";
 import { buildBid, buildBuy, buildCancel, buildCancelAuction, buildCreateAuction, buildList, buildRedeemRequest, marketReady, vaultAuctionsReady, vaultState } from "@/lib/server/vault-chain";
-import { parseAddress, redeemFeeUsd } from "@/lib/shipping";
+import { parseAddress, redeemCharge, redeemFeeUsd } from "@/lib/shipping";
 import { getVaultRow } from "@/lib/server/vault-cards";
 import { AUCTION_DAYS, AUCTION_MIN_START } from "@/lib/auction";
 
-// 金庫卡的交易：伺服器組好、用戶錢包簽名送出。buy 購買、list 掛單、cancel 取消掛單、redeem 申請提貨（要附收件地址，交易裡含運費）；
+// 金庫卡的交易：伺服器組好、用戶錢包簽名送出。buy 購買、list 掛單、cancel 取消掛單、redeem 申請提貨（要附收件地址，交易裡含運費和加拿大境內的 GST/HST）；
 // auction 開拍（起標價、可選的保底價、天數）、bid 出價、cancelAuction 在沒人出價前取消拍賣
 export async function POST(request: Request) {
   const a = await requireWalletUser();
@@ -65,12 +65,15 @@ export async function POST(request: Request) {
         if (state.owner !== a.wallet || state.redeeming) return fail("not_allowed", 403);
         const address = parseAddress(body.address);
         if (!address) return fail("invalid_address");
-        // 運費按卡所在的金庫（從資料庫讀）和收件國家在伺服器算，確認時用同一個地址再算一次對帳；那個金庫不寄的地方不收
+        // 運費和稅按卡所在的金庫（從資料庫讀）和收件國家、省份在伺服器算，確認時用同一個地址再算一次對帳；那個金庫不寄的地方不收
         const row = await getVaultRow(a.db, card);
         if (!row) return fail("not_found", 404);
-        const fee = redeemFeeUsd(row.vault, address.country);
-        if (fee === null) return fail("not_shipped_here");
-        return Response.json({ tx: await buildRedeemRequest(card, me, fee), feeUsdt: fee });
+        if (redeemFeeUsd(row.vault, address.country) === null) return fail("not_shipped_here");
+        // parseAddress 已經擋掉沒有省份的加拿大地址，這裡只是保險
+        const charge = redeemCharge(row.vault, address);
+        if (!charge) return fail("invalid_address");
+        const totalUsdt = charge.totalCents / 100;
+        return Response.json({ tx: await buildRedeemRequest(card, me, totalUsdt), feeUsdt: charge.feeCents / 100, taxUsdt: charge.taxCents / 100, totalUsdt });
       }
       default:
         return fail("invalid_action");

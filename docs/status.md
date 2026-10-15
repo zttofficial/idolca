@@ -19,7 +19,8 @@
 | 金庫卡買賣、掛單（Anchor 託管程序） | `/card/[id]` | `src/lib/server/vault-chain.ts`、`src/components/card/`、`onchain/` |
 | 鏈上紀錄、金庫卡拍賣的出價紀錄；時間軸元件和自由刊登的交易紀錄共用 | `/card/[id]` | `src/components/card/ActivityList.tsx`，`src/lib/server/history.ts`，`src/app/api/chain/history`、`src/app/api/chain/bids` |
 | 金庫（溫哥華、重慶兩個；每張卡記所在金庫，入庫和寄進金庫時選） | `/vault`、`/card/[id]`、`/admin` | `src/lib/vaults.ts`，`src/components/vault/VaultTable.tsx` |
-| 提貨（凍結、委託銷毀、付按卡所在金庫和目的地計價的運費；後台出貨或取消） | `/card/[id]`、`/admin` | `RedeemDialog.tsx`、`vault-chain.ts`，`src/app/api/chain/vault/tx`、`confirm`，`src/lib/shipping.ts`（運費計算）、`src/lib/rates/`（兩個金庫的郵資表）、`policy.ts`（計價規則） |
+| 提貨（凍結、委託銷毀、付按卡所在金庫和目的地計價的運費，加拿大境內另加收件省份的 GST/HST；後台出貨或取消） | `/card/[id]`、`/admin` | `RedeemDialog.tsx`、`vault-chain.ts`，`src/app/api/chain/vault/tx`、`confirm`，`src/lib/shipping.ts`（運費計算）、`src/lib/rates/`（兩個金庫的郵資表）、`policy.ts`（計價規則），`src/lib/rates/ca-tax.ts`（GST/HST 稅率） |
+| 公開運費表（每個國家或地區從兩個金庫寄的運費，可搜尋和排序；計價方式和報價來源；頁尾和服務條款連過去） | `/shipping` | `src/app/[locale]/shipping/page.tsx`、`src/components/shipping/RateTable.tsx`，`src/lib/rates/` 的 `*_SOURCES`、`*_QUOTED_ON`，服務條款裡的 `[文字](/路徑)` 由 `src/components/legal/LegalPage.tsx` 顯示成站內連結 |
 | 收件地址表單和顯示（提貨、擔保交易共用，預填上次的地址） | 提貨、購買、訂單、後台 | `src/components/shipping/AddressDialog.tsx`，`src/app/api/account/address`、`src/app/api/orders/[id]/address` |
 | 物流單號（擔保交易賣家寄出、提貨後台出貨共用；物流商清單、檢查碼、查詢連結、可更正） | 訂單、`/card/[id]`、`/admin` | `src/lib/tracking.ts`、`src/components/shipping/Tracking.tsx`、`src/lib/server/redemption-tracking.ts`，`src/app/api/orders/[id]/ship`、`tracking`，`src/app/api/admin/redemptions/[cardId]/ship`、`tracking`，`src/app/api/redemptions/[cardId]` |
 | 自由上鏈、自由刊登、擔保交易（買家的收件地址，7 天沒填自動退款；寄出期限）；刊登頁成交後仍保留（成交狀態、交易紀錄） | 收藏冊、`/listing/[id]` | `src/components/binder/AddCard.tsx`、`src/lib/server/items.ts`、`orders.ts`、`src/lib/escrow.ts`、`src/lib/policy.ts` |
@@ -58,7 +59,7 @@
 | `packs`、`pack_pulls`、`pack_orders` | 卡包、每一抽的紀錄、開包訂單 |
 | `orders` | 自由刊登的擔保訂單（拍賣得標的記著 `auction_id`；買家的收件地址和填寫時間 `shipping_address`、`address_at`；賣家寄出時的物流單號 `tracking_carrier`、`tracking_number`）；`orders`、`bids`、`pack_orders`、`redemptions` 都記著付款用的幣種（`coin`） |
 | `auctions`、`bids` | 自由刊登的拍賣和每一口出價（付款、退款、是否被接受、拍賣進行中時的收件地址）；金庫卡的拍賣在鏈上 |
-| `redemptions` | 提貨申請、收件地址和出貨時的物流單號 |
+| `redemptions` | 提貨申請、收件地址、運費和加拿大境內另收的 GST/HST（`fee_cents`、`tax_cents`）、出貨時的物流單號 |
 | `notifications` | 站內通知（種類、卡名和金額、連結、已讀時間；`key` 去重） |
 | `media` | 照片（原圖和浮水印展示圖） |
 | `faucet_claims`、`rate_limits` | devnet 水龍頭領取紀錄、頻率限制計數 |

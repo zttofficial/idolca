@@ -25,6 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entry("/vault", 0.7),
     entry("/grading", 0.6),
     entry("/charts", 0.6),
+    entry("/shipping", 0.4),
     entry("/terms", 0.2),
     entry("/privacy", 0.2),
     ...GROUPS.map((g) => entry(`/catalog/${g.id}`, 0.6)),
