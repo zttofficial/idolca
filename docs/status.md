@@ -71,7 +71,7 @@
 
 | | 線上 | 本機開發 | 本機端到端測試 |
 |---|---|---|---|
-| 網站 | Vercel 專案 `ai-artist-projects/idolca`，推送 main 自動部署 | `npm run dev` | `PGLITE_DIR=.data/pglite-e2e npm run dev` |
+| 網站 | Vercel 專案 `ai-artist-projects/idolca`，推送 main 自動部署（只改文檔、`.md` 和 `.env.example` 時跳過，CI 也不跑；見 `vercel.json` 的 `ignoreCommand`） | `npm run dev` | `PGLITE_DIR=.data/pglite-e2e npm run dev` |
 | 資料庫 | Neon（Vercel 整合，變數前綴 `idolca_api_`） | PGlite，`.data/pglite` | PGlite，`.data/pglite-e2e` |
 | 平台金鑰 | `PLATFORM_SECRET_KEY`（敏感變數） | `.data/platform-devnet.json` | 同左 |
 | 寄信 | Resend，`idolca.trade` 已驗證；`RESEND_API_KEY` 是只能寄信的金鑰，寄件人用預設的 `noreply@idolca.trade` | 不設金鑰，信寫進 `.data/outbox.jsonl` 並印在終端 | 同左，`test:e2e:email` 從這裡讀連結 |

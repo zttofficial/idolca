@@ -1,9 +1,12 @@
 # 每次推送和 PR：lint、型別檢查、單元測試、正式構建。端到端測試要連 devnet 和平台金鑰，在本機跑（見 README）
 name: CI
+# 只改文檔時不跑（Vercel 的 ignoreCommand 也同樣跳過部署，見 vercel.json）
 on:
   push:
     branches: [main]
+    paths-ignore: ["docs/**", "**/*.md", ".env.example"]
   pull_request:
+    paths-ignore: ["docs/**", "**/*.md", ".env.example"]
 
 jobs:
   check:
