@@ -17,6 +17,7 @@ import { getDb } from "@/lib/server/db";
 import { getVaultRow, toCard } from "@/lib/server/vault-cards";
 import { marketReady, vaultState } from "@/lib/server/vault-chain";
 import type { Card } from "@/lib/cards";
+import { redeemFeeUsd, vaultCountries } from "@/lib/shipping";
 import { shortAddress, solscanUrl } from "@/lib/solana/config";
 import { gradeLabel, gradeLookupUrl, isInHouse, type Grade } from "@/lib/grading";
 
@@ -146,7 +147,9 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
   );
 }
 
-// 商品結構化資料：Google 要求 Product 帶 offers，所以只有鏈上真的有掛單時才輸出；未掛單、拍賣中（出價不是售價）、已提貨的卡不標成商品
+// 商品結構化資料：Google 要求 Product 帶 offers，所以只有鏈上真的有掛單時才輸出；未掛單、拍賣中（出價不是售價）、已提貨的卡不標成商品。
+// 運費是從卡所在的金庫提貨寄到各地的運費（和運費頁同一套計算，加拿大境內另加的 GST/HST 不在內）；郵資表沒有寄送時效，不填 deliveryTime。
+// 退貨：服務條款規定鏈上成交不可撤回，標成不接受退貨
 async function ProductJsonLd({ card }: { card: Card }) {
   if (card.status === "redeemed" || !marketReady()) return null;
   const live = await vaultState()
@@ -154,6 +157,13 @@ async function ProductJsonLd({ card }: { card: Card }) {
     .catch(() => undefined);
   if (!live?.listing || live.auction || live.burned) return null;
   const url = `${SITE_URL}${localePath(await getLocale(), `/card/${card.id}`)}`;
+  const countries = vaultCountries(card.vault);
+  const shippingDetails = countries.map((country) => ({
+    "@type": "OfferShippingDetails",
+    shippingDestination: { "@type": "DefinedRegion", addressCountry: country },
+    shippingRate: { "@type": "MonetaryAmount", value: redeemFeeUsd(card.vault, country)!.toFixed(2), currency: "USD" },
+  }));
+  const hasMerchantReturnPolicy = { "@type": "MerchantReturnPolicy", applicableCountry: countries, returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted" };
   return (
     <script
       type="application/ld+json"
@@ -167,7 +177,15 @@ async function ProductJsonLd({ card }: { card: Card }) {
         description: `${card.group} ${card.member} · ${card.album} · ${card.version}`,
         ...(card.image ? { image: `${SITE_URL}${card.image.front}` } : {}),
         ...(card.grade ? { additionalProperty: [{ "@type": "PropertyValue", name: "Grade", value: gradeLabel(card.grade) }] } : {}),
-        offers: { "@type": "Offer", url, price: live.listing.priceUsdt.toFixed(2), priceCurrency: "USD", availability: "https://schema.org/InStock" },
+        offers: {
+          "@type": "Offer",
+          url,
+          price: live.listing.priceUsdt.toFixed(2),
+          priceCurrency: "USD",
+          availability: "https://schema.org/InStock",
+          shippingDetails,
+          hasMerchantReturnPolicy,
+        },
       })}
     />
   );
