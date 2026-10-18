@@ -32,6 +32,7 @@
     "@privy-io/react-auth": "3.46.0",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
+    "@solana-mobile/wallet-standard-mobile": "0.6.0",
     "@solana-program/memo": "^0.15.0",
     "@solana-program/system": "^0.15.0",
     "@solana-program/token": "^0.17.0",

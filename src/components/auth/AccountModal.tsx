@@ -7,7 +7,8 @@ import type { Wallet } from "@wallet-standard/base";
 import type { AuthUser } from "./AuthContext";
 import Wordmark from "@/components/brand/Wordmark";
 import { Link } from "@/i18n/navigation";
-import { WalletError, signInWithWallet, useWallets } from "@/lib/solana/wallets";
+import { WalletError, signInWithWallet } from "@/lib/solana/wallets";
+import WalletPicker from "./WalletPicker";
 import { track } from "@/lib/analytics";
 import { CloseButton } from "@/components/ui/Dialog";
 import InfoTip from "@/components/ui/InfoTip";
@@ -301,10 +302,9 @@ export default function AccountModal({ configured, onClose: dismiss, onSignedIn 
   }
 }
 
-// 已安裝的瀏覽器錢包列在這裡（MetaMask、Phantom、Solflare、Backpack 等支援 Solana 的都會出現）；一個都沒有時連到 Solana 官方的錢包列表
+// 錢包登入：挑一個錢包簽名，清單見 WalletPicker
 function WalletLogin({ configured, onSignedIn }: { configured: boolean; onSignedIn: (user: AuthUser) => void }) {
   const t = useTranslations("Auth");
-  const wallets = useWallets();
   const [pending, setPending] = useState<string>();
   const [error, setError] = useState<string>();
 
@@ -328,30 +328,7 @@ function WalletLogin({ configured, onSignedIn }: { configured: boolean; onSigned
         {t("walletLoginTitle")}
         <InfoTip text={t("walletLoginHint")} label={t("walletLoginTitle")} align="start" />
       </p>
-      {wallets.length ? (
-        <div className="mt-3 grid gap-2">
-          {wallets.map((w) => (
-            <button
-              key={w.name}
-              onClick={() => connect(w)}
-              disabled={!configured || pending !== undefined}
-              className="flex items-center gap-3 rounded-xl border border-line px-3.5 py-2.5 text-sm font-medium hover:bg-surface-2 disabled:opacity-50"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element -- 錢包自帶的 data URL 圖示 */}
-              <img src={w.icon} alt="" className="h-6 w-6 rounded-md" />
-              {w.name}
-              {pending === w.name && <span className="ml-auto text-xs text-ink-3">{t("walletSigning")}</span>}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <p className="mt-3 rounded-xl bg-surface-2 px-3.5 py-2.5 text-xs text-ink-2">
-          {t("noWallet")}{" "}
-          <a href="https://solana.com/solana-wallets" target="_blank" rel="noreferrer" className="font-semibold text-accent-ink hover:underline">
-            {t("getWallet")}
-          </a>
-        </p>
-      )}
+      <WalletPicker pending={pending} disabled={!configured} onPick={connect} />
       {error && <p className="mt-2 text-xs text-down">{t(`error_${error}`)}</p>}
     </div>
   );

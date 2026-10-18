@@ -5,7 +5,8 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "./AuthContext";
 import VerifyEmailNotice, { useNeedsEmailVerify } from "./VerifyEmailNotice";
 import Dialog from "@/components/ui/Dialog";
-import { createCollectionWallet, linkWallet, useWallets } from "@/lib/solana/wallets";
+import { createCollectionWallet, linkWallet } from "@/lib/solana/wallets";
+import WalletPicker from "./WalletPicker";
 import { privyEnabled } from "@/lib/privy/bridge";
 import { track } from "@/lib/analytics";
 
@@ -16,7 +17,6 @@ export function WalletSetupPanel({ onDone }: { onDone?: () => void }) {
   const t = useTranslations("Auth");
   const { user, updateUser } = useAuth();
   const needsVerify = useNeedsEmailVerify();
-  const wallets = useWallets();
   const [pending, setPending] = useState<string>();
   const [error, setError] = useState<string>();
   if (needsVerify) return <VerifyEmailNotice />;
@@ -53,30 +53,7 @@ export function WalletSetupPanel({ onDone }: { onDone?: () => void }) {
       )}
       <div className="rounded-xl border border-line p-3">
         <p className="text-sm font-semibold">{t("ownWalletTitle")}</p>
-        {wallets.length ? (
-          <div className="mt-2 grid gap-1.5">
-            {wallets.map((w) => (
-              <button
-                key={w.name}
-                disabled={pending !== undefined}
-                onClick={() => run(w.name, () => linkWallet(w), "wallet")}
-                className="flex items-center gap-2 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium hover:bg-surface-2 disabled:opacity-50"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element -- 錢包自帶的 data URL 圖示 */}
-                <img src={w.icon} alt="" className="h-4 w-4 rounded" />
-                {w.name}
-                {pending === w.name && <span className="ml-auto text-ink-3">{t("walletSigning")}</span>}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-1 text-xs leading-relaxed text-ink-2">
-            {t("noWallet")}{" "}
-            <a href="https://solana.com/solana-wallets" target="_blank" rel="noreferrer" className="font-semibold text-accent-ink hover:underline">
-              {t("getWallet")}
-            </a>
-          </p>
-        )}
+        <WalletPicker pending={pending} onPick={(w) => run(w.name, () => linkWallet(w), "wallet")} />
       </div>
       {error && <p className="text-xs text-down">{t(`error_${error}`)}</p>}
     </div>
@@ -108,4 +85,3 @@ export function GetWalletPrompt({ text, className = "" }: { text: string; classN
     </div>
   );
 }
-

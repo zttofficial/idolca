@@ -5,7 +5,7 @@
 K-pop 小卡的鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Solana 上對應一個 NFT；成交時卡留在倉庫，NFT 在鏈上轉移；持有人隨時可以銷毀 NFT，換取實物寄出。價格標 USD，用 Solana 上的 USDT、USDC 或 Arc 上的 USDC 結算（Arc 見 [arc.md](arc.md)）。
 
 用戶有兩種登入方式，登入框裡並列，互不衝突：
-- **加密用戶**：用 MetaMask、Phantom、Solflare、Backpack 等支援 Solana 的瀏覽器錢包簽名登入，上鏈的卡直接進自己的錢包。
+- **加密用戶**：用 MetaMask、Phantom、Solflare、Backpack 等支援 Solana 的錢包簽名登入（電腦上是瀏覽器擴充功能，手機上是錢包 App），上鏈的卡直接進自己的錢包。
 - **粉絲**：用郵箱和密碼註冊，不需要錢包就能加卡；驗證信箱後才能刊登。要付款或把卡做成數位珍藏時才設定錢包：在 Idolca 建一個收藏錢包（不用安裝、不用助記詞），或綁定自己的錢包。
 
 這樣首頁和產品都是 Web3 的，但不把不懂加密的粉絲擋在門外。
@@ -27,7 +27,7 @@ K-pop 小卡的鏈上倉儲交易平台：實物入庫鑑定，每張卡在 Sola
 | 鏈 | **Solana** | 卡牌 RWA 的主戰場（約 63% 的代幣化卡牌交易在 Solana）；Magic Eden、Tensor、Jupiter 都能直接交易；手續費不到 1 美分 |
 | 網路切換 | `NEXT_PUBLIC_SOLANA_CLUSTER`（`devnet` / `mainnet-beta`） | 每個網路的公開地址（平台錢包、兩個集合、託管程序、結算代幣）各存一份 `src/lib/chain/<cluster>.json`，換網路只改這個變數，不改代碼。水龍頭、測試幣標籤只在 devnet 出現 |
 | 帳號 | 自建：郵箱 + 密碼，或錢包簽名 | 帳號存在自己的資料庫，不依賴第三方登入服務。密碼用 Node 內建 scrypt 加鹽雜湊；錢包登入是 Sign In With Solana 的簡化版：伺服器發一段帶一次性隨機數的訊息（5 分鐘有效、用過即作廢），錢包簽名後伺服器用 ed25519 驗簽，地址第一次出現就建帳號。兩種方式都換成同一種會話：令牌放 httpOnly cookie，資料庫只存它的 SHA-256。郵箱帳號見「信箱驗證和密碼」。Google、Apple 登入暫不做 |
-| 錢包 | Wallet Standard（`@wallet-standard/app`） | 直接偵測瀏覽器裡的 MetaMask、Phantom、Solflare、Backpack 等 Solana 錢包，不經過第三方連接服務；一個都沒有時連到 Solana 官方的錢包列表 |
+| 錢包 | Wallet Standard（`@wallet-standard/app`）、Solana Mobile Wallet Adapter（`@solana-mobile/wallet-standard-mobile`） | 直接偵測瀏覽器裡的 MetaMask、Phantom、Solflare、Backpack 等 Solana 錢包，不經過第三方連接服務。手機瀏覽器裝不了擴充功能：Android 上載入 Mobile Wallet Adapter 喚起手機裡的錢包 App，它也註冊在 Wallet Standard 裡，Chrome 只在用戶剛點過畫面時才肯跳去 App，所以第一次連線和簽名分兩下點；iOS 沒有這條通道，給「在 Phantom / Solflare 裡打開」的連結，在錢包 App 的內建瀏覽器裡登入和付款。電腦上一個錢包都沒有時連到 Solana 官方的錢包列表（`WalletPicker.tsx`，登入和綁定錢包共用） |
 | 收藏錢包 | **Privy** 嵌入式錢包（`@privy-io/react-auth`，`NEXT_PUBLIC_PRIVY_APP_ID`） | 給沒有錢包的郵箱帳號：私鑰由 Privy 分片保管，平台拿不到。Privy 按月活用戶收費，所以只在用戶要建錢包、簽名或加值時才載入 SDK、登入 Privy，平常瀏覽和刊登都不碰（`src/lib/privy/bridge.ts`）。登入用 Privy 寄到用戶已驗證信箱的 6 位數驗證碼；換成由我們發 JWT、免輸入驗證碼的 custom auth 要 Privy 的付費方案，改的只有登入那一段。錢包註冊進 Wallet Standard，綁定和簽名跟外部錢包走同一套；Privy 自己的簽名確認視窗關掉（`showWalletUIs: false`），付款面板是唯一的確認。Privy 後台的 Allowed origins 放正式網域和 `http://localhost:3000`，預覽部署用不了收藏錢包 |
 | 卡片 NFT | **Metaplex Core**，金庫卡和自由上鏈的收藏卡各一個集合，都帶平台可改的 `verification` 鑑定狀態 | 一張卡一個帳戶，鑄造成本約 0.003 SOL；Attributes 插件存屬性（編號、團體、成員、專輯、版本、類型、評級機構、分數、鑑定編號、庫位、入庫日期），FreezeDelegate、BurnDelegate 插件管提貨，集合上的 Royalties 插件收二級市場版稅 |
 | 計價與結算 | 標 **USD**；Solana 上 **USDT 和 USDC** 都收（SPL、6 位小數、1:1），Arc 上收 USDC | 前台只標 USD、不換算當地貨幣（見「首頁」）。付款時錢包裡哪種夠就用哪種，兩種都夠時用餘額多的，都不夠時直接回「餘額不足」，不讓錢包簽注定失敗的交易（`src/lib/coins.ts`、`vault-chain.ts` 的 `pickCoin`）。退款和放款用原來付的那種；Arc 付款的訂單在 Solana 上用 USDC 放款。主網用 Tether 的 USDT 和 Circle 的 USDC，devnet 兩種都用平台自鑄的測試幣 |
