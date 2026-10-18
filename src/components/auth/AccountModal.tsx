@@ -316,7 +316,9 @@ function WalletLogin({ configured, onSignedIn }: { configured: boolean; onSigned
       track("logged_in", { method: "wallet" });
       onSignedIn(user);
     } catch (e) {
-      setError(e instanceof WalletError && e.message === "rejected" ? "rejected" : "wallet");
+      const code = e instanceof WalletError ? e.message : "";
+      // 用戶自己按了取消就不顯示錯誤
+      if (code !== "cancelled") setError(["rejected", "no_mobile_wallet", "loopback_denied", "connect"].includes(code) ? code : "wallet");
     } finally {
       setPending(undefined);
     }

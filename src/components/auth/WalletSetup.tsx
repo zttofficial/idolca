@@ -30,7 +30,7 @@ export function WalletSetupPanel({ onDone }: { onDone?: () => void }) {
       onDone?.();
     } catch (e) {
       const code = e instanceof Error ? e.message : "";
-      setError(["rejected", "wallet_taken", "email_unverified", "cancelled"].includes(code) ? code : fallback);
+      setError(["rejected", "wallet_taken", "email_unverified", "cancelled", "no_mobile_wallet", "loopback_denied", "connect"].includes(code) ? code : fallback);
     } finally {
       setPending(undefined);
     }

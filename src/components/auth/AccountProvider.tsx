@@ -8,6 +8,7 @@ import { AddCardHost } from "@/components/binder/AddCard";
 import { clearItems, refreshItems } from "@/lib/items";
 import { setPrivyAccount } from "@/lib/privy/bridge";
 import PrivyMount from "./PrivyMount";
+import { forgetMobileWallet } from "@/lib/solana/wallets";
 
 type Me = { configured: boolean; user: AuthUser | null };
 
@@ -57,6 +58,7 @@ export default function AccountProvider({ children }: { children: React.ReactNod
         await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
         detachAccount();
         clearItems();
+        void forgetMobileWallet();
         setMe((m) => ({ configured: m?.configured ?? true, user: null }));
       },
     }),
