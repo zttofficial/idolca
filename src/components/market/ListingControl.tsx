@@ -9,6 +9,7 @@ import InfoTip from "@/components/ui/InfoTip";
 import { TimeLeft } from "@/components/auction/AuctionPanel";
 import { track } from "@/lib/analytics";
 import VerifyEmailNotice, { useNeedsEmailVerify } from "@/components/auth/VerifyEmailNotice";
+import { WalletNotFoundHint } from "@/components/auth/WalletPicker";
 
 export type AuctionInput = { startUsd: number; reserveUsd: number | null; days: number };
 
@@ -77,7 +78,12 @@ export default function ListingControl({
     error === "email_unverified" ? (
       <VerifyEmailNotice className="mt-2" />
     ) : (
-      error && <p className="mt-2 text-[11px] text-down">{t.has(`error_${error}`) ? t(`error_${error}`) : tAuction.has(`error_${error}`) ? tAuction(`error_${error}`) : t("listingError")}</p>
+      error && (
+        <>
+          <p className="mt-2 text-[11px] text-down">{t.has(`error_${error}`) ? t(`error_${error}`) : tAuction.has(`error_${error}`) ? tAuction(`error_${error}`) : t("listingError")}</p>
+          <WalletNotFoundHint error={error} />
+        </>
+      )
     );
 
   if (auction) {

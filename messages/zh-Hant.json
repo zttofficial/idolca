@@ -615,6 +615,7 @@
     "error_connect": "沒有連上錢包，請再試一次。",
     "mobileNoWallet": "手機瀏覽器裝不了錢包擴充功能。用錢包 App 的內建瀏覽器打開 Idolca，在那裡登入後就能用錢包簽名和付款：",
     "openInWalletApp": "也可以用錢包 App 的內建瀏覽器打開 Idolca：",
+    "openInWalletAppToPay": "這個瀏覽器叫不到你綁定的錢包。用錢包 App 的內建瀏覽器打開 Idolca，登入同一個帳號後再試：",
     "forSale": "在售中",
     "myOrders": "我的訂單",
     "editName": "改暱稱",

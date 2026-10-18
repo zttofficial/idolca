@@ -3,9 +3,38 @@
 import { useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import type { Wallet } from "@wallet-standard/base";
+import { useAuth } from "./AuthContext";
 import { MOBILE_WALLET, connectWallet, isMobileBrowser, needsConnect, useWallets, walletBrowseLinks } from "@/lib/solana/wallets";
 
 const noop = () => () => {};
+const useMobile = () => useSyncExternalStore(noop, isMobileBrowser, () => false);
+
+// 「在錢包 App 裡打開」：用 Phantom、Solflare 的內建瀏覽器打開這一頁，那裡錢包會自己注入
+function WalletAppLinks({ text }: { text: string }) {
+  return (
+    <div className="mt-3 rounded-xl bg-surface-2 px-3.5 py-2.5 text-xs leading-relaxed text-ink-2">
+      <p>{text}</p>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        {walletBrowseLinks(window.location.href).map((link) => (
+          <a key={link.name} href={link.href} className="rounded-lg border border-line bg-surface px-3 py-2 text-center text-sm font-semibold text-ink hover:bg-surface-2">
+            {link.name}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// 簽名時找不到帳號綁的錢包（錯誤碼 wallet_not_found）：手機瀏覽器叫不到外部錢包，給「在錢包 App 裡打開」。
+// 只在帳號綁的是自己的錢包（收藏錢包在哪都叫得到）、在手機上、且這個瀏覽器沒有注入任何錢包時出現；放在各處付款和簽名的錯誤訊息下面
+export function WalletNotFoundHint({ error }: { error?: string | null }) {
+  const t = useTranslations("Auth");
+  const { user } = useAuth();
+  const wallets = useWallets();
+  const mobile = useMobile();
+  if (error !== "wallet_not_found" || user?.walletKind !== "external" || !mobile || wallets.some((w) => w.name !== MOBILE_WALLET)) return null;
+  return <WalletAppLinks text={t("openInWalletAppToPay")} />;
+}
 
 // 讓用戶挑自己的 Solana 錢包，錢包登入和綁定錢包共用。
 // 電腦上列出已安裝的瀏覽器錢包（MetaMask、Phantom、Solflare、Backpack 等）；手機上另外給「在錢包 App 裡打開」，
@@ -13,7 +42,7 @@ const noop = () => () => {};
 export default function WalletPicker({ pending, disabled, onPick }: { pending?: string; disabled?: boolean; onPick: (wallet: Wallet) => void }) {
   const t = useTranslations("Auth");
   const wallets = useWallets();
-  const mobile = useSyncExternalStore(noop, isMobileBrowser, () => false);
+  const mobile = useMobile();
   const [connecting, setConnecting] = useState(false);
   const [connectFailed, setConnectFailed] = useState(false);
   // 手機錢包連上後要再點一次才簽名；連線改變的是錢包物件本身，用這個觸發重繪
@@ -59,16 +88,7 @@ export default function WalletPicker({ pending, disabled, onPick }: { pending?: 
       )}
       {connectFailed && <p className="mt-2 text-xs text-down">{t("error_connect")}</p>}
       {mobile && !injected.length ? (
-        <div className="mt-3 rounded-xl bg-surface-2 px-3.5 py-2.5 text-xs leading-relaxed text-ink-2">
-          <p>{wallets.length ? t("openInWalletApp") : t("mobileNoWallet")}</p>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {walletBrowseLinks(window.location.href).map((link) => (
-              <a key={link.name} href={link.href} className="rounded-lg border border-line bg-surface px-3 py-2 text-center text-sm font-semibold text-ink hover:bg-surface-2">
-                {link.name}
-              </a>
-            ))}
-          </div>
-        </div>
+        <WalletAppLinks text={wallets.length ? t("openInWalletApp") : t("mobileNoWallet")} />
       ) : (
         !wallets.length && (
           <p className="mt-3 rounded-xl bg-surface-2 px-3.5 py-2.5 text-xs text-ink-2">

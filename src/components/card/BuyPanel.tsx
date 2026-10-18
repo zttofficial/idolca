@@ -16,6 +16,7 @@ import ListingControl from "@/components/market/ListingControl";
 import CopyButton from "@/components/ui/CopyButton";
 import PaymentPicker from "@/components/pay/PaymentPicker";
 import VaultAuction from "@/components/auction/VaultAuction";
+import { WalletNotFoundHint } from "@/components/auth/WalletPicker";
 
 const PRIMARY = "btn-primary flex-1 rounded-full px-6 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 const SECONDARY =
@@ -188,6 +189,7 @@ function ChainActions({ card, live }: { card: Card; live: VaultCardState }) {
         </a>
       )}
       {error && <p className="mt-2 text-xs text-down">{t.has(`error_${error}`) ? t(`error_${error}`) : t("error_generic")}</p>}
+      <WalletNotFoundHint error={error} />
     </div>
   );
 }

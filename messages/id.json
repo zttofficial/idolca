@@ -615,6 +615,7 @@
     "error_connect": "Gagal terhubung ke dompet. Silakan coba lagi.",
     "mobileNoWallet": "Browser ponsel tidak bisa menjalankan ekstensi dompet. Buka Idolca di browser bawaan aplikasi dompet dan masuk di sana untuk menandatangani dan membayar dengan dompet:",
     "openInWalletApp": "Kamu juga bisa membuka Idolca di browser bawaan aplikasi dompet:",
+    "openInWalletAppToPay": "Browser ini tidak bisa memanggil dompet yang kamu tautkan. Buka Idolca di browser bawaan aplikasi dompet, masuk ke akun yang sama, lalu coba lagi:",
     "forSale": "Dijual",
     "myOrders": "Pesanan saya",
     "editName": "Ubah nama",

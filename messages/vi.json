@@ -615,6 +615,7 @@
     "error_connect": "Không kết nối được ví. Vui lòng thử lại.",
     "mobileNoWallet": "Trình duyệt điện thoại không chạy được tiện ích ví. Hãy mở Idolca trong trình duyệt tích hợp của ứng dụng ví và đăng nhập ở đó để ký và thanh toán bằng ví:",
     "openInWalletApp": "Bạn cũng có thể mở Idolca trong trình duyệt tích hợp của ứng dụng ví:",
+    "openInWalletAppToPay": "Trình duyệt này không gọi được ví bạn đã liên kết. Hãy mở Idolca trong trình duyệt tích hợp của ứng dụng ví, đăng nhập cùng tài khoản rồi thử lại:",
     "forSale": "Đang bán",
     "myOrders": "Đơn hàng của tôi",
     "editName": "Đổi tên",

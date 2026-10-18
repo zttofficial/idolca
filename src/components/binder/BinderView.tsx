@@ -31,6 +31,7 @@ import { itemTitle } from "@/lib/item-title";
 import { putOnChain, setAuction, setDescription, setListing, useMyItems, type CollectorItem, requestVault } from "@/lib/items";
 import { VAULT_LIST, suggestVault, vaultOf, type Vault, type VaultId } from "@/lib/vaults";
 import type { ShippingAddress } from "@/lib/shipping";
+import { WalletNotFoundHint } from "@/components/auth/WalletPicker";
 
 type Tab = "binder" | "orders" | "progress" | "wants";
 const TABS: Tab[] = ["binder", "orders", "progress", "wants"];
@@ -973,6 +974,7 @@ function MintSelf({ item }: { item: CollectorItem }) {
         <InfoTip text={`${t("mintWhat")} ${t("mintSelfNote", { fee: formatPrice(MINT_FEE_USD) })}`} label={t("mintWhatLabel")} />
       </div>
       {error && <p className="mt-1 text-[11px] text-down">{t.has(`error_${error}`) ? t(`error_${error}`) : t("mintSelfError", { fee: formatPrice(MINT_FEE_USD) })}</p>}
+      <WalletNotFoundHint error={error} />
     </div>
   );
 }

@@ -615,6 +615,7 @@
     "error_connect": "Couldn't connect to the wallet. Please try again.",
     "mobileNoWallet": "Phone browsers can't run wallet extensions. Open Idolca in your wallet app's built-in browser and sign in there to sign and pay with your wallet:",
     "openInWalletApp": "You can also open Idolca in your wallet app's built-in browser:",
+    "openInWalletAppToPay": "This browser can't reach your linked wallet. Open Idolca in your wallet app's built-in browser, sign in to the same account and try again:",
     "forSale": "For sale",
     "myOrders": "My orders",
     "editName": "Edit",
