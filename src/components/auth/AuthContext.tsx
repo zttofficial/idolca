@@ -10,6 +10,8 @@ export type AuthUser = {
   // 郵箱帳號點過驗證信才是 true；沒驗證不能賣卡和綁錢包
   emailVerified: boolean;
   displayName: string;
+  // 改暱稱冷卻中時下次能改的時間（ISO），可以改時是 null
+  renameAt: string | null;
   // 用錢包登入時是那個錢包的地址；郵箱帳號綁定錢包前為 null，綁了才能買賣
   walletAddress: string | null;
   // external：用戶自己的錢包；privy：在 Idolca 建的收藏錢包，簽名前要先登入 Privy

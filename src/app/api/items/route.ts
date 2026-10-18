@@ -7,6 +7,7 @@ import { auctionView, latestAuctions } from "@/lib/server/auctions";
 import { openOrders } from "@/lib/server/orders";
 import { saveUploads } from "@/lib/server/media";
 import { isCardSource } from "@/lib/sources";
+import { impersonatesPlatform } from "@/lib/server/names";
 
 export async function GET() {
   const a = await requireUser();
@@ -46,6 +47,8 @@ export async function POST(request: Request) {
   const quantity = Number.isInteger(body.quantity) && (body.quantity as number) >= 1 && (body.quantity as number) <= 99 ? (body.quantity as number) : 1;
   const source = isCardSource(body.source) ? body.source : "album";
   if (!group || !member) return Response.json({ error: "missing_name" }, { status: 400 });
+  // 刊登頁顯示的文字都不能自稱平台官方或客服
+  if ([title, description, group, member, album, version].some((v) => v && impersonatesPlatform(v))) return Response.json({ error: "impersonation" }, { status: 400 });
   const price = body.priceUsdt === undefined || body.priceUsdt === null ? null : priceToCents(body.priceUsdt);
   if (price === undefined) return Response.json({ error: "invalid_price" }, { status: 400 });
   const unverified = price !== null && unverifiedEmail(a.user);

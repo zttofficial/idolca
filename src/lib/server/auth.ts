@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { and, eq, gt } from "drizzle-orm";
 import type { Db } from "./db";
 import { sessions, users } from "./schema";
+import { nextRenameAt } from "./names";
 
 const scryptAsync = promisify(scrypt) as (pw: string, salt: Buffer, keylen: number, opts: object) => Promise<Buffer>;
 
@@ -57,6 +58,8 @@ export type PublicUser = {
   email: string | null;
   emailVerified: boolean;
   displayName: string;
+  // 冷卻中時下次能改暱稱的時間（ISO），可以改時是 null
+  renameAt: string | null;
   walletAddress: string | null;
   walletKind: "external" | "privy" | null;
   isAdmin: boolean;
@@ -76,6 +79,7 @@ export const publicUser = (u: typeof users.$inferSelect): PublicUser => ({
   email: u.email,
   emailVerified: u.emailVerifiedAt !== null,
   displayName: u.displayName,
+  renameAt: nextRenameAt(u.nameChangedAt)?.toISOString() ?? null,
   walletAddress: u.walletAddress,
   // 錢包登入的帳號沒記種類，一律是自己的錢包
   walletKind: u.walletAddress ? (u.walletKind ?? "external") : null,

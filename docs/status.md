@@ -12,7 +12,7 @@
 
 | 功能 | 頁面 | 主要代碼 |
 |---|---|---|
-| 帳號：郵箱密碼或錢包簽名登入、驗證信箱、忘記和修改密碼、設定錢包（收藏錢包或綁定自己的；綁定之前登入過的錢包時，那個錢包帳號併進郵箱帳號）、管理員 | 帳號選單、`/verify-email`、`/reset-password` | `src/lib/server/auth.ts`、`account-merge.ts`、`email-auth.ts`、`mail.ts`、`wallet-auth.ts`、`admin.ts`，`src/components/auth/`，`scripts/grant-admin.ts` |
+| 帳號：郵箱密碼或錢包簽名登入、驗證信箱、忘記和修改密碼、設定錢包（收藏錢包或綁定自己的；綁定之前登入過的錢包時，那個錢包帳號併進郵箱帳號）、暱稱（不能用平台、管理員、客服類的保留名稱，管理員除外；每 3 天改一次，註冊後第一次不限）、管理員 | 帳號選單、`/verify-email`、`/reset-password` | `src/lib/server/auth.ts`、`names.ts`、`account-merge.ts`、`email-auth.ts`、`mail.ts`、`wallet-auth.ts`、`admin.ts`，`src/components/auth/`，`scripts/grant-admin.ts` |
 | 收藏錢包（Privy 嵌入式錢包，用到時才載入）、刷卡加值 | 帳號選單、付款時的「設定錢包」 | `src/lib/privy/bridge.ts`，`src/components/auth/PrivyMount.tsx`、`PrivyHost.tsx`、`WalletSetup.tsx` |
 | 結算代幣（USDT、USDC）、平台代付手續費和帳戶租金 | 所有付款 | `src/lib/coins.ts`，`src/lib/server/vault-chain.ts` 的 `forUser`、`pickCoin`，`funds.ts` |
 | 市場（金庫卡、自由刊登兩條線） | `/market` | `src/components/market/MarketBrowser.tsx`、`src/lib/market.ts`、`src/lib/server/market-data.ts` |
@@ -24,7 +24,7 @@
 | 收件地址表單和顯示（提貨、擔保交易共用，預填上次的地址） | 提貨、購買、訂單、後台 | `src/components/shipping/AddressDialog.tsx`，`src/app/api/account/address`、`src/app/api/orders/[id]/address` |
 | 物流單號（擔保交易賣家寄出、提貨後台出貨共用；物流商清單、檢查碼、查詢連結、可更正） | 訂單、`/card/[id]`、`/admin` | `src/lib/tracking.ts`、`src/components/shipping/Tracking.tsx`、`src/lib/server/redemption-tracking.ts`，`src/app/api/orders/[id]/ship`、`tracking`，`src/app/api/admin/redemptions/[cardId]/ship`、`tracking`，`src/app/api/redemptions/[cardId]` |
 | 刊登頁的賣家資料（暱稱、加入時間、成交數、在售數、是否綁定錢包，附他的其他刊登） | `/listing/[id]` | `getSeller`（`src/lib/server/items.ts`） |
-| 自由上鏈、自由刊登、擔保交易（買家的收件地址，7 天沒填自動退款；寄出期限）；刊登頁成交後仍保留（成交狀態、交易紀錄） | 收藏冊、`/listing/[id]` | `src/components/binder/AddCard.tsx`、`src/lib/server/items.ts`、`orders.ts`、`src/lib/escrow.ts`、`src/lib/policy.ts` |
+| 自由上鏈、自由刊登（標題、描述等文字不能自稱平台官方或客服，規則在 `names.ts`）、擔保交易（買家的收件地址，7 天沒填自動退款；寄出期限）；刊登頁成交後仍保留（成交狀態、交易紀錄） | 收藏冊、`/listing/[id]` | `src/components/binder/AddCard.tsx`、`src/lib/server/items.ts`、`orders.ts`、`src/lib/escrow.ts`、`src/lib/policy.ts` |
 | 拍賣（兩條線：自由刊登進平台託管，金庫卡在鏈上）、上架時選一口價或拍賣 | `/listing/[id]`、`/card/[id]`、收藏冊 | `src/lib/server/auctions.ts`、`vault-chain.ts`，`src/lib/auction.ts`，`src/components/auction/`、`src/components/market/ListingControl.tsx` |
 | 寄進金庫、收藏卡轉金庫卡 | 收藏冊、`/admin` | `src/app/api/items/[id]/vault`、`src/app/api/admin/items/[id]/vault`、`VaultConvert.tsx` |
 | 付款方式面板（Solana 錢包、Arc 上的 USDC、信用卡佔位） | 購買按鈕 | `src/components/pay/PaymentPicker.tsx`，標誌在 `public/pay/` |
@@ -55,7 +55,7 @@
 
 | 表 | 存什麼 |
 |---|---|
-| `users`、`sessions`、`login_nonces`、`email_tokens` | 帳號（郵箱或錢包、錢包種類、信箱是否驗證、角色、年齡確認）、會話、錢包登入挑戰碼、郵件裡的驗證和重設密碼連結 |
+| `users`、`sessions`、`login_nonces`、`email_tokens` | 帳號（郵箱或錢包、錢包種類、信箱是否驗證、暱稱和上次改名時間、角色、年齡確認）、會話、錢包登入挑戰碼、郵件裡的驗證和重設密碼連結 |
 | `binder_entries`、`binder_wants`、`binder_layouts` | 收藏冊的標記、想要清單、擺法 |
 | `collector_items` | 自由上鏈的卡：資料、刊登價格、鑑定狀態、NFT 地址、寄進金庫申請和選的金庫（`vault_target`） |
 | `vault_cards` | 金庫卡實物資料和所在金庫（`vault`）；持有人和掛單以鏈上為準 |

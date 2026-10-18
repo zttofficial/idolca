@@ -29,7 +29,7 @@ const rememberLogin = (method: "email" | "wallet") => {
   } catch {}
 };
 
-type ErrorCode = "invalid_email" | "weak_password" | "email_taken" | "invalid_credentials" | "not_configured" | "rate_limited" | "network";
+type ErrorCode = "invalid_email" | "weak_password" | "invalid_name" | "reserved_name" | "email_taken" | "invalid_credentials" | "not_configured" | "rate_limited" | "network";
 
 // 兩種登入方式並列：郵箱 + 密碼給不懂加密的粉絲，錢包簽名給已有 Solana 錢包的人。帳號都存在我們自己的資料庫。
 // 郵箱這邊另有「忘記密碼」（寄重設連結）；註冊成功後先提示去收驗證信，關掉彈窗才算登入完成
@@ -249,7 +249,7 @@ export default function AccountModal({ configured, onClose: dismiss, onSignedIn 
                     id="acc-name"
                     name="nickname"
                     autoComplete="nickname"
-                    maxLength={40}
+                    maxLength={24}
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     placeholder={t("namePlaceholder")}

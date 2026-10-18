@@ -76,7 +76,7 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
   const [album, setAlbum] = useState(prefill.album ?? "");
   const [version, setVersion] = useState(prefill.version ?? "");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string>();
   const [done, setDone] = useState<CollectorItem | null>(null);
 
   useEffect(() => {
@@ -108,11 +108,11 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
   const mint = async () => {
     if (!front || !back || !ready) return;
     setBusy(true);
-    setError(false);
+    setError(undefined);
     try {
       setDone(await addItem({ photos: [front, back, ...extras], title, description, quantity, source, group, member, album, version, priceUsdt: sell ? priceValue : undefined }));
-    } catch {
-      setError(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "network");
     } finally {
       setBusy(false);
     }
@@ -252,7 +252,7 @@ function AddCardDialog({ prefill, onClose }: { prefill: Prefill; onClose: () => 
                 )}
               </div>
 
-              {error && <p className="mt-3 text-xs text-down">{t("error")}</p>}
+              {error && <p className="mt-3 text-xs text-down">{t(error === "impersonation" ? "errorImpersonation" : "error")}</p>}
               {user ? (
                 <button onClick={mint} disabled={!ready || busy} className="btn-primary mt-4 w-full rounded-full py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40">
                   {busy ? "…" : ready ? t(sell ? "confirmSell" : "confirm") : !(front && back) ? t("needPhoto") : !priceOk ? t("needPrice") : t("needName")}

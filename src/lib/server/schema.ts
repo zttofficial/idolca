@@ -16,6 +16,8 @@ export const users = pgTable("users", {
   // 收藏錢包要簽名時，網站才去登入 Privy
   walletKind: text("wallet_kind").$type<"external" | "privy">(),
   displayName: text("display_name").notNull(),
+  // 上次自己改暱稱的時間，限制改名頻率（見 names.ts）；註冊時的預設名不算
+  nameChangedAt: timestamp("name_changed_at", { withTimezone: true }),
   // admin：可以進後台（退款放款、入庫、提貨出貨、標假卡）。用 npm run admin:grant 授予
   role: text("role").$type<"user" | "admin">().notNull().default("user"),
   // 開卡包前確認已滿 18 歲的時間
@@ -504,6 +506,7 @@ export const BOOTSTRAP_SQL = [
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS age_confirmed_at timestamptz`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at timestamptz`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_kind text`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS name_changed_at timestamptz`,
   `CREATE TABLE IF NOT EXISTS email_tokens (
     id text PRIMARY KEY,
     user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,

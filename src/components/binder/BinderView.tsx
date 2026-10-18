@@ -775,6 +775,7 @@ function DescriptionEditor({ item }: { item: CollectorItem }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(item.description ?? "");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
   if (!editing) {
     return (
       <div className="mt-3 text-xs">
@@ -801,9 +802,12 @@ function DescriptionEditor({ item }: { item: CollectorItem }) {
           disabled={busy}
           onClick={async () => {
             setBusy(true);
+            setError(undefined);
             try {
               await setDescription(item.id, text);
               setEditing(false);
+            } catch (e) {
+              setError(e instanceof Error ? e.message : "network");
             } finally {
               setBusy(false);
             }
@@ -816,6 +820,7 @@ function DescriptionEditor({ item }: { item: CollectorItem }) {
           {t("cancelEdit")}
         </button>
       </div>
+      {error && <p className="mt-2 text-xs text-down">{t(error === "impersonation" ? "errorImpersonation" : "descriptionError")}</p>}
     </div>
   );
 }

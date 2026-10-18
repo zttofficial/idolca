@@ -121,19 +121,21 @@ function ProfileHeader() {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user!.displayName);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<"invalid_name" | "reserved_name" | "network">();
+  const renameAt = user!.renameAt ? new Date(user!.renameAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : null;
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    setError(false);
+    setError(undefined);
     try {
       const res = await fetch("/api/account/profile", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ displayName: name }) });
-      const data = (await res.json()) as { user?: NonNullable<typeof user> };
+      const data = (await res.json()) as { user?: NonNullable<typeof user>; error?: string };
+      if (data.error === "invalid_name" || data.error === "reserved_name") return setError(data.error);
       if (!data.user) throw new Error();
       updateUser(data.user);
       setEditing(false);
     } catch {
-      setError(true);
+      setError("network");
     } finally {
       setBusy(false);
     }
@@ -152,11 +154,13 @@ function ProfileHeader() {
               aria-label={t("editName")}
               className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-2 py-1 text-sm outline-none focus:border-ink"
             />
-            <button disabled={busy} className="btn-primary rounded-lg px-2.5 text-xs font-semibold disabled:opacity-50">
+            <button disabled={busy || renameAt !== null} className="btn-primary rounded-lg px-2.5 text-xs font-semibold disabled:opacity-50">
               {t("saveName")}
             </button>
           </div>
-          <p className={`mt-1 text-[11px] ${error ? "text-down" : "text-ink-3"}`}>{t(error ? "nameError" : "nameHint")}</p>
+          <p className={`mt-1 text-[11px] ${error ? "text-down" : "text-ink-3"}`}>
+            {error === "invalid_name" ? t("nameError") : error ? t(`error_${error}`) : renameAt ? t("nameCooldown", { date: renameAt }) : t("nameHint")}
+          </p>
         </form>
       ) : (
         <div className="min-w-0 flex-1">

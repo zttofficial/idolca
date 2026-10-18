@@ -5,6 +5,7 @@ import { requireUser, unverifiedEmail } from "@/lib/server/require-user";
 import { liveAuction } from "@/lib/server/auctions";
 import { openOrders } from "@/lib/server/orders";
 import { notifyIndexNow } from "@/lib/server/indexnow";
+import { impersonatesPlatform } from "@/lib/server/names";
 
 // 持有人改自己的卡：
 // - priceUsdt 為數字時刊登（或改價），為 null 時下架；假卡、拍賣中的卡不能一口價刊登。刊登不需要上鏈，但郵箱帳號要先驗證信箱
@@ -37,6 +38,7 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/items/[id]
   if ("description" in body) {
     if (typeof body.description !== "string") return Response.json({ error: "invalid_description" }, { status: 400 });
     changes.description = body.description.trim().slice(0, MAX_DESCRIPTION) || null;
+    if (changes.description && impersonatesPlatform(changes.description)) return Response.json({ error: "impersonation" }, { status: 400 });
   }
   if (!Object.keys(changes).length) return Response.json({ error: "nothing_to_change" }, { status: 400 });
 
