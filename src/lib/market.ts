@@ -1,10 +1,11 @@
 // 市場的篩選、排序、分頁。參數全部放在網址查詢字串裡，可以分享、可以用瀏覽器返回。
-// 先選團體再選成員（KOCA 的「切換藝人與角色」），加上類型、價格、只看在售和排序（Pocamarket 的篩選項）。
+// 品類 → 團體 → 成員三層（KOCA 的星球和「切換藝人與角色」），加上類型、價格、只看在售和排序（Pocamarket 的篩選項）。
 // 兩條交易線：vault 是金庫鑑定過的卡（對應 Pocamarket 的 Official），free 是賣家自由刊登、卡在賣家手上（對應 Used 和 KOCA）
 
 import type { Listing } from "./items";
 import type { Card, Rarity } from "./cards";
-import { groupMemberFacets, hit, inGroupMember, sameName } from "./facets";
+import { groupMemberFacets, hit, inGroupMember } from "./facets";
+import { isCategoryKey, type CategoryKey } from "./directory";
 
 export const PAGE_SIZE = 12;
 export const SORTS = ["newest", "priceAsc", "priceDesc"] as const;
@@ -16,6 +17,7 @@ export type Lane = (typeof LANES)[number];
 export type MarketQuery = {
   lane: Lane;
   q: string;
+  cat: CategoryKey | null;
   group: string | null;
   member: string | null;
   types: Rarity[];
@@ -33,6 +35,7 @@ export function parseQuery(sp: URLSearchParams): MarketQuery {
   return {
     lane: sp.get("lane") === "free" ? "free" : "vault",
     q: sp.get("q")?.trim() ?? "",
+    cat: isCategoryKey(sp.get("cat")) ? (sp.get("cat") as CategoryKey) : null,
     group: sp.get("group") || null,
     member: sp.get("member") || null,
     types: (sp.get("type")?.split(",") ?? []).filter((t): t is Rarity => RARITIES.includes(t as Rarity)),
@@ -49,6 +52,7 @@ export function toSearch(q: MarketQuery) {
   const sp = new URLSearchParams();
   if (q.lane !== "vault") sp.set("lane", q.lane);
   if (q.q) sp.set("q", q.q);
+  if (q.cat) sp.set("cat", q.cat);
   if (q.group) sp.set("group", q.group);
   if (q.member) sp.set("member", q.member);
   if (q.types.length) sp.set("type", q.types.join(","));
@@ -77,7 +81,7 @@ export function applyQuery(cards: Card[], q: MarketQuery) {
   const filtered = cards.filter(
     (c) =>
       matches(c, q.q) &&
-      inGroupMember(c, q.group, q.member) &&
+      inGroupMember(c, q.group, q.member, q.cat) &&
       (!q.types.length || q.types.includes(c.rarity)) &&
       // 價格篩選只看在售的卡（價格是鏈上的掛單價或拍賣的目前出價）
       ((q.min === null && q.max === null) || (forSale(c) && (q.min === null || c.priceUsdt >= q.min) && (q.max === null || c.priceUsdt <= q.max))) &&
@@ -102,7 +106,7 @@ export function applyListingQuery(listings: Listing[], q: MarketQuery) {
   const filtered = listings.filter(
     (l) =>
       hit(`${l.title ?? ""} ${l.group} ${l.member} ${l.album ?? ""} ${l.version ?? ""}`, q.q) &&
-      (!q.group || sameName(l.group, q.group)) &&
+      inGroupMember(l, q.group, q.member, q.cat) &&
       (q.min === null || listingPrice(l) >= q.min) &&
       (q.max === null || listingPrice(l) <= q.max),
   );
@@ -118,4 +122,9 @@ export function applyListingQuery(listings: Listing[], q: MarketQuery) {
 export function facetCounts(cards: Card[], q: MarketQuery) {
   const base = cards.filter((c) => matches(c, q.q) && (!q.types.length || q.types.includes(c.rarity)) && (!q.listedOnly || forSale(c)));
   return groupMemberFacets(base, (c) => c, q.group);
+}
+
+export function listingFacetCounts(listings: Listing[], q: MarketQuery) {
+  const base = listings.filter((l) => hit(`${l.title ?? ""} ${l.group} ${l.member} ${l.album ?? ""} ${l.version ?? ""}`, q.q));
+  return groupMemberFacets(base, (l) => l, q.group);
 }

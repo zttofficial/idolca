@@ -8,7 +8,7 @@ import { useAuth } from "@/components/auth/AuthContext";
 import VerifyEmailNotice, { useNeedsEmailVerify } from "@/components/auth/VerifyEmailNotice";
 import { Link } from "@/i18n/navigation";
 import { GROUPS, TEMPLATES } from "@/lib/catalog";
-import { findDirectoryGroup, groupOptions, parseCardFilename } from "@/lib/kpop-groups";
+import { findDirectoryGroup, groupOptions, parseCardFilename } from "@/lib/directory";
 import Combobox from "@/components/ui/Combobox";
 import Select from "@/components/ui/Select";
 import { addItem, type CollectorItem } from "@/lib/items";

@@ -31,10 +31,10 @@
 | Arc 收款通道（USDC 授權轉帳、平台代送、退款） | 開卡包、擔保交易 | `src/lib/arc.ts`、`src/lib/server/arc-pay.ts`、`src/lib/evm/arc-wallet.ts` |
 | 評級（IDG 自家評級和第三方評級） | `/card/[id]`、`/admin`、介紹頁 `/grading` | `src/lib/grading.ts`、`src/components/admin/VaultGrade.tsx`、`src/app/api/admin/vault/[id]/grade` |
 | Trading card 卡包（承諾—揭示抽卡、即時回購；`PACKS_BLOCKED_COUNTRIES` 的地區不賣，預設比利時、荷蘭） | `/packs`、`/packs/[id]` | `src/lib/server/packs.ts`、`pack-pool.ts`、`region.ts`，`src/lib/pack-draw.ts`、`src/lib/packs.ts`，`src/components/packs/PackOpener.tsx` |
-| 收藏冊（卡冊、搜尋和團體 → 成員篩選、整理、同步；訂單頁籤列擔保訂單和金庫卡成交） | `/binder` | `BinderView.tsx`、`BinderBook.tsx`、`BinderArranger.tsx`、`BinderChain.tsx`（訂單），`src/lib/server/vault-trades.ts`（金庫卡成交從鏈上同步），`src/lib/binder.ts`、`binder-layout.ts`、`binder-filter.ts`，`src/app/api/binder` |
-| 卡片篩選元件（搜尋框、團體 → 成員；市場用側欄，收藏冊用上方可收起的面板），市場和收藏冊共用 | `/market`、`/binder` | `src/components/market/CardFilters.tsx`、`src/lib/facets.ts` |
+| 收藏冊（卡冊、搜尋和品類 → 團體 → 成員篩選、整理、同步；訂單頁籤列擔保訂單和金庫卡成交） | `/binder` | `BinderView.tsx`、`BinderBook.tsx`、`BinderArranger.tsx`、`BinderChain.tsx`（訂單），`src/lib/server/vault-trades.ts`（金庫卡成交從鏈上同步），`src/lib/binder.ts`、`binder-layout.ts`、`binder-filter.ts`，`src/app/api/binder` |
+| 卡片篩選元件（搜尋框、品類 → 團體 → 成員；市場用側欄的二級選單、列出名錄裡的全部團體，收藏冊用上方可收起的面板），市場和收藏冊共用 | `/market`、`/binder` | `src/components/market/CardFilters.tsx`、`src/lib/facets.ts` |
 | 圖鑑 | `/catalog`、`/catalog/[group]` | `src/lib/catalog.ts` |
-| 團體名錄（表單的團體、成員建議；按照片檔名預填名稱、團體、成員） | 上鏈、入庫表單 | `src/lib/kpop-groups.ts` |
+| 團體名錄（K-pop、J-pop、C-pop、T-pop 四個品類；篩選器的團體清單、表單的團體和成員建議；按照片檔名預填名稱、團體、成員） | 上鏈、入庫表單 | `src/lib/directory.ts`，各品類的名錄在 `src/lib/groups/` |
 | 金庫頁（存貨證明） | `/vault` | `src/components/vault/` |
 | 專輯銷量榜 | `/charts` | `src/lib/server/circle-chart.ts` |
 | 後台（入庫、卡包、擔保訂單、提貨、假卡） | `/admin` | `src/components/admin/`、`src/app/api/admin/` |
@@ -116,7 +116,7 @@
 - **用戶錢包連在主網時看不到 devnet 資產**：Phantom 要在開發者設定裡開測試網模式並選 Devnet，Solflare 在網路設定裡選 Devnet。README 的 Try it 寫了，登入框還沒有這個提示。
 - **線上管理員是測試錢包**：要換成用戶自己的錢包（`ADMIN_WALLETS` 或 `npm run admin:grant`）。Vercel 上的舊變數 `ADMIN_TOKEN` 已不再使用，可以刪掉。
 - **榜單數據**：讀 Circle Chart 網頁用的接口，正式營運前要換授權來源。
-- **團體名錄**：122 個團體裡 64 個附成員，其餘只有團名。
+- **團體名錄**：408 個團體裡只有 Studio Wabi Sabi（泰國）沒有成員；48 系、彩虹社、灰姑娘女孩只列了現役和主要成員。J-pop 的 STARTO、LDH、二次元企劃和 hololive，以及 K-pop 的二、三代團，成員是按已知資料整理、沒有逐一對照官網，GMMTV 有幾位藝人的英文拼法沒對過官網，要抽查。
 
 ## 還沒做
 

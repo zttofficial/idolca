@@ -9,11 +9,11 @@ import TileSkeleton from "./TileSkeleton";
 import { openAddCard } from "@/components/binder/AddCard";
 import { useListings, useVaultCards } from "@/lib/chain-client";
 import Select from "@/components/ui/Select";
-import { LANES, RARITIES, SORTS, applyListingQuery, applyQuery, facetCounts, parseQuery, toSearch, type MarketQuery } from "@/lib/market";
-import { countOf, sameName } from "@/lib/facets";
+import { LANES, RARITIES, SORTS, applyListingQuery, applyQuery, facetCounts, listingFacetCounts, parseQuery, toSearch, type MarketQuery } from "@/lib/market";
+import { groupTree, memberList } from "@/lib/facets";
 import { ClearFilters, FilterPanel, FiltersButton, GroupMemberFilter, SearchField } from "./CardFilters";
 
-// 市場頁：金庫卡 / 自由刊登兩條線；搜尋、團體 → 成員、類型、價格、只看在售、排序、分頁，狀態全在網址裡
+// 市場頁：金庫卡 / 自由刊登兩條線；搜尋、品類 → 團體 → 成員（名錄裡的團體全部列出，沒貨的數量為 0）、類型、價格、只看在售、排序、分頁，狀態全在網址裡
 export default function MarketBrowser() {
   const t = useTranslations("Market");
   const tListing = useTranslations("Listing");
@@ -29,7 +29,8 @@ export default function MarketBrowser() {
   const vaultResult = useMemo(() => applyQuery(cards, q), [cards, q]);
   const freeResult = useMemo(() => applyListingQuery(listings ?? [], q), [listings, q]);
   const result = free ? freeResult : vaultResult;
-  const facets = useMemo(() => facetCounts(cards, q), [cards, q]);
+  const facets = useMemo(() => (free ? listingFacetCounts(listings ?? [], q) : facetCounts(cards, q)), [free, listings, cards, q]);
+  const tree = useMemo(() => groupTree(facets.groups, true), [facets]);
   const [showFilters, setShowFilters] = useState(false);
   const top = useRef<HTMLDivElement>(null);
 
@@ -40,21 +41,19 @@ export default function MarketBrowser() {
     if (scroll) top.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const byName = (a: string, b: string) => a.localeCompare(b, "en", { sensitivity: "base" });
-  const groups = free ? [...new Set((listings ?? []).map((l) => l.group))].sort(byName) : [...new Set(cards.map((c) => c.group))].sort(byName);
-  const groupCount = (g: string | null) => (free ? (listings ?? []).filter((l) => !g || sameName(l.group, g)).length : g ? countOf(facets.groups, g) : facets.total);
-  const members = q.group && !free ? [...new Set(cards.filter((c) => sameName(c.group, q.group!)).map((c) => c.member))].sort(byName) : [];
-  const activeCount = (q.group ? 1 : 0) + (q.member ? 1 : 0) + q.types.length + (q.min !== null || q.max !== null ? 1 : 0) + (q.listedOnly ? 1 : 0);
+  const activeCount = (q.cat || q.group ? 1 : 0) + (q.member ? 1 : 0) + q.types.length + (q.min !== null || q.max !== null ? 1 : 0) + (q.listedOnly ? 1 : 0);
 
   const filters = (
     <>
       <GroupMemberFilter
-        groups={groups.map((g) => ({ name: g, count: groupCount(g) }))}
-        total={groupCount(null)}
-        members={members.map((m) => ({ name: m, count: countOf(facets.members, m) }))}
+        tree={tree}
+        total={facets.total}
+        members={memberList(q.group, facets.members, true)}
+        category={q.cat}
         group={q.group}
         member={q.member}
-        onGroup={(group) => go({ group, member: null })}
+        onCategory={(cat) => go({ cat, group: null, member: null })}
+        onGroup={(group) => go({ cat: null, group, member: null })}
         onMember={(member) => go({ member })}
       />
 
@@ -86,7 +85,7 @@ export default function MarketBrowser() {
         </label>
       )}
 
-      {activeCount > 0 && <ClearFilters onClick={() => go({ group: null, member: null, types: [], min: null, max: null, listedOnly: false })} />}
+      {activeCount > 0 && <ClearFilters onClick={() => go({ cat: null, group: null, member: null, types: [], min: null, max: null, listedOnly: false })} />}
     </>
   );
 
@@ -98,7 +97,7 @@ export default function MarketBrowser() {
             key={lane}
             role="tab"
             aria-selected={q.lane === lane}
-            onClick={() => go({ lane, group: null, member: null, types: [], listedOnly: false })}
+            onClick={() => go({ lane, types: [], listedOnly: false })}
             className={`rounded-2xl border px-4 py-2.5 text-left transition ${q.lane === lane ? "border-ink bg-surface" : "border-line text-ink-2 hover:border-line-strong"}`}
           >
             <span className="block text-sm font-semibold">

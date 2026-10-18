@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { RARITY_LIST, type Card, type Rarity } from "@/lib/cards";
 import { GROUPS, TEMPLATES } from "@/lib/catalog";
-import { findDirectoryGroup, groupOptions, parseCardFilename } from "@/lib/kpop-groups";
+import { findDirectoryGroup, groupOptions, parseCardFilename } from "@/lib/directory";
 import Combobox from "@/components/ui/Combobox";
 import Select from "@/components/ui/Select";
 import { cropToCard } from "@/lib/crop-card";

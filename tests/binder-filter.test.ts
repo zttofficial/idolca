@@ -12,13 +12,13 @@ const cards: C[] = [
   { id: "5", group: "aespa", member: "Winter", album: "Armageddon" },
 ];
 const fields = (c: C) => ({ group: c.group, member: c.member, text: `${c.group} ${c.member} ${c.album}` });
-const all: BinderQuery = { listed: false, q: "", group: null, member: null };
+const all: BinderQuery = { listed: false, q: "", cat: null, group: null, member: null };
 const ids = (list: C[]) => list.map((c) => c.id);
 
 describe("binder filter", () => {
   it("reads and writes the query string, dropping a member without a group", () => {
     const q = parseBinderQuery(new URLSearchParams("filter=listed&q=karina&group=aespa&member=Karina"));
-    expect(q).toEqual({ listed: true, q: "karina", group: "aespa", member: "Karina" });
+    expect(q).toEqual({ listed: true, q: "karina", cat: null, group: "aespa", member: "Karina" });
     expect(binderSearch(q).toString()).toBe("filter=listed&q=karina&group=aespa&member=Karina");
     expect(parseBinderQuery(new URLSearchParams("member=Karina")).member).toBeNull();
     expect(binderSearch(all).toString()).toBe("");

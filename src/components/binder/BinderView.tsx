@@ -21,7 +21,7 @@ import { Thumbs } from "@/components/market/PhotoGallery";
 import { Link } from "@/i18n/navigation";
 import { binderActions, useBinder, type Binder, type BinderEntry } from "@/lib/binder";
 import { binderSearch, filterBinder, isNarrowed, parseBinderQuery, type BinderQuery, type FilterFields } from "@/lib/binder-filter";
-import { nameKey } from "@/lib/facets";
+import { groupTree, nameKey } from "@/lib/facets";
 import { ClearFilters, FilterBar, FiltersButton, GroupMemberFilter, SearchField } from "@/components/market/CardFilters";
 import { GROUPS, TEMPLATES, templateCard, type Template } from "@/lib/catalog";
 import type { Card } from "@/lib/cards";
@@ -123,7 +123,7 @@ export default function BinderView() {
   // 整理收藏冊是在整本冊子的卡套上換位置，只能在「全部」且沒有搜尋、篩選時進行；篩選結果是擠在一起的連續卡套，在上面換位置對不上原本的卡套
   const canArrange = !query.listed && !narrowed;
   const arrangingNow = arranging && canArrange;
-  const activeFilters = (query.group ? 1 : 0) + (query.member ? 1 : 0);
+  const activeFilters = (query.cat || query.group ? 1 : 0) + (query.member ? 1 : 0);
   const openSlot = (slot: Slot) => (slot.kind === "vault" ? setSelectedVault(slot.card.id) : slot.kind === "item" ? setSelectedItem(slot.item.id) : setSelected(slot.owned.template.id));
   const selectedOwned = owned.find((o) => o.template.id === selected);
   const pickedItem = items.find((i) => i.id === selectedItem);
@@ -190,7 +190,7 @@ export default function BinderView() {
                 <SearchField value={query.q} onSearch={(q) => setQuery({ q })} placeholder={t("searchPlaceholder")} />
                 <FiltersButton always active={activeFilters} open={showFilters} onClick={() => setShowFilters((v) => !v)} />
                 {/* 面板收起時也看得到、清得掉生效中的篩選 */}
-                {!showFilters && activeFilters > 0 && <ClearFilters onClick={() => setQuery({ group: null, member: null })} />}
+                {!showFilters && activeFilters > 0 && <ClearFilters onClick={() => setQuery({ cat: null, group: null, member: null })} />}
                 <div role="radiogroup" aria-label={t("filterLabel")} className="flex rounded-full bg-surface-2 p-1 text-xs font-semibold">
                   {([false, true] as const).map((only) => (
                     <button
@@ -237,15 +237,17 @@ export default function BinderView() {
               <FilterBar open={showFilters}>
                 <GroupMemberFilter
                   layout="chips"
-                  groups={filtered.facets.groups}
+                  tree={groupTree(filtered.facets.groups, false)}
                   total={filtered.facets.total}
                   members={filtered.facets.members}
+                  category={query.cat}
                   group={query.group}
                   member={query.member}
-                  onGroup={(group) => setQuery({ group, member: null })}
+                  onCategory={(cat) => setQuery({ cat, group: null, member: null })}
+                  onGroup={(group) => setQuery({ cat: null, group, member: null })}
                   onMember={(member) => setQuery({ member })}
                 />
-                {activeFilters > 0 && <ClearFilters onClick={() => setQuery({ group: null, member: null })} />}
+                {activeFilters > 0 && <ClearFilters onClick={() => setQuery({ cat: null, group: null, member: null })} />}
               </FilterBar>
 
               {/* min-w-0：卡冊不被裡面的內容撐寬，窄螢幕上不出現橫向捲動 */}
