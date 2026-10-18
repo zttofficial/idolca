@@ -14,7 +14,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/meta/card/[
   return Response.json({
     name: `${card.group} ${card.member} ${card.version} #${card.serial}`,
     symbol: "IDOLCA",
-    description: `${card.group} ${card.member} photocard (${card.album}, ${card.version}), authenticated and stored in the Idolca ${VAULTS[card.vault].city} vault. Burn this NFT to have the physical card shipped to you.`,
+    description: `${card.group} ${card.member} photocard (${card.album}, ${card.version}), authenticated and stored in the Idolca ${VAULTS[card.vault].region} vault. Burn this NFT to have the physical card shipped to you.`,
     image,
     external_url: `${SITE_URL}/card/${card.id}`,
     attributes: [
@@ -29,7 +29,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/meta/card/[
             { trait_type: "Grade Cert", value: card.grade.cert },
           ]
         : []),
-      { trait_type: "Vault", value: VAULTS[card.vault].city },
+      { trait_type: "Vault", value: VAULTS[card.vault].region },
       { trait_type: "Custody", value: "vault" },
       { trait_type: "Verification", value: "authentic" },
     ],

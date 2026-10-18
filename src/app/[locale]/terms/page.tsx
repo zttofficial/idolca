@@ -35,7 +35,7 @@ export default async function TermsPage() {
           title: "Vault cards",
           body: [
             "A vault card is a physical photocard that Idolca has received, authenticated, photographed and stored. Each vault card has one Solana NFT in the Idolca Vault collection; whoever holds the NFT owns the physical card.",
-            `We keep vault cards in ${VAULT_LIST.length} vaults: ${VAULT_LIST.map((v) => `${v.city}, ${new Intl.DisplayNames(["en"], { type: "region" }).of(v.country)}`).join(" and ")}. Each card is stored in one vault, shown on its card page, and ships from that vault when redeemed. When you send us a card, you choose which vault receives it.`,
+            `We keep vault cards in ${VAULT_LIST.length} vaults: ${VAULT_LIST.map((v) => v.region).join(" and ")}. Each card is stored in one vault, shown on its card page, and ships from that vault when redeemed. When you send us a card, you choose which vault receives it.`,
             "Idolca is responsible for vault cards while they are in our custody. If a vault card is lost or damaged before it ships to you, we compensate the holder at its fair market value.",
           ],
         },

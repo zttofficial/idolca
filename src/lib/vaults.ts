@@ -13,8 +13,8 @@ export type Vault = {
   id: VaultId;
   // 倉位編號的前綴，後台用
   code: string;
-  // 城市（英文），服務條款和後台用；面向粉絲的名稱在翻譯檔的 Vaults
-  city: string;
+  // 對外的英文名稱（地區，不寫城市），服務條款和 NFT 元數據用；面向粉絲的名稱在翻譯檔的 Vaults
+  region: string;
   country: string;
   // 郵資表的計價貨幣和對美元匯率（1 美元 = perUsd 單位）
   currency: string;
@@ -37,7 +37,7 @@ export const VAULTS: Record<VaultId, Vault> = {
   yvr: {
     id: "yvr",
     code: "YVR",
-    city: "Vancouver",
+    region: "North America",
     country: "CA",
     currency: "CAD",
     perUsd: CAD_PER_USD,
@@ -53,7 +53,7 @@ export const VAULTS: Record<VaultId, Vault> = {
   ckg: {
     id: "ckg",
     code: "CKG",
-    city: "Chongqing",
+    region: "Asia",
     country: "CN",
     currency: "CNY",
     perUsd: CNY_PER_USD,

@@ -102,8 +102,8 @@
     "auction": "Đang đấu giá"
   },
   "Vaults": {
-    "yvr": "kho Vancouver",
-    "ckg": "kho Trùng Khánh"
+    "yvr": "kho Bắc Mỹ",
+    "ckg": "kho châu Á"
   },
   "Vault": {
     "intro": "Mỗi thẻ trong kho có đúng một vật phẩm sưu tầm số. Số vật phẩm còn hiệu lực luôn bằng số thẻ thật trong kho: thẻ đang chờ gửi sẽ bị khóa vật phẩm, và vật phẩm bị hủy khi thẻ được gửi đi.",
@@ -117,7 +117,7 @@
     "colOwner": "Người nắm giữ",
     "colStatus": "Trạng thái",
     "colIntake": "Ngày nhập kho",
-    "locations": "Thẻ được cất ở hai kho: Vancouver (Canada) và Trùng Khánh (Trung Quốc). Mỗi thẻ chỉ ở một kho và được gửi đi từ đó.",
+    "locations": "Thẻ được cất ở hai kho: kho Bắc Mỹ và kho châu Á. Mỗi thẻ chỉ ở một kho và được gửi đi từ đó.",
     "allVaults": "Tất cả kho",
     "colVault": "Kho",
     "all": "Tất cả",
@@ -1001,7 +1001,7 @@
   },
   "Shipping": {
     "metaTitle": "Phí vận chuyển",
-    "metaDescription": "Chi phí gửi thẻ từ kho đến tay bạn: phí gửi có theo dõi từ kho Vancouver và Trùng Khánh đến mọi quốc gia và khu vực chúng tôi phục vụ, tính bằng USD.",
+    "metaDescription": "Chi phí gửi thẻ từ kho đến tay bạn: phí gửi có theo dõi từ kho Bắc Mỹ và kho châu Á đến mọi quốc gia và khu vực chúng tôi phục vụ, tính bằng USD.",
     "eyebrow": "Rút thẻ",
     "title": "Phí vận chuyển",
     "intro": "Rút thẻ nghĩa là chúng tôi gửi thẻ thật từ <vault>kho</vault> đến bạn. Bạn yêu cầu ở trang thẻ: bản sưu tầm số sẽ bị khóa trước, rồi bị hủy khi thẻ được gửi đi. Xem toàn bộ quy định tại <terms>Điều khoản dịch vụ</terms>.",

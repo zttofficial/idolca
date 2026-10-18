@@ -18,7 +18,7 @@
 | 市場（金庫卡、自由刊登兩條線） | `/market` | `src/components/market/MarketBrowser.tsx`、`src/lib/market.ts`、`src/lib/server/market-data.ts` |
 | 金庫卡買賣、掛單（Anchor 託管程序） | `/card/[id]` | `src/lib/server/vault-chain.ts`、`src/components/card/`、`onchain/` |
 | 鏈上紀錄、金庫卡拍賣的出價紀錄；時間軸元件和自由刊登的交易紀錄共用 | `/card/[id]` | `src/components/card/ActivityList.tsx`，`src/lib/server/history.ts`，`src/app/api/chain/history`、`src/app/api/chain/bids` |
-| 金庫（溫哥華、重慶兩個；每張卡記所在金庫，入庫和寄進金庫時選） | `/vault`、`/card/[id]`、`/admin` | `src/lib/vaults.ts`，`src/components/vault/VaultTable.tsx` |
+| 金庫（北美、亞洲兩個，對外不寫城市；每張卡記所在金庫，入庫和寄進金庫時選） | `/vault`、`/card/[id]`、`/admin` | `src/lib/vaults.ts`，`src/components/vault/VaultTable.tsx` |
 | 提貨（凍結、委託銷毀、付按卡所在金庫和目的地計價的運費，加拿大境內另加收件省份的 GST/HST；後台出貨或取消） | `/card/[id]`、`/admin` | `RedeemDialog.tsx`、`vault-chain.ts`，`src/app/api/chain/vault/tx`、`confirm`，`src/lib/shipping.ts`（運費計算）、`src/lib/rates/`（兩個金庫的郵資表）、`policy.ts`（計價規則），`src/lib/rates/ca-tax.ts`（GST/HST 稅率） |
 | 公開運費表（每個國家或地區從兩個金庫寄的運費，可搜尋和排序；計價方式和報價來源；頁尾和服務條款連過去） | `/shipping` | `src/app/[locale]/shipping/page.tsx`、`src/components/shipping/RateTable.tsx`，`src/lib/rates/` 的 `*_SOURCES`、`*_QUOTED_ON`，服務條款裡的 `[文字](/路徑)` 由 `src/components/legal/LegalPage.tsx` 顯示成站內連結 |
 | 收件地址表單和顯示（提貨、擔保交易共用，預填上次的地址） | 提貨、購買、訂單、後台 | `src/components/shipping/AddressDialog.tsx`，`src/app/api/account/address`、`src/app/api/orders/[id]/address` |

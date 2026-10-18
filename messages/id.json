@@ -102,8 +102,8 @@
     "auction": "Dilelang"
   },
   "Vaults": {
-    "yvr": "brankas Vancouver",
-    "ckg": "brankas Chongqing"
+    "yvr": "brankas Amerika Utara",
+    "ckg": "brankas Asia"
   },
   "Vault": {
     "intro": "Setiap kartu di brankas punya tepat satu koleksi digital. Jumlah koleksi yang aktif selalu sama dengan jumlah kartu fisik di brankas: kartu yang diminta dikirim koleksinya dikunci, lalu dipensiunkan saat kartu dikirim.",
@@ -117,7 +117,7 @@
     "colOwner": "Pemegang",
     "colStatus": "Status",
     "colIntake": "Tanggal masuk",
-    "locations": "Kartu disimpan di dua brankas: Vancouver, Kanada dan Chongqing, Tiongkok. Setiap kartu hanya ada di salah satunya dan dikirim dari sana.",
+    "locations": "Kartu disimpan di dua brankas: Amerika Utara dan Asia. Setiap kartu hanya ada di salah satunya dan dikirim dari sana.",
     "allVaults": "Semua brankas",
     "colVault": "Brankas",
     "all": "Semua",
@@ -1001,7 +1001,7 @@
   },
   "Shipping": {
     "metaTitle": "Ongkos kirim",
-    "metaDescription": "Biaya mengirim kartu dari brankas ke tanganmu: ongkos kirim berpelacakan dari brankas Vancouver dan Chongqing ke setiap negara dan wilayah yang kami layani, dalam USD.",
+    "metaDescription": "Biaya mengirim kartu dari brankas ke tanganmu: ongkos kirim berpelacakan dari brankas Amerika Utara dan Asia ke setiap negara dan wilayah yang kami layani, dalam USD.",
     "eyebrow": "Penarikan",
     "title": "Ongkos kirim",
     "intro": "Menarik kartu berarti kami mengirimkan kartu fisiknya dari <vault>brankas</vault> kepadamu. Ajukan di halaman kartu: koleksi digitalnya dikunci dulu, lalu dibatalkan saat kartu dikirim. Aturan lengkapnya ada di <terms>Ketentuan Layanan</terms>.",
