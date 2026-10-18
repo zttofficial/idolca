@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({ locale: await getLocale(), path: "/", title: t("homeTitle"), description: t("description"), absoluteTitle: true });
 }
 
-// 首頁順序：主視覺 → 最新入庫 → 盲盒 → 收藏冊 → Idolca 有什麼不一樣（四個支柱）
+// 首頁順序：主視覺 → 最新入庫 → trading card 卡包 → 收藏冊 → Idolca 有什麼不一樣（四個支柱）
 export default async function Home() {
   const locale = await getLocale();
   const t = await getTranslations("Meta");

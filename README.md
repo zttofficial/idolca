@@ -50,7 +50,7 @@ K-pop fandoms have loudly rejected NFT projects before. Idolca keeps the technol
 | Seller profiles | Each listing shows the seller's name, join date, completed sales and other cards for sale. |
 | Vault conversion | A fan sends a self-minted card to the vault. If genuine, a vault NFT is minted to them and the collector NFT is burned (recovered through the collection's PermanentTransferDelegate). |
 | Fake cards | Admins can mark a collector NFT as fake: renamed, relabelled and frozen on-chain, visible in every wallet and marketplace. |
-| Mystery packs | Every card in a pack is a real vault card; a pull transfers its existing NFT. Odds are each tier's share of the cards left, updated live, next to the expected value and return rate of the next pack. Sales pause when the remaining pool's return rate would exceed the cap, until it is restocked. Instant buyback returns a card to the pool. |
+| Random trading card packs | Every card in a pack is a real vault card; a pull transfers its existing NFT. Odds are each tier's share of the cards left, updated live, next to the expected value and return rate of the next pack. Sales pause when the remaining pool's return rate would exceed the cap, until it is restocked. Instant buyback returns a card to the pool. |
 | Provably fair draws | Commit and reveal, no oracle: the SHA-256 of a secret seed is published before sales; each pull uses `HMAC-SHA256(seed, paymentProof:index)`. The proof comes from the buyer, so Idolca cannot predict it: the Solana payment signature, or on Arc the buyer's signature on the authorization (not the transaction hash, which Idolca submits and could grind). The seed is revealed when the pack ends, and `/api/packs/{id}/draws` lets anyone recompute every pull. |
 | Grading | Idolca Grading (IDG) scores vault cards on centering, corners, edges and surface; the vault serial is the cert number and the grade is written into the collectible. Third-party grades are recorded too. |
 | Catalog and binder | Every card version by group, album and member; a binder to track what you have and want, and collection progress. |
@@ -71,7 +71,7 @@ Cards and Solana payments run on devnet, so nothing costs real money. Arc paymen
 ## Business model
 
 - 2.5% fee on every vault trade (split inside the swap transaction) and fan listing (deducted when escrow releases).
-- Mystery packs: the return rate (expected value ÷ price) is capped at 80% and published, so every pack is profitable and buyers see what they get.
+- Random trading card packs: the return rate (expected value ÷ price) is capped at 80% and published, so every pack is profitable and buyers see what they get.
 - Instant buyback at 70% of the card's pack value, which returns the card to the pool to sell again.
 - Auctions: a 4% seller fee on the winning bid. Their bigger value is price discovery for rare cards, which feeds pack pricing.
 - Shipping fees on redemption. Fans pay to mint their own collectibles, so free listings cost Idolca nothing.

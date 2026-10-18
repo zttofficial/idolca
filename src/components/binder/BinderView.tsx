@@ -181,7 +181,7 @@ export default function BinderView() {
 
       {tab === "binder" && (
         <div className="mt-6">
-          {/* 錢包裡的金庫卡（買來的、盲盒抽到的）跟著鏈上持有放進卡冊；沒綁錢包時提醒一句 */}
+          {/* 錢包裡的金庫卡（買來的、卡包抽到的）跟著鏈上持有放進卡冊；沒綁錢包時提醒一句 */}
           {!wallet && <p className="mb-4 text-xs text-ink-3">{t("vaultCardsNeedWallet")}</p>}
           <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
             {!arrangingNow && (

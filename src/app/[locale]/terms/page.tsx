@@ -9,7 +9,7 @@ import { CURRENCY } from "@/lib/fx";
 import { VAULT_LIST } from "@/lib/vaults";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return pageMetadata({ locale: await getLocale(), path: "/terms", title: "Terms of Service", description: "The rules for buying, selling, auctions, escrow, mystery packs and vault shipping on Idolca, including fees and how disputes are handled." });
+  return pageMetadata({ locale: await getLocale(), path: "/terms", title: "Terms of Service", description: "The rules for buying, selling, auctions, escrow, random trading card packs and vault shipping on Idolca, including fees and how disputes are handled." });
 }
 
 const pct = (bps: number) => `${bps / 100}%`;
@@ -27,7 +27,7 @@ export default async function TermsPage() {
         {
           title: "Accounts and wallets",
           body: [
-            "You can sign in with an email and password or with a Solana wallet signature. You must be old enough to form a binding contract where you live, and at least 18 to open mystery packs.",
+            "You can sign in with an email and password or with a Solana wallet signature. You must be old enough to form a binding contract where you live, and at least 18 to open random trading card packs.",
             "Your wallet and its private keys are yours. Idolca never asks for your seed phrase, cannot reverse transactions you sign, and cannot recover a lost wallet. Email accounts can add and list cards without a wallet; paying, bidding and holding NFTs require a linked wallet.",
           ],
         },
@@ -70,7 +70,7 @@ export default async function TermsPage() {
           ],
         },
         {
-          title: "Mystery packs",
+          title: "Random trading card packs",
           body: [
             "Every card in a pack's pool is a vault card owned by Idolca. Odds are the share of cards left in each tier and change as cards are pulled. Before a pack opens we publish a hash of a secret seed; each pull is derived from that seed and your payment signature, and we publish the seed when the pack ends or sells out so anyone can verify every pull.",
             "Opened packs are non-refundable. If a pack runs out of cards after you pay, the packs we could not fill are refunded automatically.",

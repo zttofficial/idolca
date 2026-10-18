@@ -175,7 +175,7 @@ export const vaultCards = pgTable("vault_cards", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// 盲盒卡包。卡池是放進這個卡包的金庫卡（vault_cards.pack_id），抽一張少一張。
+// Trading card 卡包。卡池是放進這個卡包的金庫卡（vault_cards.pack_id），抽一張少一張。
 // 公平性用承諾—揭示：建立卡包時生成隨機種子，只公開它的 SHA-256；每次抽卡的隨機數 = HMAC-SHA256(種子, 付款交易簽名:序號)，
 // 付款簽名由買家錢包產生，平台事先算不出來。卡包結束或抽完後公開種子，任何人都能重算每一抽
 export const packs = pgTable("packs", {

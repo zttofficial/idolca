@@ -6,7 +6,7 @@ import { packStats } from "@/lib/packs";
 import { getDb } from "@/lib/server/db";
 import { featuredPack } from "@/lib/server/pack-pool";
 
-// 首頁的盲盒入口：只推正在售賣、還有卡的第一個卡包；沒有就不顯示
+// 首頁的 trading card 卡包入口：只推正在售賣、還有卡的第一個卡包；沒有就不顯示
 export default async function PackPromo() {
   await connection();
   const t = await getTranslations("Packs");

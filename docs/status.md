@@ -30,7 +30,7 @@
 | 付款方式面板（Solana 錢包、Arc 上的 USDC、信用卡佔位） | 購買按鈕 | `src/components/pay/PaymentPicker.tsx`，標誌在 `public/pay/` |
 | Arc 收款通道（USDC 授權轉帳、平台代送、退款） | 開卡包、擔保交易 | `src/lib/arc.ts`、`src/lib/server/arc-pay.ts`、`src/lib/evm/arc-wallet.ts` |
 | 評級（IDG 自家評級和第三方評級） | `/card/[id]`、`/admin`、介紹頁 `/grading` | `src/lib/grading.ts`、`src/components/admin/VaultGrade.tsx`、`src/app/api/admin/vault/[id]/grade` |
-| 盲盒卡包（承諾—揭示抽卡、即時回購；`PACKS_BLOCKED_COUNTRIES` 的地區不賣，預設比利時、荷蘭） | `/packs`、`/packs/[id]` | `src/lib/server/packs.ts`、`pack-pool.ts`、`region.ts`，`src/lib/pack-draw.ts`、`src/lib/packs.ts`，`src/components/packs/PackOpener.tsx` |
+| Trading card 卡包（承諾—揭示抽卡、即時回購；`PACKS_BLOCKED_COUNTRIES` 的地區不賣，預設比利時、荷蘭） | `/packs`、`/packs/[id]` | `src/lib/server/packs.ts`、`pack-pool.ts`、`region.ts`，`src/lib/pack-draw.ts`、`src/lib/packs.ts`，`src/components/packs/PackOpener.tsx` |
 | 收藏冊（卡冊、搜尋和團體 → 成員篩選、整理、同步；訂單頁籤列擔保訂單和金庫卡成交） | `/binder` | `BinderView.tsx`、`BinderBook.tsx`、`BinderArranger.tsx`、`BinderChain.tsx`（訂單），`src/lib/server/vault-trades.ts`（金庫卡成交從鏈上同步），`src/lib/binder.ts`、`binder-layout.ts`、`binder-filter.ts`，`src/app/api/binder` |
 | 卡片篩選元件（搜尋框、團體 → 成員；市場用側欄，收藏冊用上方可收起的面板），市場和收藏冊共用 | `/market`、`/binder` | `src/components/market/CardFilters.tsx`、`src/lib/facets.ts` |
 | 圖鑑 | `/catalog`、`/catalog/[group]` | `src/lib/catalog.ts` |
