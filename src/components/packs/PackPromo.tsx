@@ -16,7 +16,7 @@ export default async function PackPromo() {
   const { topValue, remaining } = packStats(pack);
   const soldOut = remaining === 0;
   return (
-    <section className="mx-auto max-w-7xl px-4 pt-16 sm:px-6">
+    <section className="mx-auto page-width px-4 pt-16 sm:px-6">
       <Link
         href={`/packs/${pack.id}`}
         className="group relative flex items-center gap-6 overflow-hidden rounded-3xl border border-line bg-accent-soft p-6 transition hover:border-accent sm:gap-10 sm:p-8"

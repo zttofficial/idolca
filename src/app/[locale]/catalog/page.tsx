@@ -22,7 +22,7 @@ export default async function CatalogPage() {
   return (
     <>
       <Navbar />
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-14 sm:px-6">
+      <main className="mx-auto w-full page-width flex-1 px-4 py-14 sm:px-6">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{t("title")}</h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-2">{t("subtitle")}</p>
         <Suspense fallback={<div className="mt-10 min-h-svh animate-pulse rounded-2xl bg-surface-2" />}>

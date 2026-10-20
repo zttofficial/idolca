@@ -8,7 +8,7 @@ export default function NotFound() {
   return (
     <>
       <Navbar />
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col items-center justify-center gap-6 px-4 py-24 text-center">
+      <main className="mx-auto flex w-full page-width flex-1 flex-col items-center justify-center gap-6 px-4 py-24 text-center">
         <p className="text-accent-ink font-mono text-6xl font-bold">404</p>
         <h1 className="text-xl font-semibold">{t("title")}</h1>
         <Link href="/" className="rounded-full border border-line bg-surface px-5 py-2 text-sm hover:bg-surface-3">

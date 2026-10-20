@@ -22,7 +22,7 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-bg/85 backdrop-blur-xl">
-      <nav className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4 sm:px-6">
+      <nav className="mx-auto flex h-16 page-width items-center gap-6 px-4 sm:px-6">
         <Link href="/" className="pt-1 text-[1.6rem]" aria-label="Idolca">
           <Wordmark />
         </Link>

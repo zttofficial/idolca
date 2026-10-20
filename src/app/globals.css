@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* 首頁、市場、圖鑑、金庫這類寬頁面和導覽列的內容寬度：一般螢幕 1280px，1536px 以上的大螢幕放寬到 1536px，兩側不留大片空白 */
+@utility page-width {
+  max-width: var(--container-7xl);
+  @variant 2xl {
+    max-width: var(--breakpoint-2xl);
+  }
+}
+
 /*
  * 配色只用語義變數：文字三級（ink）、底色三級（surface）、邊線、一個主色、漲跌、提示。
  * 白底電商風格，介面退後，讓卡片照片成為畫面裡最鮮豔的東西；全息效果只留在卡片本身。

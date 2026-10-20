@@ -5,7 +5,7 @@ const STEPS = ["s1", "s2", "s3", "s4"] as const;
 export default function HowItWorks() {
   const t = useTranslations("How");
   return (
-    <section id="how" className="mx-auto max-w-7xl scroll-mt-20 px-4 py-20 sm:px-6">
+    <section id="how" className="mx-auto page-width scroll-mt-20 px-4 py-20 sm:px-6">
       <h2 className="text-3xl font-bold tracking-tight">{t("title")}</h2>
       <p className="mt-2 max-w-2xl text-sm text-ink-3">{t("subtitle")}</p>
       <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

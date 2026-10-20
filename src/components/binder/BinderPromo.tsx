@@ -14,7 +14,7 @@ export default function BinderPromo() {
   const photos = (useVaultCards() ?? []).filter((c) => c.image).slice(0, 9);
   const pockets = Array.from({ length: 9 }, (_, i) => photos[i] ?? null);
   return (
-    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+    <section className="mx-auto page-width px-4 py-20 sm:px-6">
       <div className="grid items-center gap-10 rounded-3xl border border-line bg-surface-2 p-6 sm:p-10 lg:grid-cols-[1fr_1fr]">
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] text-accent-ink">{t("promoKicker")}</p>
