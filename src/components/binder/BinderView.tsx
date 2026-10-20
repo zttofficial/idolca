@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { MINT_FEE_USD } from "@/lib/policy";
+import { showFee, useFees, usePromoNote } from "@/lib/use-fees";
 import { GetWalletPrompt } from "@/components/auth/WalletSetup";
 import CardArt from "@/components/market/CardArt";
 import { AddCardButton, openAddCard } from "./AddCard";
@@ -950,6 +950,9 @@ function MintSelf({ item }: { item: CollectorItem }) {
   const wallet = useAuth().user?.walletAddress;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const mint = useFees().mint;
+  const promoNote = usePromoNote();
+  const fee = showFee("mint", mint.value);
   if (!wallet) return <GetWalletPrompt text={t("mintNeedsWallet")} className="mt-3" />;
   return (
     <div className="mt-3">
@@ -971,9 +974,9 @@ function MintSelf({ item }: { item: CollectorItem }) {
         >
           {busy ? t("mintSelfBusy") : t("mintSelf")}
         </button>
-        <InfoTip text={`${t("mintWhat")} ${t("mintSelfNote", { fee: formatPrice(MINT_FEE_USD) })}`} label={t("mintWhatLabel")} />
+        <InfoTip text={[t("mintWhat"), t("mintSelfNote", { fee }), promoNote(mint)].filter(Boolean).join(" ")} label={t("mintWhatLabel")} />
       </div>
-      {error && <p className="mt-1 text-[11px] text-down">{t.has(`error_${error}`) ? t(`error_${error}`) : t("mintSelfError", { fee: formatPrice(MINT_FEE_USD) })}</p>}
+      {error && <p className="mt-1 text-[11px] text-down">{t.has(`error_${error}`) ? t(`error_${error}`) : t("mintSelfError", { fee })}</p>}
       <WalletNotFoundHint error={error} />
     </div>
   );

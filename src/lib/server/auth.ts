@@ -70,7 +70,7 @@ export type PublicUser = {
 
 // 管理員：資料庫裡 role 是 admin 的帳號，或錢包在 ADMIN_WALLETS（逗號分隔）裡的帳號。
 // 環境變數只認錢包：錢包登入要簽名證明持有，比郵箱更難冒用
-const adminWallets = () => new Set((process.env.ADMIN_WALLETS ?? "").split(",").map((s) => s.trim()).filter(Boolean));
+export const adminWallets = () => new Set((process.env.ADMIN_WALLETS ?? "").split(",").map((s) => s.trim()).filter(Boolean));
 export const isAdmin = (u: { role: string; walletAddress: string | null }) => u.role === "admin" || (u.walletAddress !== null && adminWallets().has(u.walletAddress));
 
 // 回給前端的帳號資料

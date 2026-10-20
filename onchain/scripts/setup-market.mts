@@ -1,5 +1,6 @@
 // 啟用掛單託管程序：initialize 寫入抽成、收款錢包、金庫集合和結算代幣，地址寫進 src/lib/chain/<cluster>.json 的 market 欄位；
-// 抽成和拍賣設定（AuctionConfig：手續費、起標價下限、時長範圍、延長時間）都按 src/lib/policy.ts 建立或更新，改了規則重跑一次就同步到鏈上。
+// 手續費歸網站管：後台設的費率由伺服器同步到鏈上（vault-chain.ts 的 syncChainFees），這裡只在第一次建立 Config、AuctionConfig 時寫入 src/lib/policy.ts 的預設費率，之後保留鏈上的值。
+// 拍賣的其他設定（起標價下限、時長範圍、延長時間）按 policy.ts 建立或更新，改了規則重跑一次就同步到鏈上。
 // 結算代幣有兩種，買家用哪種付都行：主網是 Tether 的 USDT 和 Circle 的 USDC；devnet 沒有官方 USDT，Circle 的 devnet USDC 平台又發不出來，
 // 所以第一次執行時由平台各鑄一個測試幣（平台持有鑄幣權，水龍頭和端到端測試靠它發幣），登記不一致就用 setMints 更新。
 // 舊版帳戶（程序升級前建立的掛單和拍賣，格式不同）會被找出來遷移：資產退回賣家，有出價的全額退款。
@@ -69,7 +70,7 @@ if (!(await connection.getAccountInfo(configPda))) {
     .initialize(FEE_BPS)
     .accountsPartial({ authority: platform.publicKey, config: configPda, treasury, collection: new PublicKey(chain.vaultCollection), usdtMint: usdt, usdcMint: usdc, program: program.programId, programData, systemProgram: SystemProgram.programId })
     .rpc();
-  console.log(`initialize（抽成 ${FEE_BPS / 100}%）${explorer(sig)}`);
+  console.log(`initialize（預設抽成 ${FEE_BPS / 100}%）${explorer(sig)}`);
 }
 
 // 抽成直接打進收款錢包的代幣帳戶，兩種幣都要先開好
@@ -119,28 +120,20 @@ if (!registered.usdtMint.equals(usdt) || !registered.usdcMint.equals(usdc)) {
   console.log(`setMints ${explorer(sig)}`);
 }
 
-// 成交抽成：和網站的規則同一份，不一致就更新（收款錢包不變）
-const config = await program.account.config.fetch(configPda);
-if (config.feeBps !== FEE_BPS) {
-  const sig = await program.methods.updateConfig(FEE_BPS, config.treasury).accountsPartial({ authority: platform.publicKey, config: configPda }).rpc();
-  console.log(`updateConfig（抽成 ${FEE_BPS / 100}%）${explorer(sig)}`);
-}
-
-// 拍賣設定：和網站的規則同一份（src/lib/policy.ts），沒有就建立，不一致就更新
+// 拍賣設定：沒有就按 src/lib/policy.ts 建立（手續費用預設值）；已有的保留鏈上的手續費，其他項和 policy.ts 不一致就更新
 const [auctionConfigPda] = PublicKey.findProgramAddressSync([Buffer.from("auction_config")], program.programId);
+const current = await program.account.auctionConfig.fetchNullable(auctionConfigPda);
 const rules = {
-  feeBps: AUCTION_FEE_BPS,
+  feeBps: current?.feeBps ?? AUCTION_FEE_BPS,
   minStart: new anchor.BN(AUCTION_MIN_START * 1_000_000),
   minDuration: new anchor.BN(Math.min(...AUCTION_DAYS) * 86_400),
   maxDuration: new anchor.BN(Math.max(...AUCTION_DAYS) * 86_400),
   extendSecs: new anchor.BN(AUCTION_EXTEND_MINUTES * 60),
 };
-const current = await program.account.auctionConfig.fetchNullable(auctionConfigPda);
 if (!current) {
   const sig = await program.methods.initAuctionConfig(rules).accountsPartial({ authority: platform.publicKey, config: configPda, auctionConfig: auctionConfigPda }).rpc();
-  console.log(`initAuctionConfig（拍賣抽成 ${AUCTION_FEE_BPS / 100}%）${explorer(sig)}`);
+  console.log(`initAuctionConfig（預設拍賣抽成 ${AUCTION_FEE_BPS / 100}%）${explorer(sig)}`);
 } else if (
-  current.feeBps !== rules.feeBps ||
   !current.minStart.eq(rules.minStart) ||
   !current.minDuration.eq(rules.minDuration) ||
   !current.maxDuration.eq(rules.maxDuration) ||

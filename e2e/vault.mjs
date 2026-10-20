@@ -6,7 +6,6 @@ import { createHash } from "node:crypto";
 import { PublicKey } from "@solana/web3.js";
 import { adminKey, api, check, conn, finish, login, mintSelf, must, newKey, photo, signSend, step } from "./lib.mjs";
 import { verifyDraw } from "../src/lib/pack-draw.ts";
-import { MINT_FEE_USD } from "../src/lib/policy.ts";
 import { SHIP_COUNTRIES, redeemCharge, redeemFeeUsd, vaultCountries } from "../src/lib/shipping.ts";
 import { VAULT_IDS } from "../src/lib/vaults.ts";
 import chain from "../src/lib/chain/devnet.json" with { type: "json" };
@@ -195,6 +194,7 @@ check("added card is not on-chain", returned.mintTx === null && returned.asset =
 const listed = (await must("PATCH", `/api/items/${returned.id}`, { priceUsdt: 4 }, B)).item;
 check("listing doesn't mint", listed.priceUsdt === 4 && listed.mintTx === null);
 check("other users can't mint it", (await api("POST", `/api/items/${returned.id}/mint`, undefined, AD)).status === 404);
+const mintFee = (await must("GET", "/api/fees")).mint.value / 100;
 const self = await mintSelf(returned.id, buyer, B);
 check("minted to the owner's wallet", Boolean(self.asset) && self.ownerAddress === buyer.address, self.asset ?? "");
 const mintTx = await conn.getTransaction(self.mintTx, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
@@ -204,7 +204,7 @@ const delta = (owner) => {
   const sum = (list) => (list ?? []).filter((b) => b.owner === owner).reduce((v, b) => v + Number(b.uiTokenAmount.amount), 0);
   return (sum(mintTx?.meta?.postTokenBalances) - sum(mintTx?.meta?.preTokenBalances)) / 1e6;
 };
-check("the owner paid the mint fee in stablecoins", delta(buyer.address) === -MINT_FEE_USD && delta(PLATFORM) === MINT_FEE_USD, `${delta(buyer.address)}`);
+check("the owner paid the mint fee in stablecoins", delta(buyer.address) === -mintFee && delta(PLATFORM) === mintFee, `${delta(buyer.address)}`);
 const selfAccount = await conn.getAccountInfo(new PublicKey(self.asset));
 check("collectible exists on-chain", Boolean(selfAccount && selfAccount.data[0] === 1));
 check("can't mint twice", (await api("POST", `/api/items/${returned.id}/mint`, undefined, B)).json.error === "already_minted");

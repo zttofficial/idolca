@@ -1,5 +1,7 @@
 import "server-only";
-import { ESCROW_ADDRESS_DAYS, ESCROW_CONFIRM_DAYS, ESCROW_SHIP_DAYS, FEE_BPS } from "@/lib/policy";
+import { ESCROW_ADDRESS_DAYS, ESCROW_CONFIRM_DAYS, ESCROW_SHIP_DAYS } from "@/lib/policy";
+import { feeCents as feeOf } from "@/lib/fees";
+import { getFees } from "./fees";
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or } from "drizzle-orm";
 import { PublicKey } from "@solana/web3.js";
@@ -16,8 +18,7 @@ import { itemCard, notify, type Notice } from "./notifications";
 // 自由刊登的擔保交易。貨款先進平台錢包，買家確認收貨後才放給賣家，NFT 同時由平台轉給買家。
 // 買家可以在 Solana 或 Arc 上付款（見 packs.ts），退款退回原來的通道；放款給賣家目前一律在 Solana 上，
 // 用買家付的那種結算代幣（Arc 付的 USDC 也在 Solana 上用 USDC 放款）。
-// 平台抽成和金庫卡一樣是 2.5%
-export { FEE_BPS };
+// 平台抽成和金庫卡一口價用同一個費率（fees.ts 的 sale），建單時記在訂單上，之後改費率不影響已建的訂單
 const memoOf = (orderId: string) => `idolca:order:${orderId}`;
 
 // 訂單的通知都連到收藏冊的訂單頁
@@ -60,7 +61,7 @@ export async function createOrder(db: Db, buyerId: string, buyerWallet: string, 
   if (!item || item.priceCents === null || item.priceCents < 1 || item.verification !== "unverified") return { error: "not_listed" as const };
   if (item.userId === buyerId) return { error: "own_listing" as const };
   const id = randomUUID();
-  const feeCents = Math.round((item.priceCents * FEE_BPS) / 10_000);
+  const feeCents = feeOf(item.priceCents, (await getFees(db)).sale.value);
   // 先組好付款交易再寫訂單：餘額不夠時丟錯，不留下付不了款的訂單
   const tx = rail === "solana" ? await buildPayment(new PublicKey(buyerWallet), item.priceCents / 100, memoOf(id)) : null;
   await db

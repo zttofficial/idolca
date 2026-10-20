@@ -37,7 +37,8 @@
 | 團體名錄（K-pop、J-pop、C-pop、T-pop 四個品類；篩選器的團體清單、表單的團體和成員建議；按照片檔名預填名稱、團體、成員） | 上鏈、入庫表單 | `src/lib/directory.ts`，各品類的名錄在 `src/lib/groups/` |
 | 金庫頁（存貨證明） | `/vault` | `src/components/vault/` |
 | 專輯銷量榜 | `/charts` | `src/lib/server/circle-chart.ts` |
-| 後台（入庫、卡包、擔保訂單、提貨、假卡） | `/admin` | `src/components/admin/`、`src/app/api/admin/` |
+| 後台（入庫、卡包、擔保訂單、提貨、假卡、手續費、管理員） | `/admin` | `src/components/admin/`、`src/app/api/admin/` |
+| 手續費（基本費率和限時促銷，金庫卡的抽成和拍賣手續費同步到鏈上） | 後台、上架表單、鑄造、`/terms` | `src/lib/fees.ts`、`src/lib/server/fees.ts`、`src/lib/use-fees.ts`、`vault-chain.ts` 的 `feeSyncIxs`、`syncChainFees`，`src/app/api/fees`、`src/app/api/admin/fees` |
 | 照片處理和浮水印 | — | `src/lib/server/media.ts`、`src/lib/crop-card.ts` |
 | 站內通知（拍賣、擔保訂單、金庫卡成交、提貨寄出） | 頁首通知鈴 | `src/lib/server/notifications.ts`、`vault-notify.ts`，`src/components/notifications/NotificationBell.tsx`，`src/app/api/notifications` |
 | 每日排程（逾時訂單和提醒填地址、結標拍賣和退款、清地址、清過期會話、郵件連結和 90 天前的通知） | — | `src/app/api/cron/daily`、`vercel.json` |
@@ -114,7 +115,7 @@
   - 要徹底分開，測試環境要有自己的平台錢包、一組集合，再部署一份託管程序（一份程序只有一個設定）。收藏集合裡的孤兒卡可以用集合的 PermanentTransferDelegate 收回再銷毀，金庫集合裡的平台動不了。
 - **Vercel 預覽部署連的是正式資料庫**：資料庫變數同時設在 Production 和 Preview。非 main 的分支推上去會建預覽部署，有人打開時會在正式資料庫上跑建表語句。要改成 Neon 給每個預覽部署開分支，或從 Preview 拿掉資料庫變數。
 - **用戶錢包連在主網時看不到 devnet 資產**：Phantom 要在開發者設定裡開測試網模式並選 Devnet，Solflare 在網路設定裡選 Devnet。README 的 Try it 寫了，登入框還沒有這個提示。
-- **線上管理員是測試錢包**：要換成用戶自己的錢包（`ADMIN_WALLETS` 或 `npm run admin:grant`）。Vercel 上的舊變數 `ADMIN_TOKEN` 已不再使用，可以刪掉。
+- **線上管理員是測試錢包**：要換成用戶自己的錢包（後台「管理員」頁籤，或 `ADMIN_WALLETS`）。Vercel 上的舊變數 `ADMIN_TOKEN` 已不再使用，可以刪掉。
 - **榜單數據**：讀 Circle Chart 網頁用的接口，正式營運前要換授權來源。
 - **團體名錄**：408 個團體裡只有 Studio Wabi Sabi（泰國）沒有成員；48 系、彩虹社、灰姑娘女孩只列了現役和主要成員。J-pop 的 STARTO、LDH、二次元企劃和 hololive，以及 K-pop 的二、三代團，成員是按已知資料整理、沒有逐一對照官網，GMMTV 有幾位藝人的英文拼法沒對過官網，要抽查。
 

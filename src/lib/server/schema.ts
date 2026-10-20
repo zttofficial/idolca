@@ -165,7 +165,9 @@ export const vaultCards = pgTable("vault_cards", {
   asset: text("asset").notNull().unique(),
   mintTx: text("mint_tx"),
   // 寄存人：NFT 鑄給他的錢包；平台自有庫存（卡包卡池）為空
-  depositorId: text("depositor_id").references(() => users.id, { onDelete: "set null" }),
+  depositorId: text("depositor_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
   // 已提貨寄出、NFT 已銷毀
   burnedAt: timestamp("burned_at", { withTimezone: true }),
   // 放進卡包卡池的平台自有卡：卡包、等級、價值（期望價值和回購價按它算）。
@@ -421,6 +423,23 @@ export const chainCursors = pgTable("chain_cursors", {
   key: text("key").primaryKey(),
   signature: text("signature").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 手續費規則（見 src/lib/fees.ts）：kind 是 sale（一口價成交，金庫卡和擔保交易共用）、auction（拍賣）、mint（收藏卡做成數位珍藏）。
+// value：sale、auction 是基點，mint 是美分。沒有 ends_at 的是基本費率，從 starts_at 起生效到下一條基本費率；有 ends_at 的是促銷，期間內取較低的那個。
+// 沒有任何規則時用 policy.ts 的預設值
+export const feeRules = pgTable("fee_rules", {
+  id: text("id").primaryKey(),
+  kind: text("kind").$type<"sale" | "auction" | "mint">().notNull(),
+  value: integer("value").notNull(),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  // 促銷名稱，會顯示給用戶
+  label: text("label"),
+  createdBy: text("created_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // 頻率限制的計數（見 rate-limit.ts）
@@ -723,6 +742,16 @@ export const BOOTSTRAP_SQL = [
     owner_id text REFERENCES users(id) ON DELETE CASCADE,
     original text NOT NULL,
     display text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS fee_rules (
+    id text PRIMARY KEY,
+    kind text NOT NULL,
+    value integer NOT NULL,
+    starts_at timestamptz NOT NULL,
+    ends_at timestamptz,
+    label text,
+    created_by text REFERENCES users(id) ON DELETE SET NULL,
     created_at timestamptz NOT NULL DEFAULT now()
   )`,
 ];

@@ -11,7 +11,9 @@ import { MAX_PRICE, priceToCents } from "./items";
 import { itemCard, notify } from "./notifications";
 import { OPEN_ORDER } from "./orders";
 import type { ShippingAddress } from "@/lib/shipping";
-import { AUCTION_DAYS, AUCTION_EXTEND_MINUTES, AUCTION_FEE_BPS, AUCTION_MIN_START, auctionFeeCents, minNextBid, type AuctionView } from "@/lib/auction";
+import { AUCTION_DAYS, AUCTION_EXTEND_MINUTES, AUCTION_MIN_START, minNextBid, type AuctionView } from "@/lib/auction";
+import { feeCents } from "@/lib/fees";
+import { getFees } from "./fees";
 
 // 自由刊登的拍賣。每口出價都先付全額進平台錢包（Solana 或 Arc），被超過就退回，得標者早就付了錢，不會棄標；
 // 結標時得標款直接變成一張擔保訂單（orders），之後照擔保交易的期限寄出、確認、放款。
@@ -83,7 +85,9 @@ export async function startAuction(db: Db, userId: string, itemId: string, input
   if (open) return { error: "in_order" as const };
   if (await liveAuction(db, itemId)) return { error: "already_auction" as const };
 
-  const row = { id: randomUUID(), itemId, sellerId: userId, startCents: start, reserveCents: reserve, feeBps: AUCTION_FEE_BPS, endsAt: new Date(Date.now() + days * AUCTION_DAY_MS) };
+  // 手續費按現在的費率記在拍賣上，之後改費率不影響這場
+  const feeBps = (await getFees(db)).auction.value;
+  const row = { id: randomUUID(), itemId, sellerId: userId, startCents: start, reserveCents: reserve, feeBps, endsAt: new Date(Date.now() + days * AUCTION_DAY_MS) };
   try {
     await atomic(db, (q) => [q.update(collectorItems).set({ priceCents: null, listedAt: null }).where(eq(collectorItems.id, itemId)), q.insert(auctions).values(row)]);
   } catch (err) {
@@ -258,7 +262,7 @@ async function settleOne(db: Db, a: AuctionRow) {
           buyerId: high.bidderId,
           sellerId: a.sellerId,
           priceCents: a.highCents!,
-          feeCents: auctionFeeCents(a.highCents!, a.feeBps),
+          feeCents: feeCents(a.highCents!, a.feeBps),
           status: "paid",
           buyerWallet: high.bidderWallet,
           rail: high.rail,

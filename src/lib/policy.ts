@@ -1,6 +1,7 @@
 // 平台規則的數字，服務條款、隱私權政策和伺服器邏輯共用同一份
 
-// 成交抽成（基點）：金庫卡一口價成交（鏈上 Config，由 npm run chain:setup-market 同步）和擔保交易共用
+// 手續費的預設值：後台還沒設任何費率規則時用（src/lib/fees.ts），託管程序第一次建立 Config、AuctionConfig 時也寫入這兩個值（npm run chain:setup-market）；
+// 之後的費率和促銷在後台設定，伺服器同步到鏈上。成交抽成（基點），金庫卡一口價和擔保交易共用
 export const FEE_BPS = 250;
 // 擔保交易：付款後幾天內要寄出，寄出後幾天自動放款
 export const ESCROW_SHIP_DAYS = 7;
@@ -9,13 +10,13 @@ export const ESCROW_CONFIRM_DAYS = 14;
 export const ESCROW_ADDRESS_DAYS = 7;
 // 提貨收件地址在寄出後保留幾天
 export const ADDRESS_RETENTION_DAYS = 90;
-// 拍賣：賣家手續費（基點）、起標價下限（USD）、可選的拍賣天數、截止前幾分鐘內有人出價就把截止時間延到出價後同樣的分鐘數。
-// 金庫卡拍賣的這幾項也寫在鏈上的 AuctionConfig（npm run chain:setup-market 按這裡設定），兩邊要一致
+// 拍賣：賣家手續費的預設值（基點，見上面 FEE_BPS 的說明）、起標價下限（USD）、可選的拍賣天數、截止前幾分鐘內有人出價就把截止時間延到出價後同樣的分鐘數。
+// 金庫卡拍賣的起標價下限、時長和延長時間也寫在鏈上的 AuctionConfig（npm run chain:setup-market 按這裡設定），兩邊要一致
 export const AUCTION_FEE_BPS = 400;
 export const AUCTION_MIN_START = 10;
 export const AUCTION_DAYS = [1, 3, 5, 7] as const;
 export const AUCTION_EXTEND_MINUTES = 5;
-// 用戶自己把收藏卡做成數位珍藏時收的鑄造費（USD，用 USDT 或 USDC 付）：平台代付 NFT 帳戶的押金和手續費（約 0.003 SOL），收這筆抵成本
+// 用戶自己把收藏卡做成數位珍藏時收的鑄造費的預設值（USD，用 USDT 或 USDC 付；後台的費率以美分設定）：平台代付 NFT 帳戶的押金和手續費（約 0.003 SOL），收這筆抵成本
 export const MINT_FEE_USD = 0.5;
 // 提貨運費 =（卡所在金庫寄到該國的郵資 + 包材）×（1 + REDEEM_FEE_BUFFER），按那個金庫的匯率換成美元，無條件進位到 REDEEM_FEE_STEP_USD 的倍數
 // （郵資表在 src/lib/rates/，計算在 src/lib/shipping.ts）。緩衝吸收匯率波動、燃油附加費和郵局調價，不是利潤

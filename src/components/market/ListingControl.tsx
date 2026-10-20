@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { CURRENCY, formatPrice } from "@/lib/fx";
-import { AUCTION_DAYS, AUCTION_FEE_BPS, AUCTION_MIN_START, type AuctionView } from "@/lib/auction";
+import { AUCTION_DAYS, AUCTION_MIN_START, type AuctionView } from "@/lib/auction";
+import { bpsToPct } from "@/lib/fees";
+import { useFees, usePromoNote } from "@/lib/use-fees";
 import InfoTip from "@/components/ui/InfoTip";
 import { TimeLeft } from "@/components/auction/AuctionPanel";
 import { track } from "@/lib/analytics";
@@ -34,7 +36,7 @@ export default function ListingControl({
   auction?: AuctionView | null;
   // 上架後「看刊登頁」連到哪裡；已經在刊登頁上時不給
   viewHref?: string;
-  // 輸入價格時，價格旁問號裡的說明
+  // 輸入一口價時，價格旁問號裡的說明（後面自動接上現在的抽成）
   note: string;
   onList: (price: number) => Promise<unknown>;
   onUnlist: () => Promise<unknown>;
@@ -44,6 +46,9 @@ export default function ListingControl({
 }) {
   const t = useTranslations("Binder");
   const tAuction = useTranslations("Auction");
+  const fees = useFees();
+  const promoNote = usePromoNote();
+  const withPromo = (text: string, f: (typeof fees)["sale"]) => [text, promoNote(f)].filter(Boolean).join(" ");
   // 收藏卡要先驗證信箱才能上架；金庫卡要錢包，郵箱帳號綁錢包前已經驗證過
   const needsVerify = useNeedsEmailVerify() && lane === "free";
   const listed = price !== null;
@@ -186,7 +191,11 @@ export default function ListingControl({
         <input autoFocus inputMode="decimal" value={input} onChange={(e) => setInput(e.target.value.replace(/[^\d.]/g, ""))} className={`w-24 ${field}`} />
         {CURRENCY}
         <InfoTip
-          text={mode === "fixed" ? note : tAuction("startNote", { min: formatPrice(AUCTION_MIN_START), fee: AUCTION_FEE_BPS / 100 })}
+          text={
+            mode === "fixed"
+              ? withPromo(`${note} ${t("saleFeeNote", { fee: bpsToPct(fees.sale.value) })}`, fees.sale)
+              : withPromo(tAuction("startNote", { min: formatPrice(AUCTION_MIN_START), fee: bpsToPct(fees.auction.value) }), fees.auction)
+          }
           label={mode === "fixed" ? t("price") : tAuction("startPrice")}
           align="end"
         />

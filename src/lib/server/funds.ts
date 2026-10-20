@@ -7,7 +7,6 @@ import { create, fetchAsset, fetchCollection, transfer } from "@metaplex-foundat
 import { toWeb3JsInstruction } from "@metaplex-foundation/umi-web3js-adapters";
 import { CHAIN } from "@/lib/chain";
 import { COINS, COIN_DECIMALS, type Coin } from "@/lib/coins";
-import { MINT_FEE_USD } from "@/lib/policy";
 import { collectorCreateArgs, collectorUri, platformUmi, type CollectorAttributes } from "./chain";
 import { connection, forUser, mintOf, pickCoin, platform, tokenBalances } from "./vault-chain";
 
@@ -122,9 +121,9 @@ export async function buildBuybackTx(owner: PublicKey, asset: string, amountUsd:
   ]);
 }
 
-// 用戶把收藏卡做成數位珍藏。伺服器組好鑄造交易：NFT 帳戶的押金和手續費由平台付，同一筆交易裡用戶付鑄造費（MINT_FEE_USD，USDT 或 USDC）；
+// 用戶把收藏卡做成數位珍藏。伺服器組好鑄造交易：NFT 帳戶的押金和手續費由平台付，同一筆交易裡用戶付鑄造費（feeUsd，組交易當下的費率，USDT 或 USDC）；
 // 平台以集合更新權限者的身分、新資產以自己的金鑰先簽，錢包簽名後送出。回傳交易（base64）和新 NFT 的地址
-export async function buildUserMint(itemId: string, attrs: CollectorAttributes, owner: PublicKey) {
+export async function buildUserMint(itemId: string, attrs: CollectorAttributes, owner: PublicKey, feeUsd: number) {
   const umi = platformUmi()!;
   const me = platform()!;
   const collection = await fetchCollection(umi, publicKey(CHAIN.collectorCollection));
@@ -132,13 +131,14 @@ export async function buildUserMint(itemId: string, attrs: CollectorAttributes, 
   const ixs = create(umi, { asset, collection, owner: publicKey(owner.toBase58()), payer: umi.identity, authority: umi.identity, ...collectorCreateArgs(itemId, attrs) })
     .getInstructions()
     .map(toWeb3JsInstruction);
-  if (MINT_FEE_USD > 0) ixs.push(...transferIxs(await pickCoin(owner, MINT_FEE_USD), owner, me.publicKey, MINT_FEE_USD, me.publicKey));
+  if (feeUsd > 0) ixs.push(...transferIxs(await pickCoin(owner, feeUsd), owner, me.publicKey, feeUsd, me.publicKey));
   const tx = await forUser(ixs, [Keypair.fromSecretKey(asset.secretKey)]);
   return { tx, asset: asset.publicKey.toString() };
 }
 
 // 確認用戶送出的鑄造：NFT 在平台的收藏集合裡、持有人是這個錢包、元數據指向這張卡（所以不能拿別張卡的 NFT 來充數）。
-// 鑄造費和鑄造在同一筆交易裡，交易又是平台簽過名的，NFT 存在就表示鑄造費付了
+// 鑄造費和鑄造在同一筆交易裡，交易又是平台簽過名的，NFT 存在就表示鑄造費付了，而且付的是組交易時報的價：
+// 金額寫死在平台簽過的交易裡，用戶改不了；組好到送出之間促銷剛好開始或結束也照報價算，不再按現在的費率核對（交易的區塊雜湊一兩分鐘就過期，舊報價用不久）
 export async function checkUserMint(itemId: string, assetAddress: string, owner: string) {
   const umi = platformUmi()!;
   for (let i = 0; i < 20; i++) {

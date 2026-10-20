@@ -3,14 +3,14 @@ import { connection } from "next/server";
 import { getDb } from "@/lib/server/db";
 import { purgeBidAddresses, purgeOrderAddresses, sweepOrders } from "@/lib/server/orders";
 import { sweepAuctions } from "@/lib/server/auctions";
-import { settleEndedVaultAuctions } from "@/lib/server/vault-chain";
+import { settleEndedVaultAuctions, syncChainFees } from "@/lib/server/vault-chain";
 import { purgeNotifications } from "@/lib/server/notifications";
 import { syncVaultTrades } from "@/lib/server/vault-trades";
 import { emailTokens, loginNonces, redemptions, sessions } from "@/lib/server/schema";
 import { ADDRESS_RETENTION_DAYS } from "@/lib/policy";
 
 // 每天由 Vercel Cron 呼叫（CRON_SECRET 保護）：
-// 處理逾時的擔保訂單（未寄退款、未確認放款、提醒還沒填收件地址的買家）、結標到期的拍賣並退回被超過的出價、同步金庫卡的鏈上成交、清除提貨寄出、擔保訂單結束超過 90 天的收件地址、刪掉過期的會話、登入挑戰碼和郵件連結，以及超過 90 天的站內通知。
+// 處理逾時的擔保訂單（未寄退款、未確認放款、提醒還沒填收件地址的買家）、結標到期的拍賣並退回被超過的出價、同步金庫卡的鏈上成交、把鏈上的手續費同步成現在的費率、清除提貨寄出、擔保訂單結束超過 90 天的收件地址、刪掉過期的會話、登入挑戰碼和郵件連結，以及超過 90 天的站內通知。
 // 拍賣平時由拍賣頁和市場的請求及時結標，這裡是保底
 export async function GET(request: Request) {
   await connection();
@@ -25,6 +25,10 @@ export async function GET(request: Request) {
     return 0;
   });
   await syncVaultTrades(db).catch((err) => console.error("sync vault trades failed", err));
+  const chainFeesSynced = await syncChainFees(true).catch((err) => {
+    console.error("sync chain fees failed", err);
+    return 0;
+  });
   const cutoff = new Date(Date.now() - ADDRESS_RETENTION_DAYS * 86_400_000);
   const purged = await db
     .update(redemptions)
@@ -37,5 +41,5 @@ export async function GET(request: Request) {
   await db.delete(loginNonces).where(lt(loginNonces.expiresAt, now));
   await db.delete(emailTokens).where(lt(emailTokens.expiresAt, now));
   const notificationsPurged = await purgeNotifications(db);
-  return Response.json({ ...orders, ...auctions, vaultAuctionsSettled, addressesPurged: purged.length + orderAddressesPurged, notificationsPurged });
+  return Response.json({ ...orders, ...auctions, vaultAuctionsSettled, chainFeesSynced, addressesPurged: purged.length + orderAddressesPurged, notificationsPurged });
 }

@@ -43,8 +43,11 @@ const notified = (who, kind, card) => until(kind, async () => (await notes(who))
 
 step("A. 出價鎖款、被超過退款、結標轉成擔保訂單");
 const itemA = await addItem("Auction A");
+// 手續費按後台現在的費率，開拍時記在拍賣上
+const fees = await must("GET", "/api/fees");
 let a = await startAuction(itemA.id, { startUsd: 10 });
 check("auction live", a.status === "live" && a.startUsd === 10 && a.minNextUsd === 10, JSON.stringify(a));
+check("auction fee fixed at the current rate", a.feeBps === fees.auction.value, `${a.feeBps}`);
 check("fixed listing refused", (await api("PATCH", `/api/items/${itemA.id}`, { priceUsdt: 5 }, S)).json.error === "in_auction");
 check("seller can't bid", (await api("POST", "/api/bids", { auctionId: a.id, amountUsd: 10 }, S)).json.error === "own_auction");
 const b1Start = await usd(B1);
@@ -70,7 +73,7 @@ check("settled as sold", await until("sold", async () => (await auction(a.id, B2
 a = await auction(a.id, B2);
 check("winner sees the win", a.me?.leading === true, JSON.stringify(a.me));
 const orderA = (await must("GET", "/api/orders", undefined, B2)).orders.find((o) => o.itemId === itemA.id);
-check("winning bid became a paid escrow order", orderA?.auction && orderA.status === "paid" && orderA.priceUsdt === 11 && orderA.feeUsdt === 0.44, JSON.stringify(orderA));
+check("winning bid became a paid escrow order", orderA?.auction && orderA.status === "paid" && orderA.priceUsdt === 11 && orderA.feeUsdt === Math.round((1_100 * a.feeBps) / 10_000) / 100, JSON.stringify(orderA));
 check("winner notified", await notified(B2, "auction_won_free", "Auction A"));
 check("seller notified of the sale", await notified(S, "auction_sold_free", "Auction A"));
 check("winning order carries the bid's address", orderA.shippingAddress?.line1 === ADDRESS.line1 && orderA.shipBy !== null, JSON.stringify(orderA.shippingAddress));
@@ -142,7 +145,7 @@ if (!(await must("GET", "/api/chain/state")).auctions) {
   check("seller owns the vault card", (await must("GET", "/api/chain/state")).cards[card.id]?.owner === seller.address);
   check("start auction", (await vaultTx(S, seller, { action: "auction", cardId: card.id, startUsd: 10, days: 1 })).ok);
   let va = await vaultAuction(card.id);
-  check("auction on-chain", va?.seller === seller.address && va.startUsd === 10 && va.feeBps === 400 && va.status === "live", JSON.stringify(va));
+  check("auction on-chain", va?.seller === seller.address && va.startUsd === 10 && va.feeBps === (await must("GET", "/api/fees")).auction.value && va.status === "live", JSON.stringify(va));
   check("seller can't bid", (await api("POST", "/api/chain/vault/tx", { action: "bid", cardId: card.id, amountUsd: 10 }, S)).json.error === "own_auction");
   const v1 = await usd(B1);
   check("bidder 1 bids 10", (await vaultTx(B1, bidder1, { action: "bid", cardId: card.id, amountUsd: 10 })).ok);

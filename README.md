@@ -124,7 +124,7 @@ cp .env.example .env.local   # every variable is explained there
 npm run dev                  # http://localhost:3000
 ```
 
-With no `DATABASE_URL`, local development uses PGlite in `.data/` and seeds the 19 sample vault cards already minted on devnet. Minting and payments need a platform keypair (`PLATFORM_KEYPAIR`). Admin access: put your wallet in `ADMIN_WALLETS`, or run `npm run admin:grant -- <email or wallet>`.
+With no `DATABASE_URL`, local development uses PGlite in `.data/` and seeds the 19 sample vault cards already minted on devnet. Minting and payments need a platform keypair (`PLATFORM_KEYPAIR`). Admin access: put your wallet in `ADMIN_WALLETS`, have an existing admin grant it in the admin console, or run `npm run admin:grant -- <email or wallet>`.
 
 ## Tests
 

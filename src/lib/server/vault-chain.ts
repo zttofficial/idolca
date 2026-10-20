@@ -11,6 +11,7 @@ import idl from "@/lib/chain/idl/idolca_market.json";
 import type { IdolcaMarket } from "@/lib/chain/idl/idolca_market";
 import { SERVER_RPC, platformSecret, platformUmi } from "./chain";
 import { getDb } from "./db";
+import { getFees } from "./fees";
 import { notify, usersByWallet, vaultCard, type Notice } from "./notifications";
 import { getVaultRow, markBurned, vaultRows } from "./vault-cards";
 import { minNextBid, type AuctionView } from "@/lib/auction";
@@ -211,6 +212,68 @@ export async function forUser(ixs: TransactionInstruction[], cosign: Keypair[] =
   return tx.serialize({ requireAllSignatures: false }).toString("base64");
 }
 
+// 手續費同步：一口價抽成（鏈上 Config.fee_bps，成交時讀）和拍賣手續費（AuctionConfig.fee_bps，開拍時記到拍賣上）以後台的費率規則為準（getFees），
+// 平台是兩個設定的權限持有人。買金庫卡、開拍的交易開頭帶上更新指令（平台本來就先簽），所以成交和開拍一定照組交易當下的費率，促銷開始、結束都不差；
+// 沒人交易時由 syncChainFees 單獨送一筆，讓鏈上顯示的費率也跟上。收款錢包和拍賣的其他設定照鏈上原值寫回
+type AuctionRules = { feeBps: number; minStart: anchor.BN; minDuration: anchor.BN; maxDuration: anchor.BN; extendSecs: anchor.BN };
+type ChainFees = { authority: PublicKey; treasury: PublicKey; feeBps: number; auction: AuctionRules | null };
+const CHAIN_FEES_MS = 15_000;
+let chainFeesCache: { at: number; value: ChainFees } | null = null;
+async function readChainFees(fresh: boolean): Promise<ChainFees> {
+  if (!fresh && chainFeesCache && Date.now() - chainFeesCache.at < CHAIN_FEES_MS) return chainFeesCache.value;
+  const [config, auctionConfig] = await connection.getMultipleAccountsInfo([configPda(), auctionConfigPda()]);
+  if (!config) throw new Error("not_configured");
+  const c = program.coder.accounts.decode("config", config.data) as { authority: PublicKey; treasury: PublicKey; feeBps: number };
+  const a = auctionConfig ? (program.coder.accounts.decode("auctionConfig", auctionConfig.data) as AuctionRules) : null;
+  const auction = a && { feeBps: a.feeBps, minStart: a.minStart, minDuration: a.minDuration, maxDuration: a.maxDuration, extendSecs: a.extendSecs };
+  const value = { authority: c.authority, treasury: c.treasury, feeBps: c.feeBps, auction };
+  chainFeesCache = { at: Date.now(), value };
+  return value;
+}
+
+let authorityWarned = false;
+// 鏈上和現在費率不一致的設定的更新指令。fresh 時不用快取（組交易時用，鏈上的值以此刻為準）；組出指令後清掉快取，下次重讀
+async function feeSyncIxs(which: readonly ("sale" | "auction")[], fresh: boolean) {
+  const me = platform()!;
+  const [chain, fees] = await Promise.all([readChainFees(fresh), getFees(await getDb())]);
+  if (!chain.authority.equals(me.publicKey)) {
+    if (!authorityWarned) console.error("market authority is not the platform wallet; fees not synced");
+    authorityWarned = true;
+    return [];
+  }
+  const ixs: TransactionInstruction[] = [];
+  if (which.includes("sale") && chain.feeBps !== fees.sale.value)
+    ixs.push(await program.methods.updateConfig(fees.sale.value, chain.treasury).accountsPartial({ authority: me.publicKey, config: configPda() }).instruction());
+  if (which.includes("auction") && chain.auction && chain.auction.feeBps !== fees.auction.value)
+    ixs.push(
+      await program.methods
+        .updateAuctionConfig({ ...chain.auction, feeBps: fees.auction.value })
+        .accountsPartial({ authority: me.publicKey, config: configPda(), auctionConfig: auctionConfigPda() })
+        .instruction(),
+    );
+  if (ixs.length) chainFeesCache = null;
+  return ixs;
+}
+
+// 把鏈上的手續費設定同步成現在的費率，回傳更新了幾項。每日排程、/api/chain/state 回應後和後台改規則後呼叫；託管程序沒啟用時什麼都不做。
+// 同一實例同時只送一筆；不同實例同時送也沒關係，寫的是同一個值
+let syncing: Promise<number> | null = null;
+export function syncChainFees(fresh = false) {
+  if (!marketReady()) return Promise.resolve(0);
+  syncing ??= (async () => {
+    const ixs = await feeSyncIxs(["sale", "auction"], fresh);
+    if (!ixs.length) return 0;
+    const me = platform()!;
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+    const tx = new Transaction({ feePayer: me.publicKey, blockhash, lastValidBlockHeight }).add(...ixs);
+    tx.sign(me);
+    const signature = await connection.sendRawTransaction(tx.serialize());
+    await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
+    return ixs.length;
+  })().finally(() => (syncing = null));
+  return syncing;
+}
+
 async function cardAsset(cardId: string) {
   const db = await getDb();
   const row = db ? await getVaultRow(db, cardId) : null;
@@ -245,7 +308,7 @@ export async function buildBuy(cardId: string, buyer: PublicKey) {
       ...coreAccounts(),
     })
     .instruction();
-  return forUser([ix]);
+  return forUser([...(await feeSyncIxs(["sale"], true)), ix]);
 }
 
 // 簽名人佔位：交易由伺服器組、錢包簽，組指令時只需要公鑰
@@ -298,7 +361,7 @@ export async function buildCreateAuction(cardId: string, seller: PublicKey, star
       ...coreAccounts(),
     })
     .instruction();
-  return forUser([ix]);
+  return forUser([...(await feeSyncIxs(["auction"], true)), ix]);
 }
 
 // 拍賣帳戶存放兩種幣出價的代幣帳戶
