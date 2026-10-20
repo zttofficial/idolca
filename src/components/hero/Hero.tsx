@@ -1,13 +1,15 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { RARITY_LIST, type Card } from "@/lib/cards";
 import { useVaultCards } from "@/lib/chain-client";
 
-const HoloCard3D = dynamic(() => import("./HoloCard3D"), {
+// 3D 卡（three.js）和金庫卡資料同時下載：Hero 一掛上就開始載入，不等卡片資料到了才開始
+const loadHoloCard = () => import("./HoloCard3D");
+const HoloCard3D = dynamic(loadHoloCard, {
   ssr: false,
   loading: () => (
     <div className="flex h-full items-center justify-center">
@@ -28,9 +30,12 @@ export default function Hero() {
   const t = useTranslations("Hero");
   const vault = useVaultCards();
   const heroCards = vault ? pickHero(vault) : null;
+  useEffect(() => {
+    void loadHoloCard();
+  }, []);
 
   return (
-    <section className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 pt-10 pb-16 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:pt-16">
+    <section className="relative mx-auto grid page-width items-center gap-10 px-4 pt-10 pb-16 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:pt-16">
       <div className="relative z-10">
         <p className="text-xs font-semibold tracking-[0.2em] text-accent-ink">{t("badge")}</p>
         <h1 className="mt-6 text-4xl leading-tight font-extrabold tracking-tight sm:text-6xl">
