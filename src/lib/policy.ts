@@ -21,5 +21,7 @@ export const MINT_FEE_USD = 0.5;
 // （郵資表在 src/lib/rates/，計算在 src/lib/shipping.ts）。緩衝吸收匯率波動、燃油附加費和郵局調價，不是利潤
 export const REDEEM_FEE_BUFFER = 0.15;
 export const REDEEM_FEE_STEP_USD = 0.5;
+// 提貨的出貨處理時間：申請後幾個工作天內寄出（商品結構化資料的 handlingTime）
+export const REDEEM_HANDLING_DAYS = [1, 3] as const;
 // 加拿大境內的提貨（溫哥華金庫寄加拿大）另收 GST/HST：稅 = 運費 × 收件省份的稅率，四捨五入到分（稅率在 src/lib/rates/ca-tax.ts，計算在 src/lib/shipping.ts 的 redeemCharge）。
 // 國際件不收：寄出加拿大和兩地都在國外的寄送服務適用零稅率（Excise Tax Act Schedule VI Part VII 第 6、8、9 條，見 CRA GST/HST Memorandum 28-2）

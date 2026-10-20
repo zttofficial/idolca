@@ -4,6 +4,21 @@ import { CA_GST_HST } from "@/lib/rates/ca-tax";
 import { REDEEM_FEE_BUFFER, REDEEM_FEE_STEP_USD } from "@/lib/policy";
 import { VAULTS, VAULT_IDS, suggestVault, vaultOf } from "@/lib/vaults";
 
+describe("transitDays", () => {
+  it("gives every country each vault ships to a business-day range", () => {
+    for (const vault of VAULT_IDS) {
+      for (const country of vaultCountries(vault)) {
+        const [min, max] = VAULTS[vault].transitDays(country);
+        expect(Number.isInteger(min) && Number.isInteger(max), `${vault} ${country}`).toBe(true);
+        expect(min, `${vault} ${country}`).toBeGreaterThan(0);
+        expect(max, `${vault} ${country}`).toBeGreaterThanOrEqual(min);
+      }
+    }
+    expect(VAULTS.yvr.transitDays("US")).toEqual([4, 7]);
+    expect(VAULTS.ckg.transitDays("CN")).toEqual([1, 4]);
+  });
+});
+
 describe("redeemFeeUsd", () => {
   it("prices every country each vault ships to with a positive fee rounded to the step", () => {
     for (const vault of VAULT_IDS) {

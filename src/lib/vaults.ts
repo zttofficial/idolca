@@ -1,8 +1,8 @@
 // 金庫清單（伺服器和頁面共用）。一張卡只放在一個金庫，提貨從卡所在的金庫寄出；寄進金庫時賣家選寄到哪一個。
 // 每個金庫有自己的郵資表（src/lib/rates/），運費按（金庫，目的地）計價，見 src/lib/shipping.ts
 import type { CarrierId } from "./tracking";
-import { CAD_PER_USD, YVR_PACKING_CAD, YVR_POSTAGE_CAD, YVR_SERVICE } from "./rates/yvr";
-import { CKG_PACKING_CNY, CKG_POSTAGE_CNY, CKG_SERVICE, CNY_PER_USD } from "./rates/ckg";
+import { CAD_PER_USD, YVR_PACKING_CAD, YVR_POSTAGE_CAD, YVR_SERVICE, yvrTransitDays } from "./rates/yvr";
+import { CKG_PACKING_CNY, CKG_POSTAGE_CNY, CKG_SERVICE, CNY_PER_USD, ckgTransitDays } from "./rates/ckg";
 
 export const VAULT_IDS = ["yvr", "ckg"] as const;
 export type VaultId = (typeof VAULT_IDS)[number];
@@ -21,6 +21,8 @@ export type Vault = {
   perUsd: number;
   // 寄法名稱
   service: string;
+  // 寄到某國的運輸時效（工作天的下限和上限，郵政公布的標準），見各金庫的郵資表
+  transitDays: (country: string) => readonly [number, number];
   // 後台出貨時物流單號預設的物流商
   carrier: CarrierId;
   // 寄一張卡到各地的郵資和一張卡的包材，都按 currency 計；postage 沒列的地方這個金庫不寄
@@ -42,6 +44,7 @@ export const VAULTS: Record<VaultId, Vault> = {
     currency: "CAD",
     perUsd: CAD_PER_USD,
     service: YVR_SERVICE,
+    transitDays: yvrTransitDays,
     carrier: "canadapost",
     postage: YVR_POSTAGE_CAD,
     packing: YVR_PACKING_CAD,
@@ -58,6 +61,7 @@ export const VAULTS: Record<VaultId, Vault> = {
     currency: "CNY",
     perUsd: CNY_PER_USD,
     service: CKG_SERVICE,
+    transitDays: ckgTransitDays,
     carrier: "chinapost",
     postage: CKG_POSTAGE_CNY,
     packing: CKG_PACKING_CNY,

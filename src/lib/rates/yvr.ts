@@ -10,6 +10,11 @@ import type { RateSource } from "./source";
 
 export const YVR_SERVICE = "Canada Post Tracked Packet / Registered Mail";
 
+// 運輸時效（工作天，從交寄隔天算到第一次投遞，不含清關），加拿大郵政公布的服務標準，不是保證：
+// Tracked Packet 美國 4 到 7 天、國際 6 到 10 天（https://www.canadapost-postescanada.ca/cpc/en/support/articles/parcel-services-us-international/delivery-standards.page）；
+// 國內掛號信市內 2 天、省內 3 天、跨省 4 天，北部和偏遠地區最長 8 天（https://www.canadapost-postescanada.ca/cpc/doc/en/support/registered-mail-canada.pdf）
+export const yvrTransitDays = (country: string): readonly [number, number] => (country === "CA" ? [2, 8] : country === "US" ? [4, 7] : [6, 10]);
+
 // 國際小包的燃油附加費（USA and International Packet Services），按郵資加收。加拿大郵政每週一調整，
 // 2026-10-12 至 10-18 為 25.25%（https://www.canadapost-postescanada.ca/cpc/en/support/kb/company-policies/rates-taxes-surcharges/fuel-surcharges-on-mail-and-parcels.page，2026-10-14 查詢）。
 // 國內掛號信不收燃油附加費（附加費只適用包裹和小包）

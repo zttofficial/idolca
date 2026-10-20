@@ -45,6 +45,10 @@ const DOMESTIC_100G = 20;
 
 export const CKG_SERVICE = "China Post ePacket / e-EMS, Yunda Express (domestic)";
 
+// 運輸時效（工作天）：e 郵寶的產品頁寫「重點路向全程平均時效 7-15 個工作日」（上面的通達國家頁），國外和香港都按這個算。
+// e 特快（台灣、澳門）和韻達沒有公布時效：e 特快比 e 郵寶快，保守沿用 7 到 15 天；韻達國內件按 1 到 4 天
+export const ckgTransitDays = (country: string): readonly [number, number] => (country === "CN" ? [1, 4] : [7, 15]);
+
 // 郵資（人民幣）。不寄的地方不列
 export const CKG_POSTAGE_CNY: Record<string, number> = { CN: DOMESTIC_100G, ...EPACKET_100G, ...EMS_E_100G };
 
