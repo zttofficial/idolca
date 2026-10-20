@@ -3,7 +3,8 @@ import { ESCROW_ADDRESS_DAYS, ESCROW_CONFIRM_DAYS, ESCROW_SHIP_DAYS } from "@/li
 import { feeCents as feeOf } from "@/lib/fees";
 import { getFees } from "./fees";
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { PublicKey } from "@solana/web3.js";
 import type { Db } from "./db";
 import { auctions, bids, collectorItems, orders, redemptions, users, type OrderStatus, type PayRail } from "./schema";
@@ -14,6 +15,8 @@ import { addressDeadline as addressDeadlineFrom, needsAddressReminder, shipDeadl
 import { parseAddress, type ShippingAddress } from "@/lib/shipping";
 import { trackingOf, type Tracking } from "@/lib/tracking";
 import { itemCard, notify, type Notice } from "./notifications";
+import { afterCursor, containsAny, cursorOf, orderOf, page, type SortKey } from "./admin-lists";
+import { likePrefix } from "@/lib/admin-list";
 
 // 自由刊登的擔保交易。貨款先進平台錢包，買家確認收貨後才放給賣家，NFT 同時由平台轉給買家。
 // 買家可以在 Solana 或 Arc 上付款（見 packs.ts），退款退回原來的通道；放款給賣家目前一律在 Solana 上，
@@ -423,15 +426,75 @@ export async function myOrders(db: Db, userId: string): Promise<PublicOrder[]> {
   return rows.filter((r) => r.order.status !== "pending").map(({ order, item }) => toPublic(order, item, order.buyerId === userId ? "buyer" : "seller"));
 }
 
-// 後台：所有付過款的訂單，進行中和申訴中的排前面
-export async function adminOrders(db: Db) {
+// 後台的訂單列表。open：還沒結束的（申訴中的排最前面，其次按最後更新時間）；late：已付款、有地址但還沒寄、寄出期限已過或一天內到期（期限最早的在前）；
+// 其他按狀態篩，all 是所有付過款的。搜尋訂單編號、卡名、買賣雙方的郵箱或錢包、付款交易。每次只讀一頁（鍵集分頁見 admin-lists.ts）
+export const ADMIN_ORDER_VIEWS = ["open", "disputed", "late", "paid", "shipped", "completed", "refunded", "cancelled", "all"] as const;
+export type AdminOrderView = (typeof ADMIN_ORDER_VIEWS)[number];
+export type AdminParty = { id: string; name: string; email: string | null; wallet: string | null };
+export type AdminOrder = PublicOrder & { createdAt: string; paidAt: string | null; shippedAt: string | null; buyerWallet: string; buyer: AdminParty; seller: AdminParty };
+
+// 寄出期限（同 shipDeadline），寫成 SQL 才能在資料庫裡篩和排序
+const shipDeadlineSql = sql`(greatest(${orders.paidAt}, ${orders.addressAt}) + interval '${sql.raw(String(Math.round(SHIP_DAYS * 86_400)))} seconds')`;
+const shipLateWhere = () => and(eq(orders.status, "paid"), isNotNull(orders.shippingAddress), sql`${shipDeadlineSql} < now() + interval '1 day'`);
+
+export async function adminOrders(db: Db, p: { view: AdminOrderView; q?: string; from?: Date | null; to?: Date | null; cursor?: string | null; limit: number; id?: string | null }) {
+  const buyer = alias(users, "buyer");
+  const seller = alias(users, "seller");
+  const byId: SortKey = { expr: orders.id, type: "text", desc: true };
+  const keys: SortKey[] =
+    p.view === "open"
+      ? [{ expr: sql`(CASE WHEN ${orders.status} = 'disputed' THEN 0 ELSE 1 END)`, type: "int" }, { expr: orders.updatedAt, type: "timestamptz", desc: true }, byId]
+      : p.view === "late"
+        ? [{ expr: shipDeadlineSql, type: "timestamptz" }, { ...byId, desc: false }]
+        : [{ expr: orders.updatedAt, type: "timestamptz", desc: true }, byId];
+  const view = p.view === "open" ? inArray(orders.status, OPEN_ORDER) : p.view === "late" ? shipLateWhere() : p.view === "all" ? ne(orders.status, "pending") : eq(orders.status, p.view);
+  const q = p.q;
+  const where = p.id
+    ? eq(orders.id, p.id)
+    : and(
+        view,
+        p.from ? gte(orders.createdAt, p.from) : undefined,
+        p.to ? lt(orders.createdAt, p.to) : undefined,
+        q
+          ? or(
+              ilike(orders.id, likePrefix(q)),
+              eq(orders.payTx, q),
+              eq(orders.buyerWallet, q),
+              eq(buyer.walletAddress, q),
+              eq(seller.walletAddress, q),
+              containsAny(q, [collectorItems.title, collectorItems.groupName, collectorItems.member, buyer.email, seller.email]),
+            )
+          : undefined,
+        afterCursor(keys, p.cursor ?? null),
+      );
+  const party = (u: typeof buyer | typeof seller) => ({ id: u.id, name: u.displayName, email: u.email, wallet: u.walletAddress });
   const rows = await db
-    .select({ order: orders, item: collectorItems })
+    .select({ order: orders, item: collectorItems, buyer: party(buyer), seller: party(seller), cursor: cursorOf(keys) })
     .from(orders)
+    .innerJoin(buyer, eq(buyer.id, orders.buyerId))
+    .innerJoin(seller, eq(seller.id, orders.sellerId))
     .leftJoin(collectorItems, eq(collectorItems.id, orders.itemId))
-    .where(inArray(orders.status, ["paid", "shipped", "disputed", "refunding", "releasing", "completed", "refunded", "cancelled"]))
-    .orderBy(desc(orders.updatedAt))
-    .limit(100);
-  const rank = (s: OrderStatus) => (s === "disputed" ? 0 : s === "paid" || s === "shipped" ? 1 : 2);
-  return rows.map(({ order, item }) => toPublic(order, item, "buyer")).sort((a, b) => rank(a.status) - rank(b.status));
+    .where(where)
+    .orderBy(...orderOf(keys))
+    .limit(p.limit + 1);
+  const { list, next } = page(rows, p.limit);
+  const out: AdminOrder[] = list.map(({ order, item, buyer, seller }) => ({
+    ...toPublic(order, item, "buyer"),
+    createdAt: order.createdAt.toISOString(),
+    paidAt: order.paidAt?.toISOString() ?? null,
+    shippedAt: order.shippedAt?.toISOString() ?? null,
+    buyerWallet: order.buyerWallet,
+    buyer,
+    seller,
+  }));
+  return { rows: out, next };
+}
+
+// 待處理的數量：申訴中，以及寄出期限已過或一天內到期
+export async function adminOrderCounts(db: Db) {
+  const [[d], [l]] = await Promise.all([
+    db.select({ n: count() }).from(orders).where(eq(orders.status, "disputed")),
+    db.select({ n: count() }).from(orders).where(shipLateWhere()),
+  ]);
+  return { disputed: d.n, late: l.n };
 }

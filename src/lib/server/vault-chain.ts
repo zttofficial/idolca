@@ -1,20 +1,23 @@
 import "server-only";
 import * as anchor from "@anchor-lang/core";
-import { Connection, Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction, VersionedTransaction } from "@solana/web3.js";
+import { Connection, Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction, VersionedTransaction, type AccountInfo } from "@solana/web3.js";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction, createTransferCheckedInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { publicKey } from "@metaplex-foundation/umi";
+import { lamports, publicKey } from "@metaplex-foundation/umi";
 import { base58 } from "@metaplex-foundation/umi/serializers";
 import { toWeb3JsInstruction } from "@metaplex-foundation/umi-web3js-adapters";
-import { addPlugin, approvePluginAuthority, burn, fetchAllAssetV1, fetchAsset, fetchCollection, freezeAsset, revokePluginAuthority, thawAsset } from "@metaplex-foundation/mpl-core";
+import { addPlugin, approvePluginAuthority, burn, deserializeAssetV1, fetchAsset, fetchCollection, freezeAsset, revokePluginAuthority, thawAsset } from "@metaplex-foundation/mpl-core";
 import { CHAIN } from "@/lib/chain";
 import idl from "@/lib/chain/idl/idolca_market.json";
 import type { IdolcaMarket } from "@/lib/chain/idl/idolca_market";
+import { and, eq, inArray, isNotNull, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import { SERVER_RPC, platformSecret, platformUmi } from "./chain";
-import { getDb } from "./db";
+import { getDb, type Db } from "./db";
 import { getFees } from "./fees";
 import { notify, usersByWallet, vaultCard, type Notice } from "./notifications";
-import { getVaultRow, markBurned, vaultRows } from "./vault-cards";
-import { minNextBid, type AuctionView } from "@/lib/auction";
+import { allow } from "./rate-limit";
+import { vaultCards, vaultChainState } from "./schema";
+import { getVaultRow, markBurned } from "./vault-cards";
+import { auctionView, listingView, marketColumns, sameMarket, stateOfRow, type AssetColumns, type RawAuction, type RawListing, type VaultAuction, type VaultCardState } from "@/lib/vault-state";
 import { COINS, COIN_DECIMALS, coinMints, type Coin } from "@/lib/coins";
 
 // 金庫卡的鏈上交易。伺服器組好交易，錢包只負責簽名發送。手續費、帳戶租金和 Core 轉移的費用一律由平台錢包付，
@@ -67,88 +70,25 @@ const tokenAccounts = () => ({ tokenProgram: TOKEN_PROGRAM_ID, associatedTokenPr
 const UNIT = 10 ** USDT_DECIMALS;
 const toUnits = (usd: number) => new anchor.BN(Math.round(usd * UNIT));
 
-// 鏈上拍賣的狀態：公開的拍賣資訊，加上賣家、目前最高出價者的錢包和出價幣種、付租金的人（鏈上本來就公開）
-export type VaultAuction = AuctionView & { seller: string; highBidder: string | null; highBidMint: string | null; rentPayer: string };
+export type { VaultAuction, VaultCardState } from "@/lib/vault-state";
 
-export type VaultCardState = {
-  owner: string;
-  // 在託管程序裡掛單時：賣家、美元價格（買家用 USDT 或 USDC 付都是這個數）和付租金的人（取消、成交時租金退給它）
-  listing: { seller: string; priceUsdt: number; rentPayer: string } | null;
-  // 在託管程序裡拍賣時（這時 owner 是拍賣帳戶，卡的主人是 auction.seller）
-  auction: VaultAuction | null;
-  // 已申請提貨，NFT 凍結中
-  redeeming: boolean;
-  // 已提貨，NFT 已銷毀
-  burned: boolean;
-};
+// 鏈上狀態索引：每張金庫卡在 vault_chain_state 有一列（持有人、掛單、拍賣、提貨凍結、已銷毀），列表、/api/chain/state 和後台都讀這張表，不每次掃整條鏈。
+// 索引有三個來源：
+// 1. 組交易、確認交易，以及平台自己送的交易（鑄造、卡包轉移、出貨、結標）之後，即時讀那幾張卡並寫回（readCardStates）
+// 2. 託管程序的掛單和拍賣帳戶整批讀（每種一次 getProgramAccounts，成本跟在架的數量走，和卡的總數無關），和索引不一致的卡即時重讀（syncMarket）
+// 3. 持有人、凍結、銷毀在託管程序以外也會變（錢包之間直接轉手、用別的工具提貨），從最久沒核對的卡開始輪流重讀資產（sweep）；
+//    每日排程掃一遍全部：RPC 支援 DAS 時用 getAssetsByGroup 找出變了的卡再重讀，不支援就逐批重讀全部
+// 寫入都帶條件：資產和掛單拍賣兩組欄位各記核對時間，只蓋掉開始讀鏈之前核對的那組，較晚開始的讀取先寫進去的不會被較舊的結果蓋掉
 
-// 一次讀回所有金庫卡的資產和掛單帳戶（兩次 getMultipleAccounts），快取 10 秒
-let stateCache: { at: number; value: Promise<Record<string, VaultCardState>> } | null = null;
-export function vaultState(): Promise<Record<string, VaultCardState>> {
-  if (stateCache && Date.now() - stateCache.at < 10_000) return stateCache.value;
-  const value = readVaultState().catch((err) => {
-    stateCache = null;
-    throw err;
-  });
-  stateCache = { at: Date.now(), value };
-  return value;
-}
-export const invalidateVaultState = () => {
-  stateCache = null;
-};
+type CardRef = { id: string; asset: string; burnedAt: Date | null };
+// 資產帳戶讀到的狀態；null 是讀不到（剛鑄造、節點還沒同步），不算銷毀，也不寫進索引
+type ChainRead = { card: CardRef; asset: AssetColumns | null; listing?: RawListing | null; auction?: RawAuction | null };
 
-// RPC 一次最多讀 100 個帳戶，金庫卡超過 100 張時分批讀，結果按原順序接起來
+// RPC 一次最多讀 100 個帳戶，超過時分批讀，結果按原順序接起來（資料庫的 IN 查詢也用它分批）
 const RPC_BATCH = 100;
-async function inBatches<K, V>(keys: K[], read: (batch: K[]) => Promise<V[]>) {
+async function inBatches<K, V>(keys: K[], read: (batch: K[]) => Promise<V[]>, size = RPC_BATCH) {
   const out: V[] = [];
-  for (let i = 0; i < keys.length; i += RPC_BATCH) out.push(...(await read(keys.slice(i, i + RPC_BATCH))));
-  return out;
-}
-
-async function readVaultState() {
-  const umi = platformUmi();
-  const db = await getDb();
-  if (!umi || !db) return {};
-  const rows = await vaultRows(db);
-  if (!rows.length) return {};
-  const ids = rows.map((r) => r.id);
-  const assets = rows.map((r) => new PublicKey(r.asset));
-  const [existing, listings, auctionAccounts] = await Promise.all([
-    inBatches(assets, (k) => connection.getMultipleAccountsInfo(k)),
-    inBatches(assets.map(listingPda), (k) => connection.getMultipleAccountsInfo(k)),
-    inBatches(assets.map(auctionPda), (k) => connection.getMultipleAccountsInfo(k)),
-  ]);
-  // Core 銷毀資產後會留一個 1 位元組的墓碑帳戶，第一個位元組不是 AssetV1（1）就當作已銷毀。
-  // 帳戶讀不到（剛鑄造、節點還沒同步）不算銷毀
-  const alive = existing.map((acc) => Boolean(acc && acc.data.length > 1 && acc.data[0] === 1));
-  const tombstone = existing.map((acc, i) => Boolean(acc) && !alive[i]);
-  // 鏈上已銷毀但表裡還沒記的（例如用別的工具提貨），按銷毀交易（資產的最後一筆交易）的時間補記，之後不再讀它
-  for (const [i, id] of ids.entries()) {
-    if (!tombstone[i]) continue;
-    connection
-      .getSignaturesForAddress(assets[i], { limit: 1 })
-      .then((sigs) => markBurned(db, id, sigs[0]?.blockTime ? new Date(sigs[0].blockTime * 1000) : new Date()))
-      .catch(() => {});
-  }
-  const live = assets.filter((_, i) => alive[i]);
-  const parsed = await inBatches(live, (k) => fetchAllAssetV1(umi, k.map((a) => publicKey(a.toBase58()))));
-  const byAddress = new Map(parsed.map((a) => [a.publicKey.toString(), a]));
-  const out: Record<string, VaultCardState> = {};
-  ids.forEach((id, i) => {
-    const asset = byAddress.get(assets[i].toBase58());
-    const raw = listings[i];
-    // 讀不了的是舊版帳戶（程序升級前建立、等遷移），當作沒有
-    const listing = raw ? decodeOrNull<{ seller: PublicKey; price: anchor.BN; rentPayer: PublicKey }>("listing", raw.data) : null;
-    const rawAuction = auctionAccounts[i];
-    const auction = rawAuction ? decodeOrNull<AuctionAccount>("auction", rawAuction.data) : null;
-    out[id] = {
-      owner: asset?.owner.toString() ?? "",
-      listing: listing ? { seller: listing.seller.toBase58(), priceUsdt: Number(listing.price) / 10 ** USDT_DECIMALS, rentPayer: listing.rentPayer.toBase58() } : null,
-      auction: auction ? decodeAuction(auction) : null,
-      redeeming: Boolean(asset?.freezeDelegate?.frozen),
-      burned: tombstone[i],
-    };
-  });
+  for (let i = 0; i < keys.length; i += size) out.push(...(await read(keys.slice(i, i + size))));
   return out;
 }
 
@@ -160,8 +100,10 @@ function decodeOrNull<T>(name: "listing" | "auction", data: Buffer): T | null {
   }
 }
 
+type ListingAccount = { seller: PublicKey; asset: PublicKey; price: anchor.BN; rentPayer: PublicKey };
 type AuctionAccount = {
   seller: PublicKey;
+  asset: PublicKey;
   startPrice: anchor.BN;
   reservePrice: anchor.BN;
   endTs: anchor.BN;
@@ -173,27 +115,299 @@ type AuctionAccount = {
   feeBps: number;
 };
 
-function decodeAuction(a: AuctionAccount): VaultAuction {
-  const high = a.bidCount > 0 ? Number(a.highBid) : null;
-  const reserve = Number(a.reservePrice);
-  const endsAt = Number(a.endTs) * 1000;
-  return {
-    lane: "vault",
-    startUsd: Number(a.startPrice) / UNIT,
-    hasReserve: reserve > 0,
-    reserveMet: reserve === 0 || (high ?? 0) >= reserve,
-    highUsd: high === null ? null : high / UNIT,
-    bidCount: a.bidCount,
-    // 鏈上以最小單位計算，換成分時無條件進位，顯示的最低出價一定被鏈上接受
-    minNextUsd: Math.ceil(minNextBid(high, Number(a.startPrice), UNIT) / (UNIT / 100)) / 100,
-    endsAt: new Date(endsAt).toISOString(),
-    feeBps: a.feeBps,
-    status: endsAt <= Date.now() ? "settling" : "live",
+// 讀不了的是舊版帳戶（程序升級前建立、等遷移），當作沒有
+function listingOf(data: Buffer): { asset: string; raw: RawListing } | null {
+  const l = decodeOrNull<ListingAccount>("listing", data);
+  return l && { asset: l.asset.toBase58(), raw: { seller: l.seller.toBase58(), price: Number(l.price), rentPayer: l.rentPayer.toBase58() } };
+}
+function auctionOf(data: Buffer): { asset: string; raw: RawAuction } | null {
+  const a = decodeOrNull<AuctionAccount>("auction", data);
+  if (!a) return null;
+  const raw = {
     seller: a.seller.toBase58(),
-    highBidder: high === null ? null : a.highBidder.toBase58(),
-    highBidMint: high === null ? null : a.highBidMint.toBase58(),
+    startPrice: Number(a.startPrice),
+    reservePrice: Number(a.reservePrice),
+    endTs: Number(a.endTs),
+    highBidder: a.highBidder.toBase58(),
+    highBid: Number(a.highBid),
+    highBidMint: a.highBidMint.toBase58(),
+    bidCount: a.bidCount,
     rentPayer: a.rentPayer.toBase58(),
+    feeBps: a.feeBps,
   };
+  return { asset: a.asset.toBase58(), raw };
+}
+
+// Core 銷毀資產後會留一個 1 位元組的墓碑帳戶，第一個位元組不是 AssetV1（1）就當作已銷毀
+function assetOf(address: string, acc: AccountInfo<Buffer> | null): AssetColumns | null {
+  if (!acc) return null;
+  if (acc.data.length <= 1 || acc.data[0] !== 1) return { owner: "", redeeming: false, burned: true };
+  const a = deserializeAssetV1({ publicKey: publicKey(address), owner: publicKey(acc.owner.toBase58()), lamports: lamports(acc.lamports), executable: acc.executable, data: acc.data });
+  return { owner: a.owner.toString(), redeeming: Boolean(a.freezeDelegate?.frozen), burned: false };
+}
+
+// 讀一批卡的鏈上帳戶：資產；market 時連掛單和拍賣帳戶（每張卡三個帳戶，100 個一批）
+async function readChain(cards: CardRef[], market: boolean): Promise<ChainRead[]> {
+  const keys = cards.flatMap((c) => {
+    const a = new PublicKey(c.asset);
+    return market ? [a, listingPda(a), auctionPda(a)] : [a];
+  });
+  const accounts = await inBatches(keys, (k) => connection.getMultipleAccountsInfo(k));
+  const n = market ? 3 : 1;
+  return cards.map((card, i) => {
+    const [asset, listing, auction] = accounts.slice(i * n, i * n + n);
+    const read: ChainRead = { card, asset: assetOf(card.asset, asset) };
+    if (market) {
+      read.listing = listing ? (listingOf(listing.data)?.raw ?? null) : null;
+      read.auction = auction ? (auctionOf(auction.data)?.raw ?? null) : null;
+    }
+    return read;
+  });
+}
+
+// 已有的列：那組欄位的核對時間早於 startedAt 才換成這次讀到的值（UPDATE 裡的每個運算式看到的都是舊值，順序無所謂）
+const ASSET_COLUMNS = { owner: "owner", redeeming: "redeeming", burned: "burned", syncedAt: "synced_at" };
+const MARKET_COLUMNS = {
+  listingSeller: "listing_seller",
+  listingPriceCents: "listing_price_cents",
+  listingRentPayer: "listing_rent_payer",
+  auctionSeller: "auction_seller",
+  auctionEndsAt: "auction_ends_at",
+  auction: "auction",
+  marketSyncedAt: "market_synced_at",
+};
+const guarded = (columns: Record<string, string>, stamp: string, startedAt: Date) => {
+  const older = sql`coalesce(${sql.raw(`vault_chain_state.${stamp}`)}, 'epoch') < ${startedAt.toISOString()}::timestamptz`;
+  return Object.fromEntries(Object.entries(columns).map(([key, col]) => [key, sql`CASE WHEN ${older} THEN ${sql.raw(`excluded.${col}`)} ELSE ${sql.raw(`vault_chain_state.${col}`)} END`]));
+};
+
+// 寫回索引，startedAt 是開始讀鏈的時間。讀不到資產的只寫掛單和拍賣（新列的持有人先空著、核對時間記成最早，輪流核對時最先重讀）。
+// 鏈上已銷毀但表裡還沒記的（例如用別的工具提貨），按銷毀交易（資產的最後一筆交易）的時間補記，之後不再讀它
+async function writeReads(db: Db, reads: ChainRead[], startedAt: Date) {
+  for (const [withAsset, withMarket] of [
+    [true, true],
+    [true, false],
+    [false, true],
+  ]) {
+    const group = reads.filter((r) => Boolean(r.asset) === withAsset && (r.listing !== undefined) === withMarket);
+    const values = group.map((r) => ({
+      cardId: r.card.id,
+      ...(r.asset ?? { owner: "", redeeming: false, burned: false }),
+      syncedAt: r.asset ? startedAt : new Date(0),
+      ...(withMarket ? { ...marketColumns(r.listing ?? null, r.auction ?? null), marketSyncedAt: startedAt } : {}),
+    }));
+    const set = { ...(withAsset ? guarded(ASSET_COLUMNS, "synced_at", startedAt) : {}), ...(withMarket ? guarded(MARKET_COLUMNS, "market_synced_at", startedAt) : {}) };
+    await inBatches(values, (v) => db.insert(vaultChainState).values(v).onConflictDoUpdate({ target: vaultChainState.cardId, set }).then(() => []), 500);
+  }
+  await Promise.all(
+    reads
+      .filter((r) => r.asset?.burned && !r.card.burnedAt)
+      .map((r) =>
+        connection
+          .getSignaturesForAddress(new PublicKey(r.card.asset), { limit: 1 })
+          .then((sigs) => markBurned(db, r.card.id, sigs[0]?.blockTime ? new Date(sigs[0].blockTime * 1000) : new Date()))
+          .catch((err) => console.error("mark burned failed", r.card.id, err)),
+      ),
+  );
+  invalidateVaultState();
+}
+
+// 即時讀這幾張卡（資產、掛單、拍賣）並寫回索引，回傳鏈上此刻的狀態（掛單價格是鏈上的原值）。寫索引失敗不影響回傳，之後的同步會補上
+async function freshStates(db: Db, cards: CardRef[]) {
+  const startedAt = new Date();
+  const reads = await readChain(cards, true);
+  await writeReads(db, reads, startedAt).catch((err) => console.error("write vault state failed", err));
+  const out: Record<string, VaultCardState> = {};
+  for (const r of reads) {
+    const a = r.asset ?? { owner: "", redeeming: false, burned: false };
+    out[r.card.id] = { owner: a.owner, listing: r.listing ? listingView(r.listing) : null, auction: r.auction ? auctionView(r.auction) : null, redeeming: a.redeeming, burned: a.burned };
+  }
+  return out;
+}
+
+const cardRef = { id: vaultCards.id, asset: vaultCards.asset, burnedAt: vaultCards.burnedAt };
+
+// 組交易、確認交易，以及平台送出交易之後用：即時讀鏈上的狀態，順便更新索引。不在資料庫裡的卡不在結果裡
+export async function readCardStates(cardIds: string[]): Promise<Record<string, VaultCardState>> {
+  const db = await getDb();
+  if (!db || !cardIds.length) return {};
+  return freshStates(db, await db.select(cardRef).from(vaultCards).where(inArray(vaultCards.id, cardIds)));
+}
+export const readCardState = async (cardId: string): Promise<VaultCardState | null> => (await readCardStates([cardId]))[cardId] ?? null;
+// 平台自己的交易確認後刷新那幾張卡；讀不到不影響呼叫端（之後的同步會補上）
+export const refreshCardStates = (cardIds: string[]) =>
+  readCardStates(cardIds).catch((err) => {
+    console.error("refresh vault state failed", cardIds, err);
+    return {} as Record<string, VaultCardState>;
+  });
+
+// 從索引讀狀態。還沒有索引的卡（新資料庫、剛加上索引）當場即時讀一批補上，其餘的交給 syncVaultIndex
+const BOOTSTRAP_INLINE = 100;
+async function indexedStates(db: Db, where: SQL | undefined) {
+  const rows = await db
+    .select({ ...cardRef, s: vaultChainState })
+    .from(vaultCards)
+    .leftJoin(vaultChainState, eq(vaultChainState.cardId, vaultCards.id))
+    .where(where);
+  const now = Date.now();
+  const out: Record<string, VaultCardState> = {};
+  for (const r of rows) if (r.s) out[r.id] = stateOfRow(r.s, now);
+  const missing = rows.filter((r) => !r.s).slice(0, BOOTSTRAP_INLINE);
+  if (missing.length) Object.assign(out, await freshStates(db, missing));
+  return out;
+}
+
+// 所有還在金庫裡的卡（已提貨銷毀的不算）的鏈上狀態，從索引讀，每個實例快取 10 秒
+let stateCache: { at: number; value: Promise<Record<string, VaultCardState>> } | null = null;
+export function vaultState(): Promise<Record<string, VaultCardState>> {
+  if (stateCache && Date.now() - stateCache.at < 10_000) return stateCache.value;
+  const value = getDb()
+    .then((db) => (db ? indexedStates(db, isNull(vaultCards.burnedAt)) : {}))
+    .catch((err) => {
+      stateCache = null;
+      throw err;
+    });
+  stateCache = { at: Date.now(), value };
+  return value;
+}
+const invalidateVaultState = () => {
+  stateCache = null;
+};
+
+// 幾張卡的狀態，從索引讀：顯示和篩選用；要求正確的地方（組交易、確認、轉移前檢查）用 readCardStates
+export async function cardStates(cardIds: string[]): Promise<Record<string, VaultCardState>> {
+  const db = await getDb();
+  if (!db || !cardIds.length) return {};
+  return Object.assign({}, ...(await inBatches(cardIds, async (ids) => [await indexedStates(db, inArray(vaultCards.id, ids))], 1000)));
+}
+
+// 託管程序裡所有的掛單和拍賣（每種一次 getProgramAccounts）對照索引：鏈上在架、或索引記著在架的卡，兩邊不一致就即時重讀。
+// 測試環境和線上共用 devnet 的託管程序，不在這個資料庫的卡跳過；一次最多重讀 MARKET_REREAD 張，其餘下次
+const MARKET_REREAD = 330;
+async function programAccounts<T>(name: "listing" | "auction", decode: (data: Buffer) => { asset: string; raw: T } | null) {
+  const accounts = await connection.getProgramAccounts(program.programId, { filters: [{ memcmp: program.coder.accounts.memcmp(name) }] });
+  const out = new Map<string, T>();
+  for (const { account } of accounts) {
+    const v = decode(account.data);
+    if (v) out.set(v.asset, v.raw);
+  }
+  return out;
+}
+async function syncMarket(db: Db) {
+  const [listings, auctions] = await Promise.all([programAccounts("listing", listingOf), programAccounts("auction", auctionOf)]);
+  const rows = () => db.select({ ...cardRef, s: vaultChainState }).from(vaultCards).leftJoin(vaultChainState, eq(vaultChainState.cardId, vaultCards.id));
+  const assets = [...new Set([...listings.keys(), ...auctions.keys()])];
+  const onChain = await inBatches(assets, (batch) => rows().where(and(inArray(vaultCards.asset, batch), isNull(vaultCards.burnedAt))), 1000);
+  const indexed = await rows().where(and(isNull(vaultCards.burnedAt), or(isNotNull(vaultChainState.listingSeller), isNotNull(vaultChainState.auctionSeller))));
+  const changed = new Map<string, CardRef>();
+  for (const c of [...onChain, ...indexed]) if (!c.s || !sameMarket(c.s, marketColumns(listings.get(c.asset) ?? null, auctions.get(c.asset) ?? null))) changed.set(c.id, c);
+  if (changed.size) await freshStates(db, [...changed.values()].slice(0, MARKET_REREAD));
+}
+
+// 重讀一批卡：還沒有索引的連掛單和拍賣一起讀，其餘只讀資產（掛單和拍賣由 syncMarket 整批核對）
+type DueCard = CardRef & { syncedAt: Date | null };
+const dueCard = { ...cardRef, syncedAt: vaultChainState.syncedAt };
+async function recheck(db: Db, cards: DueCard[]) {
+  const startedAt = new Date();
+  const missing = cards.filter((c) => !c.syncedAt);
+  const known = cards.filter((c) => c.syncedAt);
+  if (missing.length) await freshStates(db, missing);
+  if (known.length) await writeReads(db, await readChain(known, false), startedAt);
+}
+
+// 輪流核對：還沒有索引的卡在前，其次是最久沒核對的，每次 limit 張
+async function sweep(db: Db, limit: number) {
+  const due = await db
+    .select(dueCard)
+    .from(vaultCards)
+    .leftJoin(vaultChainState, eq(vaultChainState.cardId, vaultCards.id))
+    .where(isNull(vaultCards.burnedAt))
+    .orderBy(sql`${vaultChainState.syncedAt} asc nulls first`)
+    .limit(limit);
+  await recheck(db, due);
+}
+
+// DAS（Helius 等 RPC 提供的資產索引）；RPC 不支援這個方法時回傳 null
+async function das<T>(method: string, params: object): Promise<T | null> {
+  const res = await fetch(SERVER_RPC, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: method, method, params }) });
+  const body = (await res.json().catch(() => null)) as { result?: T; error?: { code: number; message: string } } | null;
+  if (body?.result) return body.result;
+  if (body?.error?.code === -32601) return null;
+  throw new Error(`das ${method} failed: ${body?.error?.message ?? res.status}`);
+}
+
+// 全部核對一遍（每日排程）。DAS 一頁列 1000 張整個集合，和索引不一致的卡（持有人、凍結、銷毀）即時重讀確認（DAS 比鏈上晚幾秒，不直接寫它的值），
+// 一致的只更新核對時間（記成 DAS_LAG_MS 之前，DAS 至少反映到那時）；DAS 沒列出的卡（剛鑄造、還沒進它的索引）留給輪流核對。
+// RPC 不支援 DAS 時按卡片 id 逐批重讀全部
+const DAS_PAGE = 1000;
+const DAS_LAG_MS = 120_000;
+async function sweepAll(db: Db) {
+  const startedAt = new Date();
+  const checkedAt = new Date(startedAt.getTime() - DAS_LAG_MS);
+  const rows = await db
+    .select({ ...dueCard, owner: vaultChainState.owner, redeeming: vaultChainState.redeeming, burned: vaultChainState.burned })
+    .from(vaultCards)
+    .leftJoin(vaultChainState, eq(vaultChainState.cardId, vaultCards.id))
+    .where(isNull(vaultCards.burnedAt));
+  const byAsset = new Map(rows.map((r) => [r.asset, r]));
+  type DasAsset = { id: string; burnt: boolean; ownership: { owner: string }; plugins?: { freeze_delegate?: { data?: { frozen?: boolean } } } };
+  const changed: DueCard[] = [];
+  const same: string[] = [];
+  for (let page = 1; ; page++) {
+    const res = await das<{ items: DasAsset[] }>("getAssetsByGroup", {
+      groupKey: "collection",
+      groupValue: CHAIN.vaultCollection,
+      page,
+      limit: DAS_PAGE,
+      sortBy: { sortBy: "id", sortDirection: "asc" },
+    });
+    if (!res) {
+      for (let i = 0; i < rows.length; i += 1000) await recheck(db, rows.slice(i, i + 1000));
+      return;
+    }
+    for (const a of res.items) {
+      const r = byAsset.get(a.id);
+      if (!r) continue;
+      const owner = a.burnt ? "" : a.ownership.owner;
+      const frozen = !a.burnt && Boolean(a.plugins?.freeze_delegate?.data?.frozen);
+      if (r.syncedAt && r.owner === owner && r.redeeming === frozen && r.burned === a.burnt) same.push(r.id);
+      else changed.push(r);
+    }
+    if (res.items.length < DAS_PAGE) break;
+  }
+  await recheck(db, changed);
+  const touch = (ids: string[]) => db.update(vaultChainState).set({ syncedAt: checkedAt }).where(and(inArray(vaultChainState.cardId, ids), lt(vaultChainState.syncedAt, checkedAt)));
+  await inBatches(same, (ids) => touch(ids).then(() => []), 1000);
+}
+
+// 讓索引跟上不是我們送的交易。/api/chain/state 回應後呼叫，每個實例、也跨實例節流（計數在 rate_limits）：掛單和拍賣最多每 20 秒核對一次，
+// 輪流核對最多每分鐘一批 SWEEP_CARDS 張。每日排程以 full 呼叫，不節流，全部核對一遍
+const MARKET_SECS = 20;
+const SWEEP_SECS = 60;
+const SWEEP_CARDS = 300;
+let marketAt = 0;
+let sweepAt = 0;
+let indexing: Promise<void> | null = null;
+export async function syncVaultIndex(full = false) {
+  const db = await getDb();
+  if (!db || !marketReady()) return;
+  if (full) {
+    await syncMarket(db);
+    await sweepAll(db);
+    return;
+  }
+  indexing ??= (async () => {
+    const now = Date.now();
+    if (now - marketAt >= MARKET_SECS * 1000) {
+      marketAt = now;
+      if (await allow(db, "vault-index:market", 1, MARKET_SECS)) await syncMarket(db);
+    }
+    if (now - sweepAt >= SWEEP_SECS * 1000) {
+      sweepAt = now;
+      if (await allow(db, "vault-index:sweep", 1, SWEEP_SECS)) await sweep(db, SWEEP_CARDS);
+    }
+  })().finally(() => (indexing = null));
+  return indexing;
 }
 
 // 組一筆讓用戶簽名的交易，回傳 base64，錢包簽名後送出。手續費由平台付，平台和其他共同簽名者先簽。
@@ -281,9 +495,10 @@ async function cardAsset(cardId: string) {
   return new PublicKey(row.asset);
 }
 
-export async function buildBuy(cardId: string, buyer: PublicKey) {
+// 組交易的函式都由呼叫端傳入剛即時讀到的狀態（readCardState），不用索引
+export async function buildBuy(cardId: string, buyer: PublicKey, state: VaultCardState) {
   const asset = await cardAsset(cardId);
-  const listing = (await vaultState())[cardId]?.listing;
+  const listing = state.listing;
   if (!listing) throw new Error("not_listed");
   if (listing.seller === buyer.toBase58()) throw new Error("own_listing");
   const seller = new PublicKey(listing.seller);
@@ -314,18 +529,19 @@ export async function buildBuy(cardId: string, buyer: PublicKey) {
 // 簽名人佔位：交易由伺服器組、錢包簽，組指令時只需要公鑰
 const signerOf = (key: PublicKey) => ({ publicKey: publicKey(key.toBase58()), signMessage: async () => new Uint8Array(), signTransaction: async <T,>(t: T) => t, signAllTransactions: async <T,>(t: T[]) => t });
 
+// 價格取到分（索引和其他價格都以分計）
 export async function buildList(cardId: string, seller: PublicKey, priceUsdt: number) {
   const asset = await cardAsset(cardId);
   const ix = await program.methods
-    .list(new anchor.BN(Math.round(priceUsdt * 10 ** USDT_DECIMALS)))
+    .list(new anchor.BN(Math.round(priceUsdt * 100) * (10 ** USDT_DECIMALS / 100)))
     .accountsPartial({ seller, payer: platform()!.publicKey, listing: listingPda(asset), asset, ...coreAccounts() })
     .instruction();
   return forUser([ix]);
 }
 
-export async function buildCancel(cardId: string, seller: PublicKey) {
+export async function buildCancel(cardId: string, seller: PublicKey, state: VaultCardState) {
   const asset = await cardAsset(cardId);
-  const listing = (await vaultState())[cardId]?.listing;
+  const listing = state.listing;
   if (!listing) throw new Error("not_listed");
   const ix = await program.methods
     .cancel()
@@ -373,9 +589,9 @@ const escrowAccounts = (auction: PublicKey) => ({
 });
 
 // 出價：全額轉進拍賣帳戶（錢包裡哪種幣夠就用哪種），同一個指令用前一口的幣種退回前一位最高出價者
-export async function buildBid(cardId: string, bidder: PublicKey, amountUsd: number) {
+export async function buildBid(cardId: string, bidder: PublicKey, amountUsd: number, card: VaultCardState) {
   const asset = await cardAsset(cardId);
-  const state = (await vaultState())[cardId]?.auction;
+  const state = card.auction;
   if (!state || state.status !== "live") throw new Error("auction_ended");
   if (state.seller === bidder.toBase58()) throw new Error("own_auction");
   if (state.highBidder === bidder.toBase58()) throw new Error("already_leading");
@@ -406,10 +622,10 @@ export async function buildBid(cardId: string, bidder: PublicKey, amountUsd: num
   return forUser([ix]);
 }
 
-export async function buildCancelAuction(cardId: string, seller: PublicKey) {
+export async function buildCancelAuction(cardId: string, seller: PublicKey, card: VaultCardState) {
   const asset = await cardAsset(cardId);
   const auction = auctionPda(asset);
-  const state = (await vaultState())[cardId]?.auction;
+  const state = card.auction;
   if (!state) throw new Error("auction_ended");
   const ix = await program.methods
     .cancelAuction()
@@ -477,26 +693,35 @@ async function notifySettled(cardId: string, a: VaultAuction) {
   await notify(db, notices);
 }
 
-// 結標所有已截止的金庫卡拍賣。同一個伺服器實例裡同一張卡不會同時送兩次；
+// 結標所有已截止的金庫卡拍賣（從索引找截止時間已過的）。同一個伺服器實例裡同一張卡不會同時送兩次；
 // 不同實例重複送出時，第二筆會因為拍賣帳戶已關閉而失敗，不影響結果
 const settling = new Set<string>();
 export async function settleEndedVaultAuctions() {
-  if (!marketReady()) return 0;
-  const ended = Object.entries(await vaultState()).filter(([id, s]) => s.auction && new Date(s.auction.endsAt).getTime() <= Date.now() && !settling.has(id));
+  const db = await getDb();
+  if (!marketReady() || !db) return 0;
+  const ended = await db
+    .select({ id: vaultChainState.cardId })
+    .from(vaultChainState)
+    .innerJoin(vaultCards, eq(vaultCards.id, vaultChainState.cardId))
+    .where(and(isNotNull(vaultChainState.auctionSeller), lte(vaultChainState.auctionEndsAt, new Date()), isNull(vaultCards.burnedAt)));
   let done = 0;
-  for (const [id, s] of ended) {
+  for (const { id } of ended) {
+    if (settling.has(id)) continue;
     settling.add(id);
     try {
-      await settleVaultAuction(id, s.auction!);
+      // 最後幾分鐘有人出價會延後截止，最高出價者也可能剛換人：結標前即時讀一次
+      const a = (await readCardState(id))?.auction;
+      if (!a || new Date(a.endsAt).getTime() > Date.now()) continue;
+      await settleVaultAuction(id, a);
       done++;
-      await notifySettled(id, s.auction!).catch((err) => console.error("notify vault auction failed", id, err));
+      await refreshCardStates([id]);
+      await notifySettled(id, a).catch((err) => console.error("notify vault auction failed", id, err));
     } catch (err) {
       console.error("settle vault auction failed", id, err);
     } finally {
       settling.delete(id);
     }
   }
-  if (done) invalidateVaultState();
   return done;
 }
 
@@ -550,7 +775,7 @@ export async function shipRedemption(cardId: string) {
   const { signature } = await thawAsset(umi, { asset, collection, delegate: umi.identity })
     .add(burn(umi, { asset, collection, authority: umi.identity }))
     .sendAndConfirm(umi, { confirm: { commitment: "confirmed" } });
-  invalidateVaultState();
+  await refreshCardStates([cardId]);
   return base58.deserialize(signature)[0];
 }
 
@@ -562,7 +787,7 @@ export async function cancelRedemption(cardId: string) {
   const { signature } = await thawAsset(umi, { asset, collection, delegate: umi.identity })
     .add(revokePluginAuthority(umi, { asset: asset.publicKey, collection: collection.publicKey, plugin: { type: "BurnDelegate" }, authority: umi.identity }))
     .sendAndConfirm(umi, { confirm: { commitment: "confirmed" } });
-  invalidateVaultState();
+  await refreshCardStates([cardId]);
   return base58.deserialize(signature)[0];
 }
 

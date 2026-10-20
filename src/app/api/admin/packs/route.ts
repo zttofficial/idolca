@@ -1,36 +1,21 @@
 import { randomBytes } from "node:crypto";
-import { and, isNull } from "drizzle-orm";
-import { connection } from "next/server";
+import { connection, type NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/server/admin";
 import { fail } from "@/lib/server/require-user";
-import { packs, vaultCards } from "@/lib/server/schema";
-import { listPacks, getPackRow, sha256 } from "@/lib/server/pack-pool";
-import { vaultState } from "@/lib/server/vault-chain";
-import { toCard } from "@/lib/server/vault-cards";
-import { CHAIN } from "@/lib/chain";
+import { packs } from "@/lib/server/schema";
+import { getPackRow, sha256 } from "@/lib/server/pack-pool";
+import { listParams } from "@/lib/server/admin-lists";
+import { adminPacks } from "@/lib/server/admin-packs";
 import { MAX_QTY } from "@/lib/packs";
 import { notifyIndexNow } from "@/lib/server/indexnow";
 
-// 卡包管理：所有卡包（含卡池），以及可以放進卡池的卡——平台自有（沒有寄存人）、還在平台錢包、沒掛單、沒在提貨、不在別的卡包
-export async function GET() {
+// 卡包管理，一次一頁：每個卡包只帶卡池的統計（剩幾張、各等級、期望價值、返還率），卡池本身和能放進卡池的卡另外分頁查
+// （/api/admin/packs/[id]/cards 和 /api/admin/cards?state=assignable）
+export async function GET(request: NextRequest) {
   await connection();
   const a = await requireAdmin();
   if (a.error) return a.error;
-  const [list, rows, state] = await Promise.all([
-    listPacks(a.db),
-    a.db
-      .select()
-      .from(vaultCards)
-      .where(and(isNull(vaultCards.packId), isNull(vaultCards.depositorId), isNull(vaultCards.burnedAt))),
-    vaultState(),
-  ]);
-  const assignable = rows
-    .filter((r) => {
-      const s = state[r.id];
-      return s && s.owner === CHAIN.platform && !s.listing && !s.redeeming;
-    })
-    .map(toCard);
-  return Response.json({ packs: list, assignable });
+  return Response.json(await adminPacks(a.db, listParams(request.nextUrl.searchParams)));
 }
 
 const SLUG = /^[a-z0-9][a-z0-9-]{1,39}$/;

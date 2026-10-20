@@ -1,4 +1,4 @@
-import { integer, pgTable, primaryKey, real, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, primaryKey, real, text, timestamp } from "drizzle-orm/pg-core";
 import { CARD_SOURCES } from "@/lib/sources";
 import type { Coin } from "@/lib/coins";
 
@@ -177,6 +177,28 @@ export const vaultCards = pgTable("vault_cards", {
   packValueCents: integer("pack_value_cents"),
   packOrder: text("pack_order"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 金庫卡的鏈上狀態索引（每張卡一列，見 vault-chain.ts）：持有人、託管程序裡的掛單和拍賣、提貨凍結、已銷毀。
+// 列表、篩選、後台都讀這張表，不每次掃整條鏈；組交易和確認交易時另外即時讀那一張卡。synced_at 是持有人、凍結、銷毀這幾欄最後一次和鏈上核對的時間
+export const vaultChainState = pgTable("vault_chain_state", {
+  cardId: text("card_id")
+    .primaryKey()
+    .references(() => vaultCards.id, { onDelete: "cascade" }),
+  // NFT 的持有人；拍賣中是拍賣帳戶（卡的主人看 auction_seller）
+  owner: text("owner").notNull().default(""),
+  listingSeller: text("listing_seller"),
+  listingPriceCents: integer("listing_price_cents"),
+  listingRentPayer: text("listing_rent_payer"),
+  auctionSeller: text("auction_seller"),
+  auctionEndsAt: timestamp("auction_ends_at", { withTimezone: true }),
+  // 拍賣帳戶的原始欄位（JSON），讀出時再算出狀態、最低出價等
+  auction: text("auction"),
+  redeeming: boolean("redeeming").notNull().default(false),
+  burned: boolean("burned").notNull().default(false),
+  syncedAt: timestamp("synced_at", { withTimezone: true }).notNull(),
+  // 掛單和拍賣欄位最後一次和鏈上核對的時間（輪流核對只讀資產，兩組欄位分開記，較舊的讀取不會蓋掉較新的）
+  marketSyncedAt: timestamp("market_synced_at", { withTimezone: true }),
 });
 
 // Trading card 卡包。卡池是放進這個卡包的金庫卡（vault_cards.pack_id），抽一張少一張。
@@ -754,4 +776,42 @@ export const BOOTSTRAP_SQL = [
     created_by text REFERENCES users(id) ON DELETE SET NULL,
     created_at timestamptz NOT NULL DEFAULT now()
   )`,
+  `CREATE TABLE IF NOT EXISTS vault_chain_state (
+    card_id text PRIMARY KEY REFERENCES vault_cards(id) ON DELETE CASCADE,
+    owner text NOT NULL DEFAULT '',
+    listing_seller text,
+    listing_price_cents integer,
+    listing_rent_payer text,
+    auction_seller text,
+    auction_ends_at timestamptz,
+    auction text,
+    redeeming boolean NOT NULL DEFAULT false,
+    burned boolean NOT NULL DEFAULT false,
+    synced_at timestamptz NOT NULL,
+    market_synced_at timestamptz
+  )`,
+  `ALTER TABLE vault_chain_state ADD COLUMN IF NOT EXISTS market_synced_at timestamptz`,
+  `CREATE INDEX IF NOT EXISTS vault_chain_state_owner_idx ON vault_chain_state(owner)`,
+  `CREATE INDEX IF NOT EXISTS vault_chain_state_synced_idx ON vault_chain_state(synced_at)`,
+  `CREATE INDEX IF NOT EXISTS vault_chain_state_listing_idx ON vault_chain_state(listing_seller) WHERE listing_seller IS NOT NULL`,
+  `CREATE INDEX IF NOT EXISTS vault_chain_state_auction_idx ON vault_chain_state(auction_ends_at) WHERE auction_seller IS NOT NULL`,
+  // 後台列表的分頁和篩選（見 admin-queries.ts、admin-sales.ts、orders.ts 的 adminOrders）
+  `CREATE INDEX IF NOT EXISTS orders_status_updated_idx ON orders(status, updated_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS orders_buyer_idx ON orders(buyer_id)`,
+  `CREATE INDEX IF NOT EXISTS orders_seller_idx ON orders(seller_id)`,
+  `CREATE INDEX IF NOT EXISTS orders_sale_at_idx ON orders((coalesce(paid_at, created_at)))`,
+  `CREATE INDEX IF NOT EXISTS redemptions_created_idx ON redemptions(created_at)`,
+  `CREATE INDEX IF NOT EXISTS redemptions_pending_idx ON redemptions(created_at) WHERE ship_tx IS NULL AND cancelled_at IS NULL`,
+  `CREATE INDEX IF NOT EXISTS redemptions_user_idx ON redemptions(user_id)`,
+  `CREATE INDEX IF NOT EXISTS collector_items_created_idx ON collector_items(created_at)`,
+  `CREATE INDEX IF NOT EXISTS collector_items_vault_request_idx ON collector_items(created_at) WHERE vault_requested_at IS NOT NULL AND vault_card_id IS NULL`,
+  `CREATE INDEX IF NOT EXISTS vault_cards_created_idx ON vault_cards(created_at)`,
+  `CREATE INDEX IF NOT EXISTS vault_cards_pack_idx ON vault_cards(pack_id, serial)`,
+  `CREATE INDEX IF NOT EXISTS vault_cards_depositor_idx ON vault_cards(depositor_id)`,
+  `CREATE INDEX IF NOT EXISTS pack_orders_created_idx ON pack_orders(created_at)`,
+  `CREATE INDEX IF NOT EXISTS pack_orders_user_idx ON pack_orders(user_id, created_at)`,
+  `CREATE INDEX IF NOT EXISTS packs_starts_idx ON packs(starts_at)`,
+  `CREATE INDEX IF NOT EXISTS vault_trades_traded_idx ON vault_trades(traded_at)`,
+  `CREATE INDEX IF NOT EXISTS vault_trades_card_idx ON vault_trades(card_id)`,
+  `CREATE INDEX IF NOT EXISTS users_created_idx ON users(created_at)`,
 ];

@@ -29,7 +29,7 @@
 | 寄進金庫、收藏卡轉金庫卡 | 收藏冊、`/admin` | `src/app/api/items/[id]/vault`、`src/app/api/admin/items/[id]/vault`、`VaultConvert.tsx` |
 | 付款方式面板（Solana 錢包、Arc 上的 USDC、信用卡佔位） | 購買按鈕 | `src/components/pay/PaymentPicker.tsx`，標誌在 `public/pay/` |
 | Arc 收款通道（USDC 授權轉帳、平台代送、退款） | 開卡包、擔保交易 | `src/lib/arc.ts`、`src/lib/server/arc-pay.ts`、`src/lib/evm/arc-wallet.ts` |
-| 評級（IDG 自家評級和第三方評級） | `/card/[id]`、`/admin`、介紹頁 `/grading` | `src/lib/grading.ts`、`src/components/admin/VaultGrade.tsx`、`src/app/api/admin/vault/[id]/grade` |
+| 評級（IDG 自家評級和第三方評級） | `/card/[id]`、`/admin`、介紹頁 `/grading` | `src/lib/grading.ts`、`src/components/admin/AdminCards.tsx`（金庫卡詳情裡的評級表單）、`src/app/api/admin/vault/[id]/grade` |
 | Trading card 卡包（承諾—揭示抽卡、即時回購；`PACKS_BLOCKED_COUNTRIES` 的地區不賣，預設比利時、荷蘭） | `/packs`、`/packs/[id]` | `src/lib/server/packs.ts`、`pack-pool.ts`、`region.ts`，`src/lib/pack-draw.ts`、`src/lib/packs.ts`，`src/components/packs/PackOpener.tsx` |
 | 收藏冊（卡冊、搜尋和品類 → 團體 → 成員篩選、整理、同步；訂單頁籤列擔保訂單和金庫卡成交） | `/binder` | `BinderView.tsx`、`BinderBook.tsx`、`BinderArranger.tsx`、`BinderChain.tsx`（訂單），`src/lib/server/vault-trades.ts`（金庫卡成交從鏈上同步），`src/lib/binder.ts`、`binder-layout.ts`、`binder-filter.ts`，`src/app/api/binder` |
 | 卡片篩選元件（搜尋框、品類 → 團體 → 成員；市場用側欄的二級選單、列出名錄裡的全部團體，收藏冊用上方可收起的面板），市場和收藏冊共用 | `/market`、`/binder` | `src/components/market/CardFilters.tsx`、`src/lib/facets.ts` |
@@ -37,7 +37,8 @@
 | 團體名錄（K-pop、J-pop、C-pop、T-pop 四個品類；篩選器的團體清單、表單的團體和成員建議；按照片檔名預填名稱、團體、成員） | 上鏈、入庫表單 | `src/lib/directory.ts`，各品類的名錄在 `src/lib/groups/` |
 | 金庫頁（存貨證明） | `/vault` | `src/components/vault/` |
 | 專輯銷量榜 | `/charts` | `src/lib/server/circle-chart.ts` |
-| 後台（入庫、卡包、擔保訂單、提貨、假卡、手續費、管理員） | `/admin` | `src/components/admin/`、`src/app/api/admin/` |
+| 後台（待處理、入庫、金庫卡和評級、卡包、擔保訂單、提貨、收藏卡、銷售紀錄、用戶、手續費、管理員；只有英文） | `/admin` | `src/components/admin/`（列表元件 `AdminList.tsx`）、`src/app/api/admin/`、`src/lib/server/admin-*.ts`、`src/lib/admin-list.ts` |
+| 金庫卡鏈上狀態索引（`vault_chain_state`；即時讀單張卡、對帳和輪轉掃描） | 市場、金庫、卡片頁、後台 | `vault-chain.ts`、`src/lib/vault-state.ts` |
 | 手續費（基本費率和限時促銷，金庫卡的抽成和拍賣手續費同步到鏈上） | 後台、上架表單、鑄造、`/terms` | `src/lib/fees.ts`、`src/lib/server/fees.ts`、`src/lib/use-fees.ts`、`vault-chain.ts` 的 `feeSyncIxs`、`syncChainFees`，`src/app/api/fees`、`src/app/api/admin/fees` |
 | 照片處理和浮水印 | — | `src/lib/server/media.ts`、`src/lib/crop-card.ts` |
 | 站內通知（拍賣、擔保訂單、金庫卡成交、提貨寄出） | 頁首通知鈴 | `src/lib/server/notifications.ts`、`vault-notify.ts`，`src/components/notifications/NotificationBell.tsx`，`src/app/api/notifications` |

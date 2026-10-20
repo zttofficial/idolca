@@ -1,11 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocale, useTranslations } from "next-intl";
+import { useLocale } from "next-intl";
 import Select from "@/components/ui/Select";
 import { formatPrice } from "@/lib/fx";
 import { FEE_KINDS, FEE_MAX, bpsToPct, resolveFee, type FeeKind, type FeeRule, type Fees } from "@/lib/fees";
 import { field, label, type Call } from "./shared";
+
+// 後台只用英文，下面是代碼對應的顯示文字
+const FEE_ERROR_LABEL: Record<string, string> = {
+  invalid_kind: "Unknown fee type.",
+  invalid_value: "The rate is out of range (0–10% or 0–10 USD).",
+  invalid_time: "Check the times: a promotion must end after it starts, and not in the past.",
+  not_found: "This rule no longer exists.",
+  not_allowed: "A base rate that's already in effect can't be removed. Schedule a new base rate instead.",
+};
+const FEE_KIND_LABEL: Record<string, string> = { sale: "Sale commission", auction: "Auction fee", mint: "Mint fee (collection card to digital collectible)" };
+const FEE_STATUS_LABEL: Record<string, string> = { scheduled: "Scheduled", active: "Active", ended: "Ended" };
 
 type Rule = { id: string; kind: FeeKind; value: number; startsAt: string; endsAt: string | null; label: string | null; createdAt: string };
 type Data = { fees: Fees; rules: Rule[]; at: number };
@@ -31,7 +42,6 @@ function statusOf(r: Rule, rules: Rule[], now: number): Status {
 
 // 手續費管理：看各項現在收多少，排定基本費率調整或限時促銷，刪除還沒開始的規則、提前結束促銷
 export default function AdminFees({ call }: { call: Call }) {
-  const t = useTranslations("Admin");
   const locale = useLocale();
   const [data, setData] = useState<Data | null>(null);
   const [form, setForm] = useState(EMPTY);
@@ -40,7 +50,7 @@ export default function AdminFees({ call }: { call: Call }) {
   const set = (k: "value" | "startsAt" | "endsAt" | "label") => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const date = useMemo(() => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }), [locale]);
   const fmtDate = (s: string) => date.format(new Date(s));
-  const message = (code: string) => (FEE_ERRORS.includes(code) ? t(`feeError_${code}`) : t("error", { error: code }));
+  const message = (code: string) => (FEE_ERRORS.includes(code) ? FEE_ERROR_LABEL[code] : `Error: ${code}`);
 
   const load = useCallback(async () => {
     try {
@@ -93,8 +103,8 @@ export default function AdminFees({ call }: { call: Call }) {
 
   return (
     <section>
-      <h2 className="text-lg font-semibold">{t("fees")}</h2>
-      <p className="mt-1 text-xs text-ink-3">{t("feesHint")}</p>
+      <h2 className="text-lg font-semibold">Fees</h2>
+      <p className="mt-1 text-xs text-ink-3">Rates apply to new orders, auctions and mints from their start time. Orders already placed keep the rate they were placed at.</p>
       {error && <p className="mt-3 rounded-xl bg-down/10 px-4 py-2 text-sm text-down">{message(error)}</p>}
 
       {!data ? (
@@ -105,14 +115,10 @@ export default function AdminFees({ call }: { call: Call }) {
             const f = data.fees[kind];
             return (
               <div key={kind} className="rounded-2xl border border-line bg-surface p-4">
-                <dt className="text-xs text-ink-3">{t(`feeKind_${kind}`)}</dt>
+                <dt className="text-xs text-ink-3">{FEE_KIND_LABEL[kind]}</dt>
                 <dd className="mt-1 text-2xl font-bold tabular-nums">{formatFee(kind, f.value)}</dd>
-                {f.promo && (
-                  <dd className="mt-1 text-xs text-up">
-                    {t("feePromoLine", { label: f.promo.label ?? t("feePromoUnnamed"), date: fmtDate(f.promo.endsAt), base: formatFee(kind, f.base) })}
-                  </dd>
-                )}
-                {f.next && <dd className="mt-1 text-xs text-notice-ink">{t("feeNextLine", { date: fmtDate(f.next.startsAt), value: formatFee(kind, f.next.value) })}</dd>}
+                {f.promo && <dd className="mt-1 text-xs text-up">{`Promotion: ${f.promo.label ?? "Unnamed"}, until ${fmtDate(f.promo.endsAt)}. Base rate ${formatFee(kind, f.base)}`}</dd>}
+                {f.next && <dd className="mt-1 text-xs text-notice-ink">{`Base rate changes to ${formatFee(kind, f.next.value)} on ${fmtDate(f.next.startsAt)}`}</dd>}
               </div>
             );
           })}
@@ -120,7 +126,7 @@ export default function AdminFees({ call }: { call: Call }) {
       )}
 
       <form onSubmit={submit} className="mt-4 grid gap-3 rounded-2xl border border-line bg-surface p-5 sm:grid-cols-3">
-        <div role="radiogroup" aria-label={t("feeAdd")} className="flex w-fit rounded-full bg-surface-2 p-1 text-xs font-semibold sm:col-span-3">
+        <div role="radiogroup" aria-label="Rule type" className="flex w-fit rounded-full bg-surface-2 p-1 text-xs font-semibold sm:col-span-3">
           {([false, true] as const).map((promo) => (
             <button
               key={String(promo)}
@@ -130,48 +136,56 @@ export default function AdminFees({ call }: { call: Call }) {
               onClick={() => setForm((f) => ({ ...f, promo }))}
               className={`rounded-full px-3 py-1 transition ${form.promo === promo ? "bg-surface text-ink shadow-sm" : "text-ink-3 hover:text-ink"}`}
             >
-              {t(promo ? "feeTypePromo" : "feeTypeBase")}
+              {promo ? "Limited-time promotion" : "Change base rate"}
             </button>
           ))}
         </div>
         <label className={label}>
-          {t("feeKind")}
-          <Select value={form.kind} onChange={(kind) => setForm((f) => ({ ...f, kind }))} options={FEE_KINDS.map((k) => ({ value: k, label: t(`feeKind_${k}`) }))} className={field} />
+          Fee
+          <Select value={form.kind} onChange={(kind) => setForm((f) => ({ ...f, kind }))} options={FEE_KINDS.map((k) => ({ value: k, label: FEE_KIND_LABEL[k] }))} className={field} />
         </label>
         <label className={label}>
-          {t(form.kind === "mint" ? "feeValueUsd" : "feeValuePct")}
+          {form.kind === "mint" ? "Amount (USD)" : "Rate (%)"}
           <input required type="number" min={0} max={FEE_MAX[form.kind] / 100} step={0.01} value={form.value} onChange={set("value")} className={field} />
         </label>
         <label className={label}>
-          {t("feeStarts")}
+          Starts (blank = now)
           <input type="datetime-local" value={form.startsAt} onChange={set("startsAt")} className={field} />
         </label>
         {form.promo && (
           <>
             <label className={label}>
-              {t("feeEnds")}
+              Ends
               <input required type="datetime-local" value={form.endsAt} onChange={set("endsAt")} className={field} />
             </label>
             <label className={`${label} sm:col-span-2`}>
-              {t("feeLabel")}
-              <input value={form.label} onChange={set("label")} maxLength={60} placeholder={t("feeLabelPlaceholder")} className={field} />
+              Promotion name (shown to users, optional)
+              <input value={form.label} onChange={set("label")} maxLength={60} placeholder="Anniversary: zero fees" className={field} />
             </label>
           </>
         )}
-        <p className="text-xs text-ink-3 sm:col-span-3">{t("feeCapHint")}</p>
-        {shortNotice && <p className="rounded-xl border border-notice-line bg-notice-bg px-3 py-2 text-xs text-notice-ink sm:col-span-3">{t("feeNoticeWarning")}</p>}
+        <p className="text-xs text-ink-3 sm:col-span-3">
+          {
+            "Sale commission and auction fee are capped at 10% (the on-chain program's limit); the mint fee is capped at 10 USD. A base rate applies from its start until the next base rate. During a promotion, the lower of the promotion and base rate applies."
+          }
+        </p>
+        {shortNotice && (
+          <p className="rounded-xl border border-notice-line bg-notice-bg px-3 py-2 text-xs text-notice-ink sm:col-span-3">
+            {"This increase takes effect within 7 days. Give users at least 7 days' notice before raising fees."}
+          </p>
+        )}
         <div className="sm:col-span-3">
           <button disabled={busy !== undefined || !data} className="btn-primary rounded-full px-5 py-2 text-sm font-semibold disabled:opacity-50">
-            {busy === "add" ? "…" : t("feeSubmit")}
+            {busy === "add" ? "…" : "Add rule"}
           </button>
         </div>
       </form>
 
-      <h3 className="mt-8 text-sm font-semibold">{t("feeRules")}</h3>
+      <h3 className="mt-8 text-sm font-semibold">All rules</h3>
       {!data ? (
         <p className="mt-3 text-sm text-ink-3">…</p>
       ) : !rules.length ? (
-        <p className="mt-3 text-sm text-ink-3">{t("none")}</p>
+        <p className="mt-3 text-sm text-ink-3">Nothing here yet.</p>
       ) : (
         <ul className="mt-3 divide-y divide-line rounded-2xl border border-line bg-surface">
           {rules.map((r) => {
@@ -182,22 +196,23 @@ export default function AdminFees({ call }: { call: Call }) {
               <li key={r.id} className="flex flex-wrap items-center gap-4 px-4 py-3 text-sm">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">
-                    {t(`feeKind_${r.kind}`)} · {formatFee(r.kind, r.value)}
-                    <span className="ml-2 text-xs font-normal text-ink-3">{t(r.endsAt ? "feeRulePromo" : "feeRuleBase")}</span>
+                    {FEE_KIND_LABEL[r.kind]} · {formatFee(r.kind, r.value)}
+                    <span className="ml-2 text-xs font-normal text-ink-3">{r.endsAt ? "Promotion" : "Base rate"}</span>
                     {r.label && <span className="ml-2 text-xs font-normal text-ink-2">{r.label}</span>}
                   </p>
-                  <p className="mt-0.5 text-xs text-ink-3">
-                    {r.endsAt ? t("feeRange", { start: fmtDate(r.startsAt), end: fmtDate(r.endsAt) }) : t("feeFrom", { date: fmtDate(r.startsAt) })}
-                  </p>
+                  <p className="mt-0.5 text-xs text-ink-3">{r.endsAt ? `${fmtDate(r.startsAt)} → ${fmtDate(r.endsAt)}` : `From ${fmtDate(r.startsAt)}`}</p>
                 </div>
-                <span className={`text-xs font-semibold ${status === "active" ? "text-up" : status === "scheduled" ? "text-notice-ink" : "text-ink-3"}`}>{t(`feeStatus_${status}`)}</span>
+                <span className={`text-xs font-semibold ${status === "active" ? "text-up" : status === "scheduled" ? "text-notice-ink" : "text-ink-3"}`}>{FEE_STATUS_LABEL[status]}</span>
                 {action && (
                   <button
                     disabled={busy !== undefined}
-                    onClick={() => window.confirm(t(action === "delete" ? "feeDeleteConfirm" : "feeEndConfirm")) && act(r.id, () => call("DELETE", `/api/admin/fees/${r.id}`))}
+                    onClick={() =>
+                      window.confirm(action === "delete" ? "Delete this rule? It hasn't started yet." : "End this promotion now?") &&
+                      act(r.id, () => call("DELETE", `/api/admin/fees/${r.id}`))
+                    }
                     className="rounded-full border border-down px-4 py-1.5 text-xs font-semibold text-down hover:bg-down/10 disabled:opacity-50"
                   >
-                    {busy === r.id ? "…" : t(action === "delete" ? "feeDelete" : "feeEnd")}
+                    {busy === r.id ? "…" : action === "delete" ? "Delete" : "End now"}
                   </button>
                 )}
               </li>

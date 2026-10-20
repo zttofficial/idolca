@@ -1,7 +1,7 @@
 import { PublicKey } from "@solana/web3.js";
 import { allow, tooMany } from "@/lib/server/rate-limit";
 import { chainError, fail, requireWalletUser } from "@/lib/server/require-user";
-import { buildBid, buildBuy, buildCancel, buildCancelAuction, buildCreateAuction, buildList, buildRedeemRequest, marketReady, vaultAuctionsReady, vaultState } from "@/lib/server/vault-chain";
+import { buildBid, buildBuy, buildCancel, buildCancelAuction, buildCreateAuction, buildList, buildRedeemRequest, marketReady, readCardState, vaultAuctionsReady } from "@/lib/server/vault-chain";
 import { parseAddress, redeemCharge, redeemFeeUsd } from "@/lib/shipping";
 import { getVaultRow } from "@/lib/server/vault-cards";
 import { AUCTION_DAYS, AUCTION_MIN_START } from "@/lib/auction";
@@ -25,22 +25,24 @@ export async function POST(request: Request) {
     amountUsd?: unknown;
   };
   const card = body.cardId ?? "";
-  const state = (await vaultState())[card];
+  // 即時讀這張卡（不用索引）：權限檢查和組交易都以鏈上此刻的狀態為準
+  const state = await readCardState(card);
   if (!state || state.burned) return fail("not_found", 404);
   const me = new PublicKey(a.wallet);
   try {
     switch (body.action) {
       case "buy":
-        return Response.json({ tx: await buildBuy(card, me) });
+        return Response.json({ tx: await buildBuy(card, me, state) });
       case "list": {
         const price = Number(body.priceUsdt);
         if (state.owner !== a.wallet || state.redeeming) return fail("not_allowed", 403);
-        if (!Number.isFinite(price) || price <= 0 || price > 100_000) return fail("invalid_price");
+        // 掛單價格取到分（見 buildList），不到一分的不收
+        if (!Number.isFinite(price) || price < 0.01 || price > 100_000) return fail("invalid_price");
         return Response.json({ tx: await buildList(card, me, price) });
       }
       case "cancel":
         if (state.listing?.seller !== a.wallet) return fail("not_allowed", 403);
-        return Response.json({ tx: await buildCancel(card, me) });
+        return Response.json({ tx: await buildCancel(card, me, state) });
       case "auction": {
         const start = Number(body.startUsd);
         const reserve = body.reserveUsd === null || body.reserveUsd === undefined || body.reserveUsd === "" ? null : Number(body.reserveUsd);
@@ -55,12 +57,12 @@ export async function POST(request: Request) {
       case "bid": {
         const amount = Number(body.amountUsd);
         if (!Number.isFinite(amount) || amount <= 0 || amount > 100_000) return fail("bid_too_low");
-        return Response.json({ tx: await buildBid(card, me, amount) });
+        return Response.json({ tx: await buildBid(card, me, amount, state) });
       }
       case "cancelAuction":
         if (state.auction?.seller !== a.wallet) return fail("not_allowed", 403);
         if (state.auction.bidCount > 0) return fail("has_bids", 409);
-        return Response.json({ tx: await buildCancelAuction(card, me) });
+        return Response.json({ tx: await buildCancelAuction(card, me, state) });
       case "redeem": {
         if (state.owner !== a.wallet || state.redeeming) return fail("not_allowed", 403);
         const address = parseAddress(body.address);

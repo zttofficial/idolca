@@ -1,7 +1,7 @@
 import { after } from "next/server";
 import { redemptions } from "@/lib/server/schema";
 import { fail, requireWalletUser } from "@/lib/server/require-user";
-import { confirmSignature, invalidateVaultState, redeemMemo, vaultState } from "@/lib/server/vault-chain";
+import { confirmSignature, readCardState, redeemMemo } from "@/lib/server/vault-chain";
 import { verifyPayment } from "@/lib/server/funds";
 import { notifyVaultTx } from "@/lib/server/vault-notify";
 import { parseAddress, redeemCharge } from "@/lib/shipping";
@@ -20,9 +20,8 @@ export async function POST(request: Request) {
   } catch (err) {
     return fail(err instanceof Error ? err.message : "tx_failed");
   }
-  invalidateVaultState();
   after(() => notifyVaultTx(a.db, body.signature!).catch((err) => console.error("vault notify failed", err)));
-  const state = (await vaultState())[body.cardId];
+  const state = await readCardState(body.cardId);
   // 只有凍結中的 NFT 的持有人能登記提貨，別人拿到簽名也改不了收件地址
   if (body.action === "redeem" && state?.redeeming && state.owner === a.wallet) {
     // 運費、稅和凍結在同一筆交易裡：按卡所在的金庫（從資料庫讀）和這次回報的收件國家、省份重算（和組交易用同一個 redeemCharge），

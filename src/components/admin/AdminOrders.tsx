@@ -2,92 +2,138 @@
 
 import { useTranslations } from "next-intl";
 import { formatPrice } from "@/lib/fx";
-import type { ShippingAddress } from "@/lib/shipping";
-import type { Tracking } from "@/lib/tracking";
+import type { AdminOrder } from "@/lib/server/orders";
 import { AddressBlock } from "@/components/shipping/AddressDialog";
 import { TrackingBlock } from "@/components/shipping/Tracking";
-import { TxLink, type Act, type Call } from "./shared";
+import AdminList from "./AdminList";
+import { Facts, Party, Thumb, TxLink, when, type Call } from "./shared";
 
-export type Order = {
-  id: string;
-  status: string;
-  title: string;
-  photo: string | null;
-  priceUsdt: number;
-  rail: "solana" | "arc";
-  payTx: string | null;
-  payoutTx: string | null;
-  transferTx: string | null;
-  refundTx: string | null;
-  disputeReason: string | null;
-  shipBy: string | null;
-  autoReleaseAt: string | null;
-  // 買家的收件地址和賣家填的物流單號，申訴時核對寄到哪裡、包裹走到哪
-  shippingAddress: ShippingAddress | null;
-  tracking: Tracking | null;
+// 後台只用英文，下面是代碼對應的顯示文字
+const ORDER_VIEW_LABEL: Record<string, string> = {
+  open: "Open",
+  disputed: "Disputed",
+  late: "Ship-by due",
+  paid: "Paid",
+  shipped: "Shipped",
+  completed: "Completed",
+  refunded: "Refunded",
+  cancelled: "Cancelled",
+  all: "All",
 };
 
-// 擔保交易訂單：申訴中的排最前面，可以退款給買家或放款給賣家
-export default function AdminOrders({ orders, busy, act, call }: { orders: Order[] | null; busy?: string; act: Act; call: Call }) {
-  const t = useTranslations("Admin");
+export const ORDER_STATUSES = ["open", "disputed", "late", "paid", "shipped", "completed", "refunded", "cancelled", "all"] as const;
+const isOpen = (o: AdminOrder) => o.status === "paid" || o.status === "shipped" || o.status === "disputed";
+
+// 擔保交易訂單：預設列還沒結束的（申訴中的排最前面），點一列在右側看買賣雙方、地址、物流和交易，申訴時退款給買家或放款給賣家
+export default function AdminOrders({ call, onChanged }: { call: Call; onChanged: () => void }) {
   const tb = useTranslations("Binder");
+  const status = (o: AdminOrder) => <span className={`font-medium ${o.status === "disputed" ? "text-notice-ink" : "text-ink-2"}`}>{tb(`orderStatus_${o.status}`)}</span>;
   return (
     <section>
-      <h2 className="text-lg font-semibold">{t("orders")}</h2>
-      <p className="mt-1 text-xs text-ink-3">{t("ordersHint")}</p>
-      {!orders?.length ? (
-        <p className="mt-4 text-sm text-ink-3">{orders ? t("none") : "…"}</p>
-      ) : (
-        <ul className="mt-4 divide-y divide-line rounded-2xl border border-line bg-surface">
-          {orders.map((o) => {
-            const open = o.status === "paid" || o.status === "shipped" || o.status === "disputed";
-            return (
-              <li key={o.id} className="flex flex-wrap items-center gap-4 px-4 py-3 text-sm">
-                <div className="aspect-[55/85] w-10 shrink-0 overflow-hidden rounded-md bg-surface-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- 用戶上傳的照片 */}
-                  {o.photo && <img src={o.photo} alt="" className="h-full w-full object-cover" />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{o.title}</p>
-                  <p className="text-xs text-ink-3">
-                    {formatPrice(o.priceUsdt)} · <span className={`font-medium ${o.status === "disputed" ? "text-notice-ink" : "text-ink-2"}`}>{tb(`orderStatus_${o.status}`)}</span>
-                    {o.disputeReason && <span> · {o.disputeReason}</span>}
+      <h2 className="text-lg font-semibold">Escrow orders</h2>
+      <p className="mt-1 mb-4 text-xs text-ink-3">
+        Disputed orders first. Refund returns the full price to the buyer and relists the card; release sends the NFT to the buyer and the payment to the seller.
+      </p>
+      <AdminList<AdminOrder>
+        endpoint="/api/admin/orders"
+        call={call}
+        onChanged={onChanged}
+        rowKey={(o) => o.id}
+        search="Search order ID, card, buyer or seller email or wallet, payment tx"
+        dates
+        filters={[{ key: "status", label: "Status", options: ORDER_STATUSES.map((s) => ({ value: s, label: ORDER_VIEW_LABEL[s] })) }]}
+        renderRow={(o) => (
+          <>
+            <Thumb src={o.photo} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-semibold">{o.title}</span>
+              <span className="block text-xs text-ink-3">
+                {formatPrice(o.priceUsdt)} · {status(o)}
+                {o.disputeReason && <span> · {o.disputeReason}</span>}
+              </span>
+            </span>
+            <span className="w-full text-xs text-ink-3 sm:w-auto sm:text-right">
+              {o.status === "paid" && o.shipBy ? `Ship by ${when(o.shipBy)}` : when(o.updatedAt)}
+              <span className="block truncate">
+                {o.buyer.email ?? o.buyer.name} → {o.seller.email ?? o.seller.name}
+              </span>
+            </span>
+          </>
+        )}
+        detail={{
+          title: (o) => o.title || o.id,
+          render: (o, { busy, act, call }) => (
+            <div className="space-y-5">
+              <div className="flex gap-4">
+                <span className="w-20 shrink-0">
+                  <Thumb src={o.photo} />
+                </span>
+                <div className="min-w-0 text-sm">
+                  <p className="font-semibold">{o.title}</p>
+                  <p className="mt-1 text-xs text-ink-3">
+                    {formatPrice(o.priceUsdt)} · {status(o)} · {`fee ${formatPrice(o.feeUsdt, 2)}`}
                   </p>
-                  <p className="mt-0.5 flex flex-wrap gap-3 text-xs text-ink-3">
-                    <TxLink label={tb("txPayment")} sig={o.payTx} onArc={o.rail === "arc"} />
-                    <TxLink label={tb("txTransfer")} sig={o.transferTx} />
-                    <TxLink label={tb("txPayout")} sig={o.payoutTx} />
-                    <TxLink label={tb("txRefund")} sig={o.refundTx} onArc={o.rail === "arc"} />
-                  </p>
-                  {open &&
-                    (o.shippingAddress ? <AddressBlock address={o.shippingAddress} className="mt-2 max-w-xs" /> : <p className="mt-1 text-xs text-notice-ink">{t("orderNoAddress")}</p>)}
-                  {o.tracking && <TrackingBlock tracking={o.tracking} className="mt-2 max-w-xs" />}
+                  {o.disputeReason && <p className="mt-2 rounded-lg bg-notice-bg px-3 py-2 text-xs text-notice-ink">{o.disputeReason}</p>}
                 </div>
-                {open && (
-                  <div className="flex gap-2">
-                    {o.status !== "paid" && (
-                      <button
-                        disabled={busy !== undefined}
-                        onClick={() => window.confirm(t("releaseConfirm")) && act(`${o.id}:release`, () => call("POST", `/api/admin/orders/${o.id}/release`))}
-                        className="btn-primary rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
-                      >
-                        {busy === `${o.id}:release` ? "…" : t("release")}
-                      </button>
-                    )}
+              </div>
+              <Facts
+                rows={[
+                  [
+                    "Order ID",
+                    <span key="id" className="font-mono text-xs break-all">
+                      {o.id}
+                    </span>,
+                  ],
+                  ["Buyer", <Party key="b" party={o.buyer} />],
+                  ["Seller", <Party key="s" party={o.seller} />],
+                  ["Created", when(o.createdAt)],
+                  ["Paid", when(o.paidAt)],
+                  ["Ship by", when(o.shipBy)],
+                  ["Address due", when(o.addressBy)],
+                  ["Shipped", when(o.shippedAt)],
+                  ["Auto-release", when(o.autoReleaseAt)],
+                  ["Payment rail", `${o.rail}${o.auction ? ` · ${"auction win"}` : ""}`],
+                ]}
+              />
+              <p className="flex flex-wrap gap-3 text-xs">
+                <TxLink label={tb("txPayment")} sig={o.payTx} onArc={o.rail === "arc"} />
+                <TxLink label={tb("txTransfer")} sig={o.transferTx} />
+                <TxLink label={tb("txPayout")} sig={o.payoutTx} />
+                <TxLink label={tb("txRefund")} sig={o.refundTx} onArc={o.rail === "arc"} />
+              </p>
+              {isOpen(o) &&
+                (o.shippingAddress ? <AddressBlock address={o.shippingAddress} /> : <p className="text-xs text-notice-ink">{"No shipping address yet, so the seller can't ship."}</p>)}
+              {o.tracking && <TrackingBlock tracking={o.tracking} />}
+              {isOpen(o) && (
+                <div className="flex flex-wrap gap-2 border-t border-line pt-4">
+                  {o.status !== "paid" && (
                     <button
                       disabled={busy !== undefined}
-                      onClick={() => window.confirm(t("refundConfirm")) && act(`${o.id}:refund`, () => call("POST", `/api/admin/orders/${o.id}/refund`))}
-                      className="rounded-full border border-down px-4 py-1.5 text-xs font-semibold text-down hover:bg-down/10 disabled:opacity-50"
+                      onClick={() =>
+                        window.confirm("Send the NFT to the buyer and the payment to the seller? This can't be undone.") &&
+                        act(`${o.id}:release`, () => call("POST", `/api/admin/orders/${o.id}/release`))
+                      }
+                      className="btn-primary rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
                     >
-                      {busy === `${o.id}:refund` ? "…" : t("refund")}
+                      {busy === `${o.id}:release` ? "…" : "Release to seller"}
                     </button>
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                  )}
+                  <button
+                    disabled={busy !== undefined}
+                    onClick={() =>
+                      window.confirm("Refund the full price to the buyer? This sends a transaction and can't be undone.") &&
+                      act(`${o.id}:refund`, () => call("POST", `/api/admin/orders/${o.id}/refund`))
+                    }
+                    className="rounded-full border border-down px-4 py-1.5 text-xs font-semibold text-down hover:bg-down/10 disabled:opacity-50"
+                  >
+                    {busy === `${o.id}:refund` ? "…" : "Refund buyer"}
+                  </button>
+                </div>
+              )}
+            </div>
+          ),
+        }}
+      />
     </section>
   );
 }

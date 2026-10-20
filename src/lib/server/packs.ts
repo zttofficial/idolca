@@ -5,7 +5,7 @@ import { PublicKey } from "@solana/web3.js";
 import type { Db } from "./db";
 import { packOrders, packPulls, vaultCards } from "./schema";
 import { buildBuybackTx, buildPayment, payout, transferVaultNft, verifyPayment, walletSignature } from "./funds";
-import { confirmSignature, invalidateVaultState, vaultState, type VaultCardState } from "./vault-chain";
+import { cardStates, confirmSignature, readCardState, refreshCardStates, type VaultCardState } from "./vault-chain";
 import { getPackRow } from "./pack-pool";
 import { invalidateVaultCards, toCard } from "./vault-cards";
 import { CHAIN } from "@/lib/chain";
@@ -25,15 +25,13 @@ const isLive = (p: { startsAt: Date; endsAt: Date }) => p.startsAt.getTime() <= 
 // 鏈上確實能抽：還在平台錢包，沒掛單、沒在提貨、沒銷毀
 const drawable = (s: VaultCardState | undefined) => Boolean(s && s.owner === CHAIN.platform && !s.listing && !s.redeeming && !s.burned);
 
-// 現在能抽的卡：在卡池裡、沒被抽走，而且鏈上確實能抽
+// 現在能抽的卡：在卡池裡、沒被抽走，而且鏈上確實能抽（按鏈上狀態索引；抽中後轉移前再即時確認那一張）
 async function available(db: Db, packId: string) {
-  const [rows, state] = await Promise.all([
-    db
-      .select()
-      .from(vaultCards)
-      .where(and(eq(vaultCards.packId, packId), isNull(vaultCards.packOrder), isNull(vaultCards.burnedAt))),
-    vaultState(),
-  ]);
+  const rows = await db
+    .select()
+    .from(vaultCards)
+    .where(and(eq(vaultCards.packId, packId), isNull(vaultCards.packOrder), isNull(vaultCards.burnedAt)));
+  const state = await cardStates(rows.map((r) => r.id));
   return rows.filter((r) => drawable(state[r.id]));
 }
 
@@ -111,6 +109,11 @@ export async function confirmPackOrder(db: Db, userId: string, orderId: string, 
       .where(and(eq(vaultCards.id, card.id), isNull(vaultCards.packOrder)))
       .returning();
     if (!reserved) continue;
+    // 索引可能稍舊：轉移前即時確認鏈上確實能抽，不能抽就放回（即時讀已更新索引，重抽時不會再抽到它）
+    if (!drawable((await readCardState(card.id)) ?? undefined)) {
+      await db.update(vaultCards).set({ packOrder: null }).where(eq(vaultCards.id, card.id));
+      continue;
+    }
     let tx: string;
     try {
       tx = await transferVaultNft(card.asset, order.wallet);
@@ -130,9 +133,10 @@ export async function confirmPackOrder(db: Db, userId: string, orderId: string, 
     refundTx = order.rail === "arc" ? await arcPayout(locked.payer!, cents) : await payout(new PublicKey(order.wallet), cents / 100, locked.coin);
   }
   await db.update(packOrders).set({ status: "drawn", refundTx }).where(eq(packOrders.id, orderId));
-  invalidateVaultState();
   invalidateVaultCards();
-  return { pulls: await pullsOf(db, orderId), refundTx, payTx: locked.payTx };
+  const pulls = await pullsOf(db, orderId);
+  await refreshCardStates(pulls.map((p) => p.cardId));
+  return { pulls, refundTx, payTx: locked.payTx };
 }
 
 // 這張卡是我開卡包抽到、還沒賣回的嗎
@@ -153,7 +157,7 @@ async function myPull(db: Db, userId: string, cardId: string) {
 export async function buildBuyback(db: Db, userId: string, wallet: string, cardId: string) {
   const row = await myPull(db, userId, cardId);
   if (!row) return { error: "not_found" as const };
-  if ((await vaultState())[cardId]?.owner !== wallet) return { error: "not_owner" as const };
+  if ((await readCardState(cardId))?.owner !== wallet) return { error: "not_owner" as const };
   const amount = Math.round((row.card.packValueCents ?? 0) * BUYBACK_RATE) / 100;
   const coin = row.order.rail === "arc" ? "usdc" : row.order.coin;
   return { amountUsdt: amount, tx: await buildBuybackTx(new PublicKey(wallet), row.card.asset, amount, coin) };
@@ -164,8 +168,7 @@ export async function confirmBuyback(db: Db, userId: string, cardId: string, sig
   const row = await myPull(db, userId, cardId);
   if (!row) return { error: "not_found" as const };
   await confirmSignature(signature);
-  invalidateVaultState();
-  if ((await vaultState())[cardId]?.owner !== CHAIN.platform) return { error: "not_transferred" as const };
+  if ((await readCardState(cardId))?.owner !== CHAIN.platform) return { error: "not_transferred" as const };
   await db.update(packPulls).set({ buybackTx: signature }).where(eq(packPulls.id, row.pull.id));
   await db.update(vaultCards).set({ packOrder: null }).where(eq(vaultCards.id, cardId));
   invalidateVaultCards();

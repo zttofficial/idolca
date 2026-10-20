@@ -2,7 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { connection } from "next/server";
 import { redemptions } from "@/lib/server/schema";
 import { requireAdmin } from "@/lib/server/admin";
-import { shipRedemption, vaultState } from "@/lib/server/vault-chain";
+import { readCardState, shipRedemption } from "@/lib/server/vault-chain";
 import { markBurned } from "@/lib/server/vault-cards";
 import { notifyRedeemShipped } from "@/lib/server/redemption-tracking";
 import { parseTracking } from "@/lib/tracking";
@@ -16,7 +16,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/admin/redem
   const body = (await request.json().catch(() => ({}))) as { tracking?: unknown };
   const tracking = parseTracking(body.tracking);
   if (!tracking) return Response.json({ error: "invalid_tracking" }, { status: 400 });
-  if (!(await vaultState())[cardId]?.redeeming) return Response.json({ error: "not_redeeming" }, { status: 409 });
+  if (!(await readCardState(cardId))?.redeeming) return Response.json({ error: "not_redeeming" }, { status: 409 });
   const [req] = await a.db
     .select()
     .from(redemptions)

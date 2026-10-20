@@ -32,17 +32,13 @@ const EMPTY = {
 
 // 選金庫（直接入庫和收藏卡轉金庫卡共用）
 export function VaultSelect({ value, onChange, className }: { value: VaultId; onChange: (vault: VaultId) => void; className?: string }) {
-  const t = useTranslations("Admin");
   const tVault = useTranslations("Vaults");
-  return (
-    <Select value={value} onChange={onChange} options={VAULT_LIST.map((v) => ({ value: v.id, label: `${v.code} · ${tVault(v.id)}` }))} ariaLabel={t("fieldVault")} className={className} />
-  );
+  return <Select value={value} onChange={onChange} options={VAULT_LIST.map((v) => ({ value: v.id, label: `${v.code} · ${tVault(v.id)}` }))} ariaLabel="Vault" className={className} />;
 }
 
 // 入庫：實物鑑定通過後拍正反面、填卡片資料、所在的金庫和倉位，建立金庫卡並鑄造 NFT。
 // 寄存人留空就是平台自有庫存（之後可以放進卡包卡池）
 export default function VaultIntake() {
-  const t = useTranslations("Admin");
   const tRarity = useTranslations("Rarity");
   const [form, setForm] = useState(EMPTY);
   const [photos, setPhotos] = useState<(string | null)[]>([null, null]);
@@ -99,16 +95,20 @@ export default function VaultIntake() {
   const label = "block text-xs text-ink-3";
   return (
     <section>
-      <h2 className="text-lg font-semibold">{t("intake")}</h2>
-      <p className="mt-1 text-xs text-ink-3">{t("intakeHint")}</p>
+      <h2 className="text-lg font-semibold">Vault intake</h2>
+      <p className="mt-1 text-xs text-ink-3">
+        {
+          "After a physical card passes authentication: photograph both sides, fill in the card, its vault and shelf location, and mint its vault NFT. Leave the depositor empty for Idolca's own stock (e.g. trading card pack pools)."
+        }
+      </p>
       <form onSubmit={submit} className="mt-4 grid gap-5 rounded-2xl border border-line bg-surface p-5 md:grid-cols-[200px_1fr]">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-1">
           {[0, 1].map((i) => (
             <label key={i} className="block cursor-pointer">
-              <span className={label}>{t(i === 0 ? "photoFront" : "photoBack")}</span>
+              <span className={label}>{i === 0 ? "Front" : "Back"}</span>
               <span className="mt-1 grid aspect-[55/85] place-items-center overflow-hidden rounded-xl border border-dashed border-line bg-surface-2 text-xs text-ink-3">
                 {/* eslint-disable-next-line @next/next/no-img-element -- 本機預覽 */}
-                {photos[i] ? <img src={photos[i]!} alt="" className="h-full w-full object-cover" /> : t("choosePhoto")}
+                {photos[i] ? <img src={photos[i]!} alt="" className="h-full w-full object-cover" /> : "Choose photo"}
               </span>
               <input type="file" accept="image/*" onChange={pick(i)} className="sr-only" />
             </label>
@@ -116,72 +116,77 @@ export default function VaultIntake() {
         </div>
         <div className="grid content-start gap-3 sm:grid-cols-2">
           <label className={label}>
-            {t("fieldGroup")}
+            Group
             <Combobox required value={form.group} onChange={setValue("group")} options={groupOptions} className={field} />
           </label>
           <label className={label}>
-            {t("fieldMember")}
+            Member
             <Combobox required value={form.member} onChange={setValue("member")} options={members} className={field} />
           </label>
           <label className={label}>
-            {t("fieldAlbum")}
+            Album
             <Combobox required value={form.album} onChange={setValue("album")} options={albums} className={field} />
           </label>
           <label className={label}>
-            {t("fieldVersion")}
+            Version
             <Combobox required value={form.version} onChange={setValue("version")} options={versions} className={field} />
           </label>
           <label className={label}>
-            {t("fieldRarity")}
+            Type
             <Select value={form.rarity} onChange={setValue("rarity")} options={RARITY_LIST.map((r) => ({ value: r, label: tRarity(r) }))} className={field} />
           </label>
           <label className={label}>
-            {t("fieldGrader")}
-            <Select value={form.grader} onChange={setValue("grader")} options={[{ value: "", label: t("noGrade") }, ...GRADERS.map((g) => ({ value: g.id, label: g.name }))]} className={field} />
+            Grading company (optional)
+            <Select
+              value={form.grader}
+              onChange={setValue("grader")}
+              options={[{ value: "", label: "Not graded" }, ...GRADERS.map((g) => ({ value: g.id, label: g.name }))]}
+              className={field}
+            />
           </label>
           {form.grader && (
             <>
               <label className={label}>
-                {t("fieldGradeScore")}
+                Grade
                 <input required type="number" min={1} max={10} step={0.5} value={form.gradeScore} onChange={set("gradeScore")} className={field} />
               </label>
               {!GRADERS.find((g) => g.id === form.grader)?.inHouse && (
                 <label className={label}>
-                  {t("fieldGradeCert")}
+                  Cert number
                   <input required value={form.gradeCert} onChange={set("gradeCert")} maxLength={40} className={field} />
                 </label>
               )}
             </>
           )}
           <label className={label}>
-            {t("fieldVault")}
+            Vault
             <VaultSelect value={form.vault} onChange={setValue("vault")} className={field} />
           </label>
           <label className={label}>
-            {t("fieldLocation")}
+            Shelf location
             <input required value={form.location} onChange={set("location")} placeholder="A03-12" className={field} />
           </label>
           <label className={label}>
-            {t("fieldDepositor")}
-            <input value={form.depositor} onChange={set("depositor")} placeholder={t("depositorPlaceholder")} className={field} />
+            Depositor (optional)
+            <input value={form.depositor} onChange={set("depositor")} placeholder="Email or wallet address" className={field} />
           </label>
           <label className={`${label} sm:col-span-2`}>
-            {t("fieldCondition")}
+            Condition notes (optional)
             <input value={form.condition} onChange={set("condition")} maxLength={300} className={field} />
           </label>
           <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
             <button disabled={busy || !photos[0] || !photos[1]} className="btn-primary rounded-full px-5 py-2 text-sm font-semibold disabled:opacity-50">
-              {busy ? t("minting") : t("intakeSubmit")}
+              {busy ? "Minting…" : "Add to vault and mint"}
             </button>
-            {error && <span className="text-xs text-down">{t("error", { error })}</span>}
+            {error && <span className="text-xs text-down">{`Error: ${error}`}</span>}
             {done && (
               <span className="text-xs text-up">
-                {t("intakeDone", { serial: done.card.serial })}{" "}
+                {`Added ${done.card.serial}.`}{" "}
                 <Link href={`/card/${done.card.id}`} className="font-semibold underline">
-                  {t("viewCard")}
-                </Link>{" "}
+                  View card
+                </Link>
                 <a href={solscanUrl("tx", done.mintTx)} target="_blank" rel="noreferrer" className="font-semibold underline">
-                  {t("mintTx")} ↗
+                  {"Mint transaction"} ↗
                 </a>
               </span>
             )}

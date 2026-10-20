@@ -15,7 +15,7 @@ import { Link } from "@/i18n/navigation";
 import { CHAIN } from "@/lib/chain";
 import { getDb } from "@/lib/server/db";
 import { getVaultRow, toCard } from "@/lib/server/vault-cards";
-import { marketReady, vaultState } from "@/lib/server/vault-chain";
+import { cardStates, marketReady } from "@/lib/server/vault-chain";
 import type { Card } from "@/lib/cards";
 import { redeemFeeUsd, vaultCountries } from "@/lib/shipping";
 import { REDEEM_HANDLING_DAYS } from "@/lib/policy";
@@ -154,7 +154,7 @@ async function CardContent({ params }: { params: PageProps<"/[locale]/card/[id]"
 // 退貨：服務條款規定鏈上成交不可撤回，標成不接受退貨
 async function ProductJsonLd({ card }: { card: Card }) {
   if (card.status === "redeemed" || !marketReady()) return null;
-  const live = await vaultState()
+  const live = await cardStates([card.id])
     .then((s) => s[card.id])
     .catch(() => undefined);
   if (!live?.listing || live.auction || live.burned) return null;
