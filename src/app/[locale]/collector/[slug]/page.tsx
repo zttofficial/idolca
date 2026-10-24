@@ -19,7 +19,7 @@ async function findBinder(slug: string) {
 }
 
 // 分享圖由同目錄的 opengraph-image.tsx 生成。檔案約定的圖蓋不過 pageMetadata 寫明的圖，所以在這裡直接指過去；
-// 網址帶按暱稱和卡片清單算的版本號，收藏冊改了社群平台才會重抓
+// 網址帶按暱稱和冊子內容算的版本號，收藏冊改了社群平台才會重抓
 export async function generateMetadata(props: PageProps<"/[locale]/collector/[slug]">): Promise<Metadata> {
   const binder = await findBinder((await props.params).slug);
   if (!binder) return {};
@@ -27,14 +27,14 @@ export async function generateMetadata(props: PageProps<"/[locale]/collector/[sl
   const t = await getTranslations("Meta");
   const path = `/collector/${binder.slug}`;
   const version = createHash("sha256")
-    .update(JSON.stringify([binder.name, binder.have, binder.want]))
+    .update(JSON.stringify([binder.name, binder.slots, binder.want]))
     .digest("hex")
     .slice(0, 12);
   return pageMetadata({
     locale,
     path,
     title: t("publicBinderTitle", { name: binder.name }),
-    description: t("publicBinderDescription", { name: binder.name, have: binder.have.length, want: binder.want.length }),
+    description: t("publicBinderDescription", { name: binder.name, have: binder.count, want: binder.want.length }),
     image: `${localePath(locale, path)}/opengraph-image?v=${version}`,
   });
 }
@@ -61,7 +61,7 @@ async function CollectorContent({ params }: { params: PageProps<"/[locale]/colle
   const t = await getTranslations("PublicBinder");
   const since = new Date(binder.joinedAt).toLocaleDateString(locale, { year: "numeric", month: "long" });
   const stats = [
-    { label: t("statHave"), value: binder.have.length },
+    { label: t("statHave"), value: binder.count },
     { label: t("statWant"), value: binder.want.length },
   ];
   return (
@@ -82,7 +82,7 @@ async function CollectorContent({ params }: { params: PageProps<"/[locale]/colle
       </div>
       <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-2 [overflow-wrap:anywhere]">{t("tradeNote", { name: binder.name })}</p>
 
-      <PublicBinderView have={binder.have} want={binder.want} />
+      <PublicBinderView slots={binder.slots} want={binder.want} />
 
       <section className="mt-16 grid gap-6 rounded-3xl border border-line bg-surface-2 p-6 sm:p-10 lg:grid-cols-[1fr_auto] lg:items-center">
         <div>

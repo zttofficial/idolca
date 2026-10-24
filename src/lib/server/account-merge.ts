@@ -22,6 +22,9 @@ export async function mergeWalletAccount(db: Db, fromId: string, intoId: string,
     q.execute(sql`UPDATE binder_entries SET user_id = ${intoId} WHERE user_id = ${fromId}`),
     q.execute(sql`DELETE FROM binder_wants f WHERE f.user_id = ${fromId} AND EXISTS (SELECT 1 FROM binder_wants t WHERE t.user_id = ${intoId} AND t.template_id = f.template_id)`),
     q.execute(sql`UPDATE binder_wants SET user_id = ${intoId} WHERE user_id = ${fromId}`),
+    // 公開頁上不顯示的卡：兩邊都設過的留一筆
+    q.execute(sql`DELETE FROM binder_private f WHERE f.user_id = ${fromId} AND EXISTS (SELECT 1 FROM binder_private t WHERE t.user_id = ${intoId} AND t.slot_key = f.slot_key)`),
+    q.execute(sql`UPDATE binder_private SET user_id = ${intoId} WHERE user_id = ${fromId}`),
     // 擺法和水龍頭紀錄每人一筆：郵箱帳號沒有才搬過去，有就留郵箱帳號的（舊的隨帳號刪除）
     q.execute(sql`UPDATE binder_layouts SET user_id = ${intoId} WHERE user_id = ${fromId} AND NOT EXISTS (SELECT 1 FROM binder_layouts WHERE user_id = ${intoId})`),
     q.execute(sql`UPDATE faucet_claims SET user_id = ${intoId} WHERE user_id = ${fromId} AND NOT EXISTS (SELECT 1 FROM faucet_claims WHERE user_id = ${intoId})`),

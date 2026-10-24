@@ -35,7 +35,7 @@
 | 卡片篩選元件（搜尋框、品類 → 團體 → 成員；市場用側欄的二級選單、列出名錄裡的全部團體，收藏冊用上方可收起的面板），市場和收藏冊共用 | `/market`、`/binder` | `src/components/market/CardFilters.tsx`、`src/lib/facets.ts` |
 | 圖鑑 | `/catalog`、`/catalog/[group]` | `src/lib/catalog.ts` |
 | 首頁的「你收哪個團？」彈窗（打開 3 秒後彈出，選團進圖鑑勾卡；關掉或選過就不再彈，收藏冊有卡的人不彈）、圖鑑頁勾了第一張卡後提示未登入的訪客建帳號保存 | 首頁、`/catalog/[group]` | `src/components/landing/GroupPickerDialog.tsx`、`src/components/binder/SaveBinderNudge.tsx` |
-| 公開收藏冊（用戶自己打開；網址用第一次公開時產生的 8 字元代號，關掉再開不變，錢包帳號併進郵箱帳號時沿用；只公開圖鑑裡標記的「有」和「想要」，不公開自己拍的照片和錢包；每頁有自己的分享圖） | `/collector/[slug]`、收藏冊的分享按鈕 | `src/lib/server/public-binder.ts`、`src/app/api/binder/share`、`src/components/binder/PublicBinder.tsx`、`ShareBinder.tsx`，分享圖 `src/app/[locale]/collector/[slug]/opengraph-image.tsx`、`src/lib/server/share-image.tsx` |
+| 公開收藏冊（用戶自己打開；網址用第一次公開時產生的 8 字元代號，關掉再開不變，錢包帳號併進郵箱帳號時沿用。冊子內容和 `/binder` 相同：錢包裡的金庫卡、自己上鏈的收藏卡、圖鑑標記的卡款，照用戶的擺法排，卡套元件共用；拿出冊子的卡和在卡片詳情裡關掉「在公開收藏冊顯示」的卡不顯示（`binder_private`）；另列想要的卡款。不公開張數、圖鑑卡款上自己拍的照片、錢包地址和訂單；每頁有自己的分享圖） | `/collector/[slug]`、收藏冊的分享按鈕和卡片詳情 | `src/lib/server/public-binder.ts`、`src/app/api/binder/share`、`src/components/binder/PublicBinder.tsx`、`BinderSlots.tsx`、`ShareBinder.tsx`，分享圖 `src/app/[locale]/collector/[slug]/opengraph-image.tsx`、`src/lib/server/share-image.tsx` |
 | 團體名錄（K-pop、J-pop、C-pop、T-pop 四個品類；篩選器的團體清單、表單的團體和成員建議；按照片檔名預填名稱、團體、成員） | 上鏈、入庫表單 | `src/lib/directory.ts`，各品類的名錄在 `src/lib/groups/` |
 | 金庫頁（存貨證明） | `/vault` | `src/components/vault/` |
 | 專輯銷量榜 | `/charts` | `src/lib/server/circle-chart.ts` |

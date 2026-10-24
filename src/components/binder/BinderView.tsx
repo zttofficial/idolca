@@ -12,15 +12,16 @@ import ListingControl from "@/components/market/ListingControl";
 import Dialog from "@/components/ui/Dialog";
 import InfoTip from "@/components/ui/InfoTip";
 import BinderBook from "./BinderBook";
+import { ItemPocket, Pocket, VaultSlot, type Owned } from "./BinderSlots";
 import BinderArranger from "./BinderArranger";
-import { ShareBinderButton } from "./ShareBinder";
+import { PublicToggle, ShareBinderButton } from "./ShareBinder";
 import { arrange, clearPocket, EMPTY_LAYOUT, isTrackedOnly, takeOut } from "@/lib/binder-layout";
 import { Orders } from "./BinderChain";
 import { listVaultCard, refreshChainState, useChainState, useTemplateMarket, useVaultCards, vaultAction } from "@/lib/chain-client";
 import { useAuth } from "@/components/auth/AuthContext";
 import { Thumbs } from "@/components/market/PhotoGallery";
 import { Link } from "@/i18n/navigation";
-import { binderActions, useBinder, type Binder, type BinderEntry } from "@/lib/binder";
+import { binderActions, useBinder, type Binder } from "@/lib/binder";
 import { binderSearch, filterBinder, isNarrowed, parseBinderQuery, type BinderQuery, type FilterFields } from "@/lib/binder-filter";
 import { groupTree, nameKey } from "@/lib/facets";
 import { ClearFilters, FilterBar, FiltersButton, GroupMemberFilter, SearchField } from "@/components/market/CardFilters";
@@ -36,7 +37,6 @@ import { WalletNotFoundHint } from "@/components/auth/WalletPicker";
 
 type Tab = "binder" | "orders" | "progress" | "wants";
 const TABS: Tab[] = ["binder", "orders", "progress", "wants"];
-type Owned = { template: Template; entry: BinderEntry };
 // 卡冊裡的一格：錢包裡的金庫卡、開卡包抽到的卡、自己上鏈的卡，或在圖鑑裡標記「有」的卡款（card 是它畫成卡片的樣子）
 type Slot = { kind: "vault"; card: Card } | { kind: "item"; item: CollectorItem } | { kind: "card"; owned: Owned; card: Card };
 
@@ -148,7 +148,7 @@ export default function BinderView() {
     <div className="mt-8">
       <div className="mb-4 flex flex-wrap justify-end gap-3">
         {/* 公開收藏冊只列圖鑑裡標記的「有」和「想要」 */}
-        <ShareBinderButton have={owned.length} want={wants.length} />
+        <ShareBinderButton userId={user.id} keys={inBinder.map(slotKey)} want={wants.length} />
         <AddCardButton className="btn-primary rounded-full px-5 py-2.5 text-sm font-semibold" />
       </div>
       <dl className="grid grid-cols-3 gap-3">
@@ -423,33 +423,6 @@ function ownedCard({ template, entry }: Owned, vault: Card[] | null) {
   return entry.photo ? { ...base, image: { front: entry.photo } } : base;
 }
 
-// 手動標記的卡（不是鏈上的卡）：虛線框加「僅記錄」標籤，和真卡分開。沒給 onSelect 時只畫卡面，不能點（整理收藏冊時用）。
-// card 由收藏冊算好傳進來，不在每個卡套裡各自讀一次金庫清單
-function Pocket({ owned, card, onSelect }: { owned: Owned; card: Card; onSelect?: () => void }) {
-  const t = useTranslations("Binder");
-  const tRarity = useTranslations("Rarity");
-  const Tag = onSelect ? "button" : "span";
-  return (
-    <Tag onClick={onSelect} className="group relative block h-full w-full overflow-hidden rounded-[5px] border-2 border-dashed border-ink-3/60 text-left">
-      {card.image ? (
-        <CardArt card={card} rarityLabel={tRarity(owned.template.rarity)} className="block h-full w-full" />
-      ) : (
-        // 還沒有照片的卡款：簡潔的文字卡，不畫剪影佔位圖
-        <span className="flex h-full w-full flex-col justify-between bg-white p-2.5">
-          <span className="text-[10px] font-semibold tracking-wide text-ink-3 uppercase">{tRarity(owned.template.rarity)}</span>
-          <span>
-            <span className="block text-sm leading-tight font-bold">{owned.template.member}</span>
-            <span className="mt-0.5 block text-[10px] leading-snug text-ink-2">{owned.template.version}</span>
-            <span className="block truncate text-[10px] text-ink-3">{owned.template.album}</span>
-          </span>
-        </span>
-      )}
-      {owned.entry.count > 1 && <span className="absolute top-1 right-1 rounded-full bg-ink/80 px-1.5 text-[10px] font-bold text-white">×{owned.entry.count}</span>}
-      <span className="absolute inset-x-0 bottom-0 bg-ink/55 py-0.5 text-center text-[9px] font-semibold tracking-wide text-white">{t("trackedOnly")}</span>
-      <span className="absolute inset-0 bg-ink/0 transition group-hover:bg-ink/10" />
-    </Tag>
-  );
-}
 
 function CardSheet({ owned, onClose, onTakeOut }: { owned: Owned; onClose: () => void; onTakeOut: () => void }) {
   const t = useTranslations("Binder");
@@ -499,6 +472,7 @@ function CardSheet({ owned, onClose, onTakeOut }: { owned: Owned; onClose: () =>
               {t("mint")}
             </button>
             <TakeOutButton onTakeOut={onTakeOut} label="removeFromBinder" />
+            <PublicSlotToggle slotKey={`card:${template.id}`} />
           </div>
         </div>
       </div>
@@ -506,23 +480,6 @@ function CardSheet({ owned, onClose, onTakeOut }: { owned: Owned; onClose: () =>
   );
 }
 
-// 自己上鏈的卡：只放照片，狀態和價格在點開的詳情裡；假卡打紅框、轉灰階並蓋上斜向 FAKE 字樣
-function ItemPocket({ item, onSelect }: { item: CollectorItem; onSelect?: () => void }) {
-  const fake = item.verification === "fake";
-  const Tag = onSelect ? "button" : "span";
-  return (
-    <Tag onClick={onSelect} className={`group relative block h-full w-full overflow-hidden text-left ${fake ? "ring-2 ring-down ring-inset" : ""}`}>
-      {/* eslint-disable-next-line @next/next/no-img-element -- 用戶上傳的照片 */}
-      <img src={item.photo} alt={itemTitle(item)} className={`h-full w-full object-cover ${fake ? "grayscale" : ""}`} />
-      {fake && (
-        <span className="pointer-events-none absolute inset-0 grid place-items-center">
-          <span className="-rotate-[30deg] rounded border-2 border-down bg-white/70 px-2 text-lg font-black tracking-widest text-down">FAKE</span>
-        </span>
-      )}
-      <span className="absolute inset-0 bg-ink/0 transition group-hover:bg-ink/10" />
-    </Tag>
-  );
-}
 
 function ItemSheet({ item, onClose, onTakeOut }: { item: CollectorItem; onClose: () => void; onTakeOut: () => void }) {
   const t = useTranslations("Binder");
@@ -590,6 +547,7 @@ function ItemSheet({ item, onClose, onTakeOut }: { item: CollectorItem; onClose:
             )}
             {!fake && !item.auction && !item.openOrder && <VaultRequest item={item} />}
             <TakeOutButton onTakeOut={onTakeOut} />
+            <PublicSlotToggle slotKey={`item:${item.id}`} />
           </div>
         </div>
       </div>
@@ -874,17 +832,6 @@ function LoggedOut({ localCount, onLogin }: { localCount: number; onLogin: () =>
   );
 }
 
-// 錢包裡的金庫卡：和自己上鏈的卡一樣先打開詳情，再從詳情進卡片頁
-function VaultSlot({ card, onSelect }: { card: Card; onSelect?: () => void }) {
-  const tRarity = useTranslations("Rarity");
-  const Tag = onSelect ? "button" : "span";
-  return (
-    <Tag onClick={onSelect} className="group relative block h-full w-full overflow-hidden text-left">
-      <CardArt card={card} rarityLabel={tRarity(card.rarity)} className="block h-full w-full" />
-      <span className="absolute inset-0 bg-ink/0 transition group-hover:bg-ink/10" />
-    </Tag>
-  );
-}
 
 // 錢包裡的金庫卡：和自己上鏈的卡一樣，可以直接在這裡上架、改價、下架（走鏈上託管程序，要錢包簽名）
 function VaultSheet({ card, onClose, onTakeOut }: { card: Card; onClose: () => void; onTakeOut: () => void }) {
@@ -929,6 +876,7 @@ function VaultSheet({ card, onClose, onTakeOut }: { card: Card; onClose: () => v
               </Link>
             )}
             <TakeOutButton onTakeOut={onTakeOut} />
+            <PublicSlotToggle slotKey={`vault:${card.id}`} />
           </div>
         </div>
       </div>
@@ -937,6 +885,12 @@ function VaultSheet({ card, onClose, onTakeOut }: { card: Card; onClose: () => v
 }
 
 // 拿出收藏冊：鏈上的卡還是你的，只是不放在冊子裡顯示，整理收藏冊時可以放回；只是記錄的卡則是移除標記
+// 卡的詳情裡：這張卡在不在公開收藏冊上顯示
+function PublicSlotToggle({ slotKey }: { slotKey: string }) {
+  const userId = useAuth().user?.id;
+  return userId ? <PublicToggle userId={userId} slotKey={slotKey} /> : null;
+}
+
 function TakeOutButton({ onTakeOut, label = "takeOut" }: { onTakeOut: () => void; label?: "takeOut" | "removeFromBinder" }) {
   const t = useTranslations("Binder");
   return (

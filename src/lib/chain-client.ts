@@ -9,6 +9,7 @@ import { signAndSend } from "./solana/wallets";
 import { signArcPayment, type EvmWallet } from "./evm/arc-wallet";
 import type { ArcPaymentRequest } from "./arc";
 import type { AuctionView } from "./auction";
+import { applyChainStates, type CardLike } from "./vault-state";
 
 // 鏈上拍賣：公開的拍賣資訊，加上賣家和目前最高出價者的錢包
 export type VaultAuction = AuctionView & { seller: string; highBidder: string | null; highBidMint: string | null; rentPayer: string };
@@ -180,20 +181,9 @@ export function useBalance(wallet: string | null | undefined) {
   return { balance: wallet ? balance : null, refresh };
 }
 
-type CardLike = { id: string; priceUsdt: number; owner: string; status: "vaulted" | "listed" | "auction" | "redeeming" | "redeemed" };
-
-// 把鏈上即時狀態疊到卡片資料上：持有人、價格、狀態；鏈上已銷毀的標成已提貨。
-// 掛單和拍賣時 NFT 在託管程序裡，持有人顯示賣家；拍賣的價格是目前最高出價，沒人出價時是起標價
+// 鏈上即時狀態疊到卡片資料上（伺服器端的公開收藏冊也用同一份規則，寫在 vault-state.ts）
 export function withLive<T extends CardLike>(cards: T[], chain: ChainState | null): T[] {
-  if (!chain?.ready) return cards;
-  return cards.map((c) => {
-    const s = chain.cards[c.id];
-    if (!s || c.status === "redeemed") return c;
-    if (s.burned) return { ...c, owner: "", status: "redeemed" };
-    if (s.auction) return { ...c, owner: s.auction.seller, status: "auction", priceUsdt: s.auction.highUsd ?? s.auction.startUsd };
-    const status = s.listing ? "listed" : s.redeeming ? "redeeming" : "vaulted";
-    return { ...c, owner: s.listing?.seller ?? s.owner, status, priceUsdt: s.listing?.priceUsdt ?? c.priceUsdt };
-  });
+  return chain?.ready ? applyChainStates(cards, chain.cards) : cards;
 }
 
 // 在售的自由刊登（整站共用一份）：市場頁的自由刊登頁籤，圖鑑用它算在售數量。讀不到時是空清單

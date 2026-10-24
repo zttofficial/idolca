@@ -100,3 +100,18 @@ export function stateOfRow(r: IndexColumns, now = Date.now()): VaultCardState {
     burned: r.burned,
   };
 }
+
+export type CardLike = { id: string; priceUsdt: number; owner: string; status: "vaulted" | "listed" | "auction" | "redeeming" | "redeemed" };
+
+// 把鏈上狀態疊到卡片資料上：持有人、價格、狀態；鏈上已銷毀的標成已提貨。
+// 掛單和拍賣時 NFT 在託管程序裡，持有人顯示賣家；拍賣的價格是目前最高出價，沒人出價時是起標價
+export function applyChainStates<T extends CardLike>(cards: T[], states: Record<string, VaultCardState>): T[] {
+  return cards.map((c) => {
+    const s = states[c.id];
+    if (!s || c.status === "redeemed") return c;
+    if (s.burned) return { ...c, owner: "", status: "redeemed" };
+    if (s.auction) return { ...c, owner: s.auction.seller, status: "auction", priceUsdt: s.auction.highUsd ?? s.auction.startUsd };
+    const status = s.listing ? "listed" : s.redeeming ? "redeeming" : "vaulted";
+    return { ...c, owner: s.listing?.seller ?? s.owner, status, priceUsdt: s.listing?.priceUsdt ?? c.priceUsdt };
+  });
+}
