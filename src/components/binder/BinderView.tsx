@@ -13,6 +13,7 @@ import Dialog from "@/components/ui/Dialog";
 import InfoTip from "@/components/ui/InfoTip";
 import BinderBook from "./BinderBook";
 import BinderArranger from "./BinderArranger";
+import { ShareBinderButton } from "./ShareBinder";
 import { arrange, clearPocket, EMPTY_LAYOUT, isTrackedOnly, takeOut } from "@/lib/binder-layout";
 import { Orders } from "./BinderChain";
 import { listVaultCard, refreshChainState, useChainState, useTemplateMarket, useVaultCards, vaultAction } from "@/lib/chain-client";
@@ -145,7 +146,9 @@ export default function BinderView() {
 
   return (
     <div className="mt-8">
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex flex-wrap justify-end gap-3">
+        {/* 公開收藏冊只列圖鑑裡標記的「有」和「想要」 */}
+        <ShareBinderButton have={owned.length} want={wants.length} />
         <AddCardButton className="btn-primary rounded-full px-5 py-2.5 text-sm font-semibold" />
       </div>
       <dl className="grid grid-cols-3 gap-3">

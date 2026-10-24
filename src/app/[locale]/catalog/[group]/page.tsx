@@ -8,6 +8,7 @@ import Footer from "@/components/layout/Footer";
 import Breadcrumb from "@/components/layout/Breadcrumb";
 import CatalogGrid from "@/components/binder/CatalogGrid";
 import GroupProgress from "@/components/binder/GroupProgress";
+import SaveBinderNudge from "@/components/binder/SaveBinderNudge";
 import { GROUPS, findGroup, templatesOf } from "@/lib/catalog";
 
 export function generateStaticParams() {
@@ -63,6 +64,7 @@ async function GroupContent({ params }: { params: PageProps<"/[locale]/catalog/[
       <p className="mt-4 text-xs text-ink-3">{t("placeholderNote")}</p>
       <div className="mt-6">
         <CatalogGrid members={g.members} templates={list} />
+        <SaveBinderNudge />
       </div>
     </>
   );

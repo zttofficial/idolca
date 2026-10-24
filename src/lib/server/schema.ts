@@ -22,6 +22,9 @@ export const users = pgTable("users", {
   role: text("role").$type<"user" | "admin">().notNull().default("user"),
   // 開卡包前確認已滿 18 歲的時間
   ageConfirmedAt: timestamp("age_confirmed_at", { withTimezone: true }),
+  // 公開收藏冊：用戶自己打開才公開；slug 是公開頁網址裡的短代號，第一次公開時產生，之後關掉再開也不變，分享出去的連結不失效
+  binderPublic: boolean("binder_public").notNull().default(false),
+  binderSlug: text("binder_slug").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -548,6 +551,8 @@ export const BOOTSTRAP_SQL = [
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at timestamptz`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_kind text`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS name_changed_at timestamptz`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS binder_public boolean NOT NULL DEFAULT false`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS binder_slug text UNIQUE`,
   `CREATE TABLE IF NOT EXISTS email_tokens (
     id text PRIMARY KEY,
     user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,

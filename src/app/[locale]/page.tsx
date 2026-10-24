@@ -5,6 +5,7 @@ import Navbar from "@/components/layout/Navbar";
 import Hero from "@/components/hero/Hero";
 import MarketGrid from "@/components/market/MarketGrid";
 import HowItWorks from "@/components/landing/HowItWorks";
+import GroupPickerDialog from "@/components/landing/GroupPickerDialog";
 import Footer from "@/components/layout/Footer";
 import PackPromo from "@/components/packs/PackPromo";
 import BinderPromo from "@/components/binder/BinderPromo";
@@ -48,6 +49,7 @@ export default async function Home() {
         <BinderPromo />
         <HowItWorks />
       </main>
+      <GroupPickerDialog />
       <Footer />
     </>
   );

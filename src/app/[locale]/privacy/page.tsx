@@ -14,7 +14,7 @@ export default async function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      updated="2026-10-14"
+      updated="2026-10-23"
       note={locale === "en" ? undefined : "This policy is provided in English, and the English version governs."}
       intro="This policy explains what personal data Idolca collects, why, and how long we keep it. We collect only what the service needs and do not sell personal data or use it for advertising."
       sections={[
@@ -23,6 +23,7 @@ export default async function PrivacyPage() {
           body: [
             "Account data: your email address and a salted scrypt hash of your password (never the password itself), or your Solana wallet address if you sign in with a wallet, and a display name.",
             "Collection data: cards you mark in your binder, cards you mint or list, the photos you upload, and your orders.",
+            "Public binder: if you turn on binder sharing, anyone with the link can see your display name and the catalog cards you marked as Have and Want. Your photos, wallet address and orders are not shown. You can turn sharing off at any time in your binder.",
             "Redemption data: the recipient name, phone number and shipping address you enter when you redeem a vault card.",
             "Technical data: a session cookie that keeps you signed in, your IP address for rate limiting, and the country your request comes from, which decides whether random trading card packs are offered.",
             "Usage data: which pages are viewed, where visitors came from, and anonymous counts of actions such as listing, bidding, buying and opening packs, with the amount and payment method. These events carry no email, wallet address or shipping address.",

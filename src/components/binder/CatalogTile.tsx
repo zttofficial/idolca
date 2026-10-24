@@ -8,6 +8,7 @@ import { binderActions, useBinder } from "@/lib/binder";
 import { templateCard, type Template } from "@/lib/catalog";
 import { formatPrice } from "@/lib/fx";
 import { useTemplateMarket, useVaultCards } from "@/lib/chain-client";
+import { track } from "@/lib/analytics";
 
 // 圖鑑裡的一個卡款：標記「有 / 想要」，看真實在售數量和最低價
 export default function CatalogTile({ template }: { template: Template }) {
@@ -19,6 +20,10 @@ export default function CatalogTile({ template }: { template: Template }) {
   const base = templateCard(template, useVaultCards());
   const card = entry?.photo ? { ...base, image: { front: entry.photo } } : base;
   const market = useTemplateMarket()(template);
+  // 收藏冊還是空的時候這一下就是第一次勾卡
+  const firstMark = (kind: "have" | "want") => {
+    if (!Object.keys(binder.have).length && !Object.keys(binder.want).length) track("binder_marked", { group: template.groupId, kind });
+  };
 
   return (
     <div>
@@ -78,14 +83,20 @@ export default function CatalogTile({ template }: { template: Template }) {
           </div>
         ) : (
           <button
-            onClick={() => binderActions.toggleHave(template.id)}
+            onClick={() => {
+              firstMark("have");
+              binderActions.toggleHave(template.id);
+            }}
             className="h-8 flex-1 rounded-full border border-line text-xs font-semibold hover:bg-surface-2"
           >
             {t("have")}
           </button>
         )}
         <button
-          onClick={() => binderActions.toggleWant(template.id)}
+          onClick={() => {
+            firstMark("want");
+            binderActions.toggleWant(template.id);
+          }}
           aria-pressed={wanted}
           aria-label={t("want")}
           title={t("want")}

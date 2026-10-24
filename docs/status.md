@@ -1,6 +1,6 @@
 # 實施現況
 
-截至 2026-10-18。功能規則和選型理由見 [tech-stack.md](tech-stack.md)，用到的第三方服務和帳號見 [services.md](services.md)，這裡記已經做出來的東西在哪、環境怎麼配、開發要守的約定和還沒做的事。
+截至 2026-10-23。功能規則和選型理由見 [tech-stack.md](tech-stack.md)，用到的第三方服務和帳號見 [services.md](services.md)，這裡記已經做出來的東西在哪、環境怎麼配、開發要守的約定和還沒做的事。
 
 ## 總覽
 
@@ -34,6 +34,8 @@
 | 收藏冊（卡冊、搜尋和品類 → 團體 → 成員篩選、整理、同步；訂單頁籤列擔保訂單和金庫卡成交） | `/binder` | `BinderView.tsx`、`BinderBook.tsx`、`BinderArranger.tsx`、`BinderChain.tsx`（訂單），`src/lib/server/vault-trades.ts`（金庫卡成交從鏈上同步），`src/lib/binder.ts`、`binder-layout.ts`、`binder-filter.ts`，`src/app/api/binder` |
 | 卡片篩選元件（搜尋框、品類 → 團體 → 成員；市場用側欄的二級選單、列出名錄裡的全部團體，收藏冊用上方可收起的面板），市場和收藏冊共用 | `/market`、`/binder` | `src/components/market/CardFilters.tsx`、`src/lib/facets.ts` |
 | 圖鑑 | `/catalog`、`/catalog/[group]` | `src/lib/catalog.ts` |
+| 首頁的「你收哪個團？」彈窗（打開 3 秒後彈出，選團進圖鑑勾卡；關掉或選過就不再彈，收藏冊有卡的人不彈）、圖鑑頁勾了第一張卡後提示未登入的訪客建帳號保存 | 首頁、`/catalog/[group]` | `src/components/landing/GroupPickerDialog.tsx`、`src/components/binder/SaveBinderNudge.tsx` |
+| 公開收藏冊（用戶自己打開；網址用第一次公開時產生的 8 字元代號，關掉再開不變，錢包帳號併進郵箱帳號時沿用；只公開圖鑑裡標記的「有」和「想要」，不公開自己拍的照片和錢包；每頁有自己的分享圖） | `/collector/[slug]`、收藏冊的分享按鈕 | `src/lib/server/public-binder.ts`、`src/app/api/binder/share`、`src/components/binder/PublicBinder.tsx`、`ShareBinder.tsx`，分享圖 `src/app/[locale]/collector/[slug]/opengraph-image.tsx`、`src/lib/server/share-image.tsx` |
 | 團體名錄（K-pop、J-pop、C-pop、T-pop 四個品類；篩選器的團體清單、表單的團體和成員建議；按照片檔名預填名稱、團體、成員） | 上鏈、入庫表單 | `src/lib/directory.ts`，各品類的名錄在 `src/lib/groups/` |
 | 金庫頁（存貨證明） | `/vault` | `src/components/vault/` |
 | 專輯銷量榜 | `/charts` | `src/lib/server/circle-chart.ts` |
@@ -48,7 +50,7 @@
 | 示範照片的授權標示（CC BY） | `/credits` | `src/lib/sample-credits.json` |
 | 下拉選單元件 | 全站 | `src/components/ui/Combobox.tsx`（可自由輸入的建議清單）、`Select.tsx`（選單，可帶搜尋） |
 | 多語言（8 種） | 全站 | `messages/*.json` |
-| 產品分析（PostHog，不用 cookie） | 全站 | `src/instrumentation-client.ts`、`src/lib/analytics.ts`；付款類事件在 `PaymentPicker.tsx` |
+| 產品分析（PostHog 歐盟區，不用 cookie；訪客雜湊每天重算，跨天回訪看不出來） | 全站 | `src/instrumentation-client.ts`、`src/lib/analytics.ts`；付款類事件在 `PaymentPicker.tsx`。查數據用 `.env.local` 的 `POSTHOG_PERSONAL_API_KEY`（唯讀）、`POSTHOG_PROJECT_ID`、`POSTHOG_API_HOST` 呼叫 `/api/projects/{id}/query` |
 | 官方社群帳號（頁尾圖示、結構化資料） | 全站 | `src/lib/social.ts` |
 
 ## 資料表

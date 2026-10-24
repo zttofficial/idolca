@@ -8,7 +8,8 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 // 分享圖的版本號：按繪製程式碼和字型算雜湊，拼在圖片網址後面。社群平台按網址緩存縮略圖，圖改了網址也得跟著變
 const shareImageHash = createHash("sha256");
-for (const f of ["src/app/opengraph-image.tsx", "src/assets/fonts/Geist-Regular.ttf", "src/assets/fonts/Geist-ExtraBold.ttf"]) shareImageHash.update(readFileSync(f));
+for (const f of ["src/app/opengraph-image.tsx", "src/lib/server/share-image.tsx", "src/assets/fonts/Geist-Regular.ttf", "src/assets/fonts/Geist-ExtraBold.ttf"])
+  shareImageHash.update(readFileSync(f));
 const shareImageVersion = shareImageHash.digest("hex").slice(0, 12);
 
 const nextConfig: NextConfig = {
