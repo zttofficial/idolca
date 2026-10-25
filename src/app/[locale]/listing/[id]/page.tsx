@@ -28,9 +28,10 @@ export async function generateMetadata(props: PageProps<"/[locale]/listing/[id]"
   const listing = db ? await getListing(db, (await props.params).id) : null;
   if (!listing) return {};
   const t = await getTranslations("Meta");
-  // 不在售的卡（成交了、下架了、拍賣結束了、假卡）網址一直有效，但不讓搜尋引擎收錄
+  // 在售的和成交了的真卡給搜尋引擎收錄，成交頁是成交紀錄。下架了、拍賣流標、交易進行中和假卡的網址一直有效，但不收錄
   const title = itemTitle(listing);
-  return pageMetadata({ locale: await getLocale(), path: `/listing/${listing.id}`, title, description: t("listingDescription", { title }), image: listing.photo, noindex: !onSale(listing) });
+  const indexable = onSale(listing) || (listing.verification === "unverified" && listing.deal?.status === "sold");
+  return pageMetadata({ locale: await getLocale(), path: `/listing/${listing.id}`, title, description: t("listingDescription", { title }), image: listing.photo, noindex: !indexable });
 }
 
 const SECTION = "rounded-2xl border border-line bg-surface p-5";

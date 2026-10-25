@@ -45,7 +45,7 @@
 | 照片處理和浮水印 | — | `src/lib/server/media.ts`、`src/lib/crop-card.ts` |
 | 站內通知（拍賣、擔保訂單、金庫卡成交、提貨寄出） | 頁首通知鈴 | `src/lib/server/notifications.ts`、`vault-notify.ts`，`src/components/notifications/NotificationBell.tsx`，`src/app/api/notifications` |
 | 每日排程（逾時訂單和提醒填地址、結標拍賣和退款、清地址、清過期會話、郵件連結和 90 天前的通知） | — | `src/app/api/cron/daily`、`vercel.json` |
-| SEO（標題、hreflang、站點地圖、分享圖、JSON-LD；入庫、刊登、建卡包時用 IndexNow 通知搜尋引擎） | 全站 | `src/lib/seo.ts`、`src/lib/server/indexnow.ts`、`src/app/sitemap.ts`、`robots.ts`、`opengraph-image.tsx` |
+| SEO（標題、hreflang、站點地圖、分享圖、JSON-LD；入庫、刊登、建卡包時用 IndexNow 通知搜尋引擎；不存在的詳情頁在 proxy 裡先查，回真正的 404，免得串流頁回 200 被報軟 404） | 全站 | `src/lib/seo.ts`、`src/lib/server/indexnow.ts`、`src/lib/server/page-exists.ts`、`src/app/sitemap.ts`、`robots.ts`、`opengraph-image.tsx` |
 | 導覽列（手機上收成選單） | 全站 | `src/components/layout/Navbar.tsx`、`MobileNav.tsx` |
 | 示範照片的授權標示（CC BY） | `/credits` | `src/lib/sample-credits.json` |
 | 下拉選單元件 | 全站 | `src/components/ui/Combobox.tsx`（可自由輸入的建議清單）、`Select.tsx`（選單，可帶搜尋） |

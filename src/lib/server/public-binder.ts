@@ -71,12 +71,18 @@ export type PublicBinder = {
   want: string[];
 };
 
-export async function getPublicBinder(db: Db, slug: string): Promise<PublicBinder | null> {
+// 公開了收藏冊的用戶；網址不對或沒公開回傳 null
+export async function publicBinderOwner(db: Db, slug: string) {
   if (!isSlug(slug)) return null;
   const [user] = await db
     .select({ id: users.id, name: users.displayName, joinedAt: users.createdAt, wallet: users.walletAddress })
     .from(users)
     .where(and(eq(users.binderSlug, slug), eq(users.binderPublic, true)));
+  return user ?? null;
+}
+
+export async function getPublicBinder(db: Db, slug: string): Promise<PublicBinder | null> {
+  const user = await publicBinderOwner(db, slug);
   if (!user) return null;
   const [entries, wants, [layout], hidden, items, vault, states] = await Promise.all([
     db.select({ id: binderEntries.templateId }).from(binderEntries).where(eq(binderEntries.userId, user.id)),

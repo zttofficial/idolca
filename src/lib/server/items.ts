@@ -1,7 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { TEMPLATES } from "@/lib/catalog";
-import { and, count, desc, eq, inArray, isNotNull, ne, or } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, max, ne, or } from "drizzle-orm";
 import type { Db } from "./db";
 import { auctions, collectorItems, orders, users, type OrderStatus } from "./schema";
 import type { Listing, ListingDeal, ListingEvent } from "@/lib/items";
@@ -94,6 +94,18 @@ export function matchTemplate(group: string, member: string, album?: string | nu
 }
 
 export const newItemId = () => randomUUID();
+
+// 成交過的真卡刊登和最近一次成交時間，給站點地圖：成交後的刊登頁是保留的成交紀錄
+export async function listSoldListings(db: Db) {
+  const at = max(orders.updatedAt);
+  const rows = await db
+    .select({ id: orders.itemId, at })
+    .from(orders)
+    .innerJoin(collectorItems, eq(collectorItems.id, orders.itemId))
+    .where(and(eq(orders.status, "completed"), eq(collectorItems.verification, "unverified")))
+    .groupBy(orders.itemId);
+  return rows.map((r) => ({ id: r.id, soldAt: r.at ? new Date(r.at).toISOString() : undefined }));
+}
 
 // 在售的自由刊登（一口價和拍賣中），新的在前；假卡即使有價格也不出現。成交了的卡不列在市場上，刊登頁的網址一直有效
 export async function listListings(db: Db, limit = 200) {

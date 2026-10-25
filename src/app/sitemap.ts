@@ -3,11 +3,11 @@ import { connection } from "next/server";
 import { GROUPS } from "@/lib/catalog";
 import { SITE_URL, languageAlternates, localePath } from "@/lib/seo";
 import { getDb } from "@/lib/server/db";
-import { listListings } from "@/lib/server/items";
+import { listListings, listSoldListings } from "@/lib/server/items";
 import { listPacks } from "@/lib/server/pack-pool";
 import { listRedeemedCards, listVaultCards } from "@/lib/server/vault-cards";
 
-// 站點地圖：固定頁面、圖鑑團體、金庫卡（包括已提貨的，紀錄頁仍有價值）、刊登中的自由刊登、卡包。
+// 站點地圖：固定頁面、圖鑑團體、金庫卡（包括已提貨的，紀錄頁仍有價值）、自由刊登（在售的和成交過的）、卡包。
 // 每條網址附上八種語言的對應版本，搜尋引擎據此把各語言頁面歸成一組
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   await connection();
@@ -32,12 +32,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
   const db = await getDb();
   if (!db) return pages;
-  const [vault, redeemed, listings, packs] = await Promise.all([listVaultCards(db), listRedeemedCards(db), listListings(db), listPacks(db)]);
+  const [vault, redeemed, listings, sold, packs] = await Promise.all([listVaultCards(db), listRedeemedCards(db), listListings(db), listSoldListings(db), listPacks(db)]);
+  const onSale = new Set(listings.map((l) => l.id));
   return [
     ...pages,
     ...vault.map((c) => entry(`/card/${c.id}`, 0.7, c.intakeDate)),
     ...redeemed.map((c) => entry(`/card/${c.id}`, 0.3, c.redeemedAt)),
     ...listings.map((l) => entry(`/listing/${l.id}`, 0.6, l.listedAt ?? undefined)),
+    ...sold.filter((l) => !onSale.has(l.id)).map((l) => entry(`/listing/${l.id}`, 0.3, l.soldAt)),
     ...packs.map((p) => entry(`/packs/${p.id}`, 0.7, p.startsAt)),
   ];
 }
