@@ -115,7 +115,7 @@ export default function AdminItems({ call, onChanged }: { call: Call; onChanged:
                       window.confirm("Mark this card fake? On-chain this is permanent.") &&
                       act(i.id, () => call("PATCH", `/api/admin/items/${i.id}`, { verification: "fake", note: "Found not genuine by Idolca" }))
                     }
-                    className="rounded-full border border-down px-4 py-1.5 text-xs font-semibold text-down hover:bg-down/10 disabled:opacity-50"
+                    className="btn-danger rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
                   >
                     {busy === i.id ? "…" : "Mark fake"}
                   </button>

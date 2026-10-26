@@ -87,7 +87,7 @@ export default function CatalogTile({ template }: { template: Template }) {
               firstMark("have");
               binderActions.toggleHave(template.id);
             }}
-            className="h-8 flex-1 rounded-full border border-line text-xs font-semibold hover:bg-surface-2"
+            className="btn-secondary h-8 flex-1 rounded-full text-xs font-semibold"
           >
             {t("have")}
           </button>

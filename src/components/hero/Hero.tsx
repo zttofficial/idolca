@@ -48,7 +48,7 @@ export default function Hero() {
           <Link href="/market" className="btn-primary rounded-full px-6 py-3 text-sm font-semibold">
             {t("browse")}
           </Link>
-          <Link href="/binder" className="rounded-full border border-line bg-surface px-6 py-3 text-sm font-semibold text-ink backdrop-blur transition hover:bg-surface-3">
+          <Link href="/binder" className="btn-secondary rounded-full px-6 py-3 text-sm font-semibold backdrop-blur">
             {t("startBinder")}
           </Link>
         </div>

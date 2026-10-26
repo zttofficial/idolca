@@ -22,7 +22,7 @@ export default function BinderPromo() {
           <p className="mt-3 max-w-lg text-sm leading-relaxed text-ink-2">{t("promoBody")}</p>
           <div className="mt-6 flex flex-wrap gap-3">
             <AddCardButton className="btn-primary rounded-full px-5 py-2.5 text-sm font-semibold" />
-            <Link href="/binder" className="rounded-full border border-line bg-surface px-5 py-2.5 text-sm font-semibold hover:bg-surface-3">
+            <Link href="/binder" className="btn-secondary rounded-full px-5 py-2.5 text-sm font-semibold">
               {t("promoCta")}
             </Link>
           </div>

@@ -331,7 +331,7 @@ function OpeningModal({
                   {t("seeResults")}
                 </button>
               ) : (
-                <button ref={primary} onClick={onRevealAll} className="rounded-full border border-line bg-surface px-6 py-2.5 text-sm font-semibold hover:bg-surface-3">
+                <button ref={primary} onClick={onRevealAll} className="btn-secondary rounded-full px-6 py-2.5 text-sm font-semibold">
                   {t("revealAll")}
                 </button>
               )}

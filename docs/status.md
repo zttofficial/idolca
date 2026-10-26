@@ -98,6 +98,7 @@
 - **Next.js 16**：寫代碼前先讀 `node_modules/next/dist/docs/` 的對應指南。開了 Cache Components：讀請求資料的路由處理器先 `await connection()`，動態頁面內容包在 `Suspense` 裡。沒有 `.next` 時先 `npx next typegen` 再跑 `tsc`。
 - **dev 伺服器**：開著時不要跑 `npm run build`（會覆寫 `.next`，頁面無限重載）；要驗證構建就先停 dev，構建後刪 `.next` 再重啟。頁面無限重載時同樣停 dev、刪 `.next`、重開。改了 `schema.ts` 要重啟 dev 才會執行新的建表語句。停 dev 時連 3000 埠上的 node 子程序一起結束。
 - **測試資料不進日常資料庫**：端到端測試只對 `PGLITE_DIR=.data/pglite-e2e` 啟動的網站跑，不對日常開發庫或線上跑；跑的時候不要改 `src`（熱更新會打斷測試）。瀏覽器自動化只結束命令列帶 `remote-debugging-port` 的 Chrome，不動用戶自己的瀏覽器。
+- **介面**：寫介面前先看 `src/components/ui/` 和 `globals.css`，照現有的元件和樣式寫，不手寫近似的一套。每個動作都是按鈕：主要動作 `btn-primary`，其他動作 `btn-secondary`，無法復原的動作和停止公開 `btn-danger`，不用純文字或手寫邊框當按鈕；圖示按鈕和選項卡片例外。解釋性的文字（是什麼、為什麼、之後會怎樣）收進 `InfoTip` 問號，畫面上只留標題、按鈕、狀態和操作必需的提示。彈窗用 `Dialog`。細則見 tech-stack.md「樣式」。
 - **多語言**：先定英文和繁中，再一次翻成其他六種。單元測試會檢查八種語言的鍵和參數一致，以及程式碼裡寫死的每個鍵都存在。
 - **用詞**：面向粉絲的文字照 tech-stack.md「首頁」的用詞表（數位珍藏、公開認證紀錄等）；後台保留技術用語。
 - **不放假數據**：頁面數字只來自鏈上或自己的資料庫，沒有就不顯示。

@@ -176,7 +176,7 @@ export function Orders() {
                 <button
                   disabled={busy === o.id}
                   onClick={() => setTracking(o)}
-                  className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold hover:bg-surface-2 disabled:opacity-50"
+                  className="btn-secondary rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
                 >
                   {t("editTracking")}
                 </button>
@@ -199,7 +199,7 @@ export function Orders() {
                 <button
                   disabled={busy === o.id}
                   onClick={() => setDisputing(o.id)}
-                  className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold hover:bg-surface-2 disabled:opacity-50"
+                  className="btn-secondary rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
                 >
                   {t("reportProblem")}
                 </button>
@@ -227,7 +227,7 @@ export function Orders() {
                   <button disabled={busy === o.id || !reason.trim()} className="btn-primary rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50">
                     {t("submitDispute")}
                   </button>
-                  <button type="button" onClick={() => setDisputing(undefined)} className="rounded-full border border-line px-4 py-1.5 text-xs hover:bg-surface-2">
+                  <button type="button" onClick={() => setDisputing(undefined)} className="btn-secondary rounded-full px-4 py-1.5 text-xs font-semibold">
                     {t("cancelDispute")}
                   </button>
                 </form>

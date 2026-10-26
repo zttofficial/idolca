@@ -145,7 +145,7 @@ export default function AdminUserList({ call, me }: { call: Call; me: string }) 
                       <button
                         disabled={busy !== undefined}
                         onClick={() => window.confirm(`Give ${target} admin access?`) && act(`${u.id}:admin`, () => call("POST", "/api/admin/admins", { target }))}
-                        className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold hover:bg-surface-2 disabled:opacity-50"
+                        className="btn-secondary rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
                       >
                         {busy === `${u.id}:admin` ? "…" : "Make admin"}
                       </button>
@@ -155,7 +155,7 @@ export default function AdminUserList({ call, me }: { call: Call; me: string }) 
                         <button
                           disabled={busy !== undefined}
                           onClick={() => window.confirm(`Revoke admin access for ${u.name}?`) && act(`${u.id}:admin`, () => call("DELETE", `/api/admin/admins/${u.id}`))}
-                          className="rounded-full border border-down px-4 py-1.5 text-xs font-semibold text-down hover:bg-down/10 disabled:opacity-50"
+                          className="btn-danger rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
                         >
                           {busy === `${u.id}:admin` ? "…" : "Revoke"}
                         </button>

@@ -97,7 +97,7 @@ export default function BinderView() {
         <p className="mx-auto mt-2 max-w-md text-sm text-ink-2">{t("emptyBody")}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <AddCardButton className="btn-primary rounded-full px-5 py-2.5 text-sm font-semibold" />
-          <Link href="/catalog" className="rounded-full border border-line px-5 py-2.5 text-sm font-semibold hover:bg-surface-2">
+          <Link href="/catalog" className="btn-secondary rounded-full px-5 py-2.5 text-sm font-semibold">
             {t("browse")}
           </Link>
         </div>
@@ -812,7 +812,7 @@ function LoggedOut({ localCount, onLogin }: { localCount: number; onLogin: () =>
           <button onClick={onLogin} className="btn-primary rounded-full px-6 py-2.5 text-sm font-semibold">
             {t("loggedOutCta")}
           </button>
-          <Link href="/catalog" className="rounded-full border border-line bg-surface px-6 py-2.5 text-center text-sm font-semibold hover:bg-surface-3">
+          <Link href="/catalog" className="btn-secondary rounded-full px-6 py-2.5 text-center text-sm font-semibold">
             {t("browse")}
           </Link>
         </div>

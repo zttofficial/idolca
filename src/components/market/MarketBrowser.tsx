@@ -155,7 +155,7 @@ export default function MarketBrowser() {
               <button
                 disabled={result.page === 1}
                 onClick={() => go({ page: result.page - 1 }, true)}
-                className="rounded-full border border-line px-3 py-1.5 text-sm hover:bg-surface-2 disabled:opacity-40"
+                className="btn-secondary rounded-full px-3 py-1.5 text-sm font-semibold disabled:opacity-40"
               >
                 {t("prev")}
               </button>
@@ -178,7 +178,7 @@ export default function MarketBrowser() {
               <button
                 disabled={result.page === result.pages}
                 onClick={() => go({ page: result.page + 1 }, true)}
-                className="rounded-full border border-line px-3 py-1.5 text-sm hover:bg-surface-2 disabled:opacity-40"
+                className="btn-secondary rounded-full px-3 py-1.5 text-sm font-semibold disabled:opacity-40"
               >
                 {t("next")}
               </button>

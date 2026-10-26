@@ -47,7 +47,7 @@ export default function MarketGrid() {
             ))}
       </div>
       <div className="mt-12 text-center">
-        <Link href="/market" className="inline-block rounded-full border border-line px-6 py-2.5 text-sm font-semibold hover:bg-surface-2">
+        <Link href="/market" className="btn-secondary inline-block rounded-full px-6 py-2.5 text-sm font-semibold">
           {t("viewAll", { count: vault?.length ?? 0 })}
         </Link>
       </div>

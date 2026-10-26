@@ -105,7 +105,7 @@ export default function AdminUsers({ call, me }: { call: Call; me: string }) {
                     <button
                       disabled={busy !== undefined}
                       onClick={() => window.confirm(`Revoke admin access for ${name}?`) && act(a.id!, () => call("DELETE", `/api/admin/admins/${a.id}`))}
-                      className="rounded-full border border-down px-4 py-1.5 text-xs font-semibold text-down hover:bg-down/10 disabled:opacity-50"
+                      className="btn-danger rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
                     >
                       {busy === a.id ? "…" : "Revoke"}
                     </button>

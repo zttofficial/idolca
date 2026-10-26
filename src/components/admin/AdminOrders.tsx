@@ -124,7 +124,7 @@ export default function AdminOrders({ call, onChanged }: { call: Call; onChanged
                       window.confirm("Refund the full price to the buyer? This sends a transaction and can't be undone.") &&
                       act(`${o.id}:refund`, () => call("POST", `/api/admin/orders/${o.id}/refund`))
                     }
-                    className="rounded-full border border-down px-4 py-1.5 text-xs font-semibold text-down hover:bg-down/10 disabled:opacity-50"
+                    className="btn-danger rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
                   >
                     {busy === `${o.id}:refund` ? "…" : "Refund buyer"}
                   </button>

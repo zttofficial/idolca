@@ -121,11 +121,11 @@ export default function BinderBook({ slots, minPages = 2, title }: { slots: Reac
       </div>
 
       <div className="mt-4 flex items-center justify-center gap-3 text-sm">
-        <button disabled={current === 0 || Boolean(flip)} onClick={() => go("prev")} className="rounded-full border border-line px-4 py-1.5 hover:bg-surface-2 disabled:opacity-40">
+        <button disabled={current === 0 || Boolean(flip)} onClick={() => go("prev")} className="btn-secondary rounded-full px-4 py-1.5 font-semibold disabled:opacity-40">
           {t("prev")}
         </button>
         <span className="text-ink-3 tabular-nums">{t("page", { page: current + 1, pages: views })}</span>
-        <button disabled={current >= views - 1 || Boolean(flip)} onClick={() => go("next")} className="rounded-full border border-line px-4 py-1.5 hover:bg-surface-2 disabled:opacity-40">
+        <button disabled={current >= views - 1 || Boolean(flip)} onClick={() => go("next")} className="btn-secondary rounded-full px-4 py-1.5 font-semibold disabled:opacity-40">
           {t("next")}
         </button>
       </div>

@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import Dialog from "@/components/ui/Dialog";
 import CopyButton from "@/components/ui/CopyButton";
+import InfoTip from "@/components/ui/InfoTip";
 import { track } from "@/lib/analytics";
 import { localePath } from "@/lib/seo";
 
@@ -57,7 +58,7 @@ export function ShareBinderButton({ userId, keys, want }: { userId: string; keys
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 rounded-full border border-line px-5 py-2.5 text-sm font-semibold hover:bg-surface-2">
+      <button onClick={() => setOpen(true)} className="btn-secondary inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-semibold">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
           <path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />
         </svg>
@@ -105,7 +106,10 @@ function SharePanel({ userId, keys, want, onClose }: { userId: string; keys: str
 
   return (
     <Dialog label={t("shareTitle")} onClose={onClose} className="max-w-md">
-      <h2 className="pr-8 text-lg font-bold">{t("shareTitle")}</h2>
+      <div className="flex items-center gap-2 pr-8">
+        <h2 className="text-lg font-bold">{t("shareTitle")}</h2>
+        <InfoTip text={t("sharePublicHint")} label={t("shareInfoLabel")} align="start" />
+      </div>
       {!state ? (
         share?.failed ? (
           <p className="mt-4 text-sm text-down">{t("shareFailed")}</p>
@@ -114,14 +118,6 @@ function SharePanel({ userId, keys, want, onClose }: { userId: string; keys: str
         )
       ) : (
         <>
-          <label className="mt-5 flex cursor-pointer items-start gap-3">
-            <input type="checkbox" checked={state.public} disabled={saving} onChange={(e) => toggle(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--accent)]" />
-            <span>
-              <span className="block text-sm font-semibold">{t("sharePublic")}</span>
-              <span className="mt-1 block text-xs leading-relaxed text-ink-3">{t("sharePublicHint")}</span>
-            </span>
-          </label>
-          {failed && <p className="mt-3 text-sm text-down">{t("shareFailed")}</p>}
           {state.public && path ? (
             <div className="mt-5 space-y-3">
               <div className="flex items-center gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2">
@@ -145,18 +141,27 @@ function SharePanel({ userId, keys, want, onClose }: { userId: string; keys: str
                   {t("shareX")}
                 </a>
                 {canNativeShare && (
-                  <button onClick={shareNative} className="rounded-full border border-line px-4 py-2 text-sm font-semibold hover:bg-surface-2">
+                  <button onClick={shareNative} className="btn-secondary rounded-full px-4 py-2 text-sm font-semibold">
                     {t("shareNative")}
                   </button>
                 )}
-                <a href={path} target="_blank" rel="noopener" className="rounded-full px-3 py-2 text-sm font-semibold text-accent-ink hover:underline">
+                <a href={path} target="_blank" rel="noopener" className="btn-secondary rounded-full px-4 py-2 text-sm font-semibold">
                   {t("shareView")}
                 </a>
               </div>
+              <div className="flex items-center gap-2 border-t border-line pt-4">
+                <button onClick={() => toggle(false)} disabled={saving} className="btn-danger rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-50">
+                  {t("shareStop")}
+                </button>
+                <InfoTip text={t("shareStopHint")} label={t("shareStop")} align="start" />
+              </div>
             </div>
           ) : (
-            <p className="mt-4 text-xs text-ink-3">{t("shareOffNote")}</p>
+            <button onClick={() => toggle(true)} disabled={saving} className="btn-primary mt-5 w-full rounded-full py-3 text-sm font-semibold disabled:opacity-60">
+              {t("sharePublic")}
+            </button>
           )}
+          {failed && <p className="mt-3 text-sm text-down">{t("shareFailed")}</p>}
         </>
       )}
     </Dialog>

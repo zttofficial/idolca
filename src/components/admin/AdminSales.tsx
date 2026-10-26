@@ -64,7 +64,7 @@ export default function AdminSales({ call }: { call: Call }) {
                 <span>
                   <span className="text-xs text-ink-3">Fees</span> <span className="font-semibold tabular-nums">{formatPrice(sum.feeUsdt, 2)}</span>
                 </span>
-                <a href={`/api/admin/sales/export${query ? `?${query}` : ""}`} className="ml-auto rounded-full border border-line px-4 py-1.5 text-xs font-semibold hover:bg-surface-2">
+                <a href={`/api/admin/sales/export${query ? `?${query}` : ""}`} className="btn-secondary ml-auto rounded-full px-4 py-1.5 text-xs font-semibold">
                   Export CSV
                 </a>
               </div>

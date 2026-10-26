@@ -69,7 +69,7 @@ export default function VaultConvert({ item, busy, onConvert, onReturn }: { item
         type="button"
         disabled={busy}
         onClick={() => window.confirm("Return the card without converting it? The collector NFT stays as it is.") && onReturn()}
-        className="rounded-full border border-line px-4 py-1.5 text-xs hover:bg-surface-2 disabled:opacity-50"
+        className="btn-secondary rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
       >
         Return
       </button>

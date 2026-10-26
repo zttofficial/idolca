@@ -210,7 +210,7 @@ export default function AdminFees({ call }: { call: Call }) {
                       window.confirm(action === "delete" ? "Delete this rule? It hasn't started yet." : "End this promotion now?") &&
                       act(r.id, () => call("DELETE", `/api/admin/fees/${r.id}`))
                     }
-                    className="rounded-full border border-down px-4 py-1.5 text-xs font-semibold text-down hover:bg-down/10 disabled:opacity-50"
+                    className="btn-danger rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
                   >
                     {busy === r.id ? "…" : action === "delete" ? "Delete" : "End now"}
                   </button>

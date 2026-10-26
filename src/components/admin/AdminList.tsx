@@ -268,7 +268,7 @@ export default function AdminList<T, D = T>({
           type="button"
           disabled={loading}
           onClick={more}
-          className="mt-3 w-full rounded-full border border-line py-2 text-xs font-semibold text-ink-2 hover:bg-surface-2 disabled:opacity-50"
+          className="btn-secondary mt-3 w-full rounded-full py-2 text-xs font-semibold text-ink-2 disabled:opacity-50"
         >
           {loading ? "…" : "Load more"}
         </button>

@@ -111,7 +111,7 @@ function RedemptionDetail({ r, ctx, vaultName }: { r: AdminRedemption; ctx: List
               <button
                 disabled={busy !== undefined}
                 onClick={() => setShipping({ shipped: true, initial: tracking })}
-                className="rounded-full border border-line px-4 py-1.5 text-xs hover:bg-surface-2 disabled:opacity-50"
+                className="btn-secondary rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
               >
                 {tracking ? "Edit tracking" : "Add tracking"}
               </button>
@@ -131,7 +131,7 @@ function RedemptionDetail({ r, ctx, vaultName }: { r: AdminRedemption; ctx: List
                   window.confirm("Cancel this redemption? The NFT is unfrozen and the shipping fee refunded.") &&
                   act(`${r.cardId}:cancel`, () => call("POST", `/api/admin/redemptions/${r.cardId}/cancel`))
                 }
-                className="rounded-full border border-line px-4 py-1.5 text-xs hover:bg-surface-2 disabled:opacity-50"
+                className="btn-secondary rounded-full px-4 py-1.5 text-xs font-semibold disabled:opacity-50"
               >
                 {busy === `${r.cardId}:cancel` ? "…" : "Cancel"}
               </button>
